@@ -18,6 +18,7 @@
     "dev": "bunx tauri dev",
     "dev:vite": "vite",
     "build": "bunx tauri build",
+    "build:local": "MACOSX_DEPLOYMENT_TARGET=10.15 CMAKE_OSX_DEPLOYMENT_TARGET=10.15 APPLE_SIGNING_IDENTITY=- bunx tauri build --config '{\"bundle\":{\"macOS\":{\"entitlements\":\"./Entitlements.local.plist\"}}}'",
     "build:vite": "tsc && vite build",
     "lint": "../../node_modules/.bin/eslint . --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",

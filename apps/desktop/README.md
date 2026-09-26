@@ -103,6 +103,64 @@ bun run build
 # Output in src-tauri/target/release/
 ```
 
+### macOS: build with `build:local`, not `build`
+
+A plain `bun run build` / `bunx tauri build` on macOS fails twice. Both are local-configuration
+gaps, not source problems — CI sets the same values (`.github/workflows/release-macos.yml:411`).
+
+```bash
+# From the repo root — sets the three variables below for you
+bun run desktop:build:local
+```
+
+The equivalent by hand:
+
+```bash
+export MACOSX_DEPLOYMENT_TARGET=10.15
+export CMAKE_OSX_DEPLOYMENT_TARGET=10.15
+export APPLE_SIGNING_IDENTITY="-"   # ad-hoc; omit if you have a Developer ID cert
+bun run desktop:build
+```
+
+`build:local` exists as a separate script on purpose: it must not be folded into `build`, because
+CI passes the real `APPLE_SIGNING_IDENTITY` secret and a hardcoded `-` there would silently
+override it and ship ad-hoc-signed release builds.
+
+| Without it | Failure |
+| --- | --- |
+| `MACOSX_DEPLOYMENT_TARGET` / `CMAKE_OSX_DEPLOYMENT_TARGET` | The deployment target falls back to 10.13, but whisper.cpp's `ggml` uses `std::filesystem` (needs 10.15): `error: 'path' is unavailable: introduced in macOS 10.15` |
+| `APPLE_SIGNING_IDENTITY` | `tauri.conf.json` pins `"signingIdentity": "Developer ID Application"`; without that certificate the bundle step dies at `Developer ID Application: no identity found` |
+
+### The build succeeds but the app won't launch
+
+`build:local` also overrides `bundle.macOS.entitlements` to `Entitlements.local.plist` (an empty
+set). This is not optional — without it the build completes and the app is **killed at launch**
+with no crash report:
+
+```
+$ /Applications/Mindwtr.app/Contents/MacOS/mindwtr
+$ echo $?
+137                      # SIGKILL
+$ spctl -a -vvv -t exec /Applications/Mindwtr.app
+/Applications/Mindwtr.app: rejected
+```
+
+`Entitlements.mac.plist` — the file CI uses — declares restricted capabilities (team identifier,
+iCloud/CloudKit containers, `aps-environment`, an application group). Those are only valid under a
+real Developer ID with a matching provisioning profile. Ad-hoc signed, the kernel refuses to
+authorize them and terminates the process.
+
+The empty set is correct for a local build: it is not sandboxed, so the App Sandbox entitlements
+in the CI file are inert, and the features they gate (microphone, calendars) are governed at
+runtime by TCC plus the usage-description strings in `Info.plist`.
+
+`APPLE_SIGNING_IDENTITY="-"` produces an ad-hoc signature. The app runs, but Gatekeeper will
+block the first launch — right-click → Open, or `xattr -dr com.apple.quarantine /Applications/Mindwtr.app`.
+
+The `bundle_dmg.sh` step can fail in a plain terminal (it drives Finder via AppleScript to lay out
+the DMG window). That is not fatal: `target/release/bundle/macos/Mindwtr.app` is complete and
+installable on its own.
+
 Windows release builds also publish `mindwtr_<version>_windows_x64_portable.zip`.
 Extract it to a writable folder and keep `portable.txt` next to `mindwtr.exe`.
 
