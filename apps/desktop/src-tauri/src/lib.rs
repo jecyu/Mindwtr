@@ -71,11 +71,12 @@ use attachment_installer::install_attachment_download;
 use autostart::{get_launch_at_startup_enabled, set_launch_at_startup_enabled};
 use config::{
     check_obsidian_vault_marker, expand_obsidian_vault_scope, get_ai_key, get_cloud_config,
-    get_external_calendars, get_obsidian_config, get_sync_backend, get_sync_cloud_provider,
-    get_sync_cloud_provider_state, get_sync_configuration_snapshot, get_webdav_config,
-    get_webdav_password, list_obsidian_vaults, read_external_calendar_file, set_ai_key,
-    set_cloud_config, set_external_calendars, set_network_proxy, set_obsidian_config,
-    set_sync_backend, set_sync_cloud_provider, set_webdav_config,
+    get_dingtalk_mcp_url, get_external_calendars, get_obsidian_config, get_sync_backend,
+    get_sync_cloud_provider, get_sync_cloud_provider_state, get_sync_configuration_snapshot,
+    get_webdav_config, get_webdav_password, list_obsidian_vaults, read_external_calendar_file,
+    set_ai_key, set_cloud_config, set_dingtalk_mcp_url, set_external_calendars,
+    set_network_proxy, set_obsidian_config, set_sync_backend, set_sync_cloud_provider,
+    set_webdav_config,
 };
 use email_capture::{
     email_capture_commit, email_capture_poll, get_email_capture_config, set_email_capture_config,
@@ -183,6 +184,9 @@ const KEYRING_AI_OPENAI: &str = "ai_key_openai";
 const KEYRING_AI_ANTHROPIC: &str = "ai_key_anthropic";
 const KEYRING_AI_GEMINI: &str = "ai_key_gemini";
 const KEYRING_EMAIL_CAPTURE_PASSWORD: &str = "email_capture_password";
+// The DingTalk MCP credential is the whole gateway URL: the key rides in its query string, so
+// the URL is a bearer credential and is stored in the keyring rather than config.toml.
+const KEYRING_DINGTALK_MCP_URL: &str = "dingtalk_mcp_url";
 const DROPBOX_AUTH_ENDPOINT: &str = "https://www.dropbox.com/oauth2/authorize";
 const DROPBOX_TOKEN_ENDPOINT: &str = "https://api.dropboxapi.com/oauth2/token";
 const DROPBOX_REVOKE_ENDPOINT: &str = "https://api.dropboxapi.com/2/auth/token/revoke";
@@ -450,6 +454,8 @@ struct AppConfigToml {
     dropbox_promotion_journal: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     sync_cloud_provider: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    dingtalk_mcp_url: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1765,6 +1771,8 @@ pub fn run() {
             acknowledge_close_request,
             get_ai_key,
             set_ai_key,
+            get_dingtalk_mcp_url,
+            set_dingtalk_mcp_url,
             get_sync_path,
             clear_sync_path,
             set_sync_path,
