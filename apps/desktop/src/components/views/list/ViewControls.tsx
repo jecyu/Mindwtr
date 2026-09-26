@@ -12,6 +12,7 @@ type ViewControlsProps<Axis extends TaskGroupAxis, Sort extends SortField> = {
     groupBy?: Axis;
     defaultGroupBy?: Axis;
     groupByOptions?: readonly Axis[];
+    groupLabel?: string;
     onChangeGroupBy?: (value: Axis) => void;
     t: (key: string) => string;
 };
@@ -25,6 +26,7 @@ export function ViewControls<Axis extends TaskGroupAxis, Sort extends SortField 
     groupBy,
     defaultGroupBy,
     groupByOptions,
+    groupLabel,
     onChangeGroupBy,
     t,
 }: ViewControlsProps<Axis, Sort>) {
@@ -45,6 +47,7 @@ export function ViewControls<Axis extends TaskGroupAxis, Sort extends SortField 
                     value={groupBy}
                     defaultValue={defaultGroupBy}
                     axes={groupByOptions}
+                    label={groupLabel}
                     onChange={onChangeGroupBy}
                     t={t}
                     className="min-w-0 max-w-full"

@@ -59,7 +59,9 @@ export const evidenced = (error) => {
 };
 export const check = (condition, message) => { if (!condition) fail(message); console.log(`ok - ${message}`); };
 
-const decode = (value) => value.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+// uiautomator escapes a line break in a node's text as &#10; (the capture popup's several lines).
+const decode = (value) => value.replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code))).replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 export const field = (nodes) => nodes.find((node) => node.class === 'android.widget.EditText');
 export const box = (node) => node.bounds.match(/\d+/g).map(Number);
 // A Compose button's label is a child node; the enabled state is on the clickable node around it.
@@ -157,6 +159,22 @@ export const chipOn = (nodes, description) => {
     }).sort((a, b) => area(a) - area(b))[0];
     return isOn(around);
 };
+/**
+ * Whether the switch labelled [description] is on. On this phone a Compose switch is a plain View: the checkable
+ * node is the parent, and the labelled child always says checked="false" (run 29), so read the smallest checkable
+ * node that holds the label's center.
+ */
+export const switchOn = (nodes, description) => {
+    const label = withDescription(nodes, description);
+    if (!label) return false;
+    const [x1, y1, x2, y2] = box(label);
+    const [cx, cy] = [(x1 + x2) / 2, (y1 + y2) / 2];
+    const area = (node) => { const [l, t, r, b] = box(node); return (r - l) * (b - t); };
+    return nodes.filter((node) => node.checkable === 'true').filter((node) => {
+        const [l, t, r, b] = box(node);
+        return l <= cx && cx <= r && t <= cy && cy <= b;
+    }).sort((a, b) => area(a) - area(b))[0]?.checked === 'true';
+};
 /** The control labelled [label] on the same line as the row titled [title] (RN's star sits beside the title). */
 export const besideRow = (nodes, title, label) => {
     const row = nodes.find((node) => node.text === title && node.class !== 'android.widget.EditText');
@@ -170,16 +188,17 @@ export function connect({ serial, pkg, uiFile, adb = process.env.ADB ?? '/home/d
     const adbRaw = (...args) => execFileSync(adb, ['-s', serial, ...args], { maxBuffer: 64 << 20 });
     const shell = (command) => adbRaw('shell', command).toString('utf8').replace(/\r/g, '').trim();
     /**
-     * The checks type digits through the phone's own keyboard and never change its settings. A Chinese Pinyin (or
-     * any non-Latin) layout holds or reorders typed characters (run 22: "…457896" arrived as "…457869"), so every
-     * typing command first reads the current keyboard layout and stops (exit 3) unless it is English. The layout
-     * is read from `dumpsys input_method`: the current subtype line (mCurrentSubtype / mCurSubtype), or the
-     * subtype that `settings get secure selected_input_method_subtype` names in the IME's subtype list. When
-     * neither names a language, it stops too: unknown never types. MINDWTR_KEYBOARD_OK=1 skips the guard after a
-     * person has looked at the keyboard.
+     * The checks type digits through the phone's own keyboard. A Chinese Pinyin (or any non-Latin) layout holds or
+     * reorders typed characters (run 22: "…457896" arrived as "…457869"), so every typing command first reads the
+     * current keyboard layout. When it is not English, the check SWITCHES it to an English layout the keyboard
+     * already has enabled (`settings put secure selected_input_method_subtype <hash>`, the same setting the globe
+     * key changes; dd 2026-09-24: "you can switch the keyboard"), checks the switch took, and puts the original
+     * layout back when the check's process exits. It stops (exit 3) only when no enabled English layout exists or
+     * the switch does not take. The layout is read from `dumpsys input_method`: the current subtype line
+     * (mCurrentSubtype / mCurSubtype), or the subtype that `selected_input_method_subtype` names in the IME's
+     * subtype list. MINDWTR_KEYBOARD_OK=1 skips the guard after a person has looked at the keyboard.
      */
-    const requireEnglishKeyboard = () => {
-        if (process.env.MINDWTR_KEYBOARD_OK === '1') return;
+    const readKeyboardLanguage = () => {
         const dump = shell('dumpsys input_method');
         const language = (text) => /(?:languageTag|mSubtypeLanguageTag|locale|mSubtypeLocale)=\s*"?([A-Za-z]{2,3}(?:[-_][A-Za-z0-9]+)*)/.exec(text)?.[1];
         const current = dump.split('\n').filter((line) => /mCur(rent)?Subtype\b/.test(line)).join(' ');
@@ -196,13 +215,41 @@ export function connect({ serial, pkg, uiFile, adb = process.env.ADB ?? '/home/d
                 source = entry ? entry.trim().split('\n')[0] : `subtype ${hash}`;
             }
         }
-        if (!tag) {
-            throw new Stopped(`Cannot read the keyboard's language (${source || 'no current subtype in dumpsys input_method'}); `
-                + 'switch the keyboard to English with the globe key, check it, then rerun with MINDWTR_KEYBOARD_OK=1');
+        return { tag, source, dump, language };
+    };
+    const isEnglish = (tag) => Boolean(tag) && /^en(?:[-_]|$)/i.test(tag);
+    let originalKeyboardSubtype = null;
+    const requireEnglishKeyboard = () => {
+        if (process.env.MINDWTR_KEYBOARD_OK === '1') return;
+        const { tag, source, dump, language } = readKeyboardLanguage();
+        if (isEnglish(tag)) return;
+        // Switch to an English layout the current keyboard already has enabled (en_US first).
+        const ime = shell('settings get secure default_input_method').trim();
+        const enabled = shell('settings get secure enabled_input_methods').split(':')
+            .map((entry) => entry.split(';')).find(([name]) => name === ime)?.slice(1) ?? [];
+        const localeOf = (hash) => {
+            const line = dump.split('\n').find((text) => new RegExp(`\\bmSubtypeHashCode=${hash}\\b`).test(text) && language(text));
+            return line ? language(line) : undefined;
+        };
+        const english = enabled.filter((hash) => isEnglish(localeOf(hash)))
+            .sort((a, b) => Number(!/^en[-_]US$/i.test(localeOf(a))) - Number(!/^en[-_]US$/i.test(localeOf(b))))[0];
+        if (!english) {
+            throw new Stopped(`Keyboard is in ${tag ?? `an unknown language (${source || 'no current subtype'})`} and has no English layout enabled; `
+                + 'add one or switch with the globe key, then rerun');
         }
-        if (!/^en(?:[-_]|$)/i.test(tag)) {
-            throw new Stopped(`Keyboard is in ${tag}; switch it to English with the globe key, then rerun`);
+        const before = shell('settings get secure selected_input_method_subtype').trim();
+        if (originalKeyboardSubtype === null && /^-?\d+$/.test(before)) {
+            originalKeyboardSubtype = before;
+            process.on('exit', () => {
+                try { shell(`settings put secure selected_input_method_subtype ${originalKeyboardSubtype}`); } catch { /* the phone is gone */ }
+            });
         }
+        shell(`settings put secure selected_input_method_subtype ${english}`);
+        const after = readKeyboardLanguage().tag;
+        if (!isEnglish(after)) {
+            throw new Stopped(`Keyboard is in ${after ?? tag}; switching it to English (subtype ${english}) did not take; switch with the globe key, then rerun`);
+        }
+        console.log(`info - keyboard switched from ${tag ?? 'unknown'} to ${after} for typing; restored when this check exits`);
     };
     const sh = (command) => {
         if (/^input text\b/.test(command)) requireEnglishKeyboard();
@@ -351,6 +398,17 @@ export function connect({ serial, pkg, uiFile, adb = process.env.ADB ?? '/home/d
         }
         return nodes;
     };
+    /** Waits until the screen holds still (two equal dumps, at most 3 s): a sheet sliding with the keyboard moves its controls. */
+    const settle = async (nodes) => {
+        nodes = nodes ?? await screen();
+        for (let wait = 0; wait < 10; wait += 1) {
+            await sleep(300);
+            const again = await screen();
+            if (signature(again) === signature(nodes)) break;
+            nodes = again;
+        }
+        return nodes;
+    };
     /** Opens RN's quick capture sheet from the center tab button (core's `nav.addTask`), unless a field already shows. */
     const openCapture = async () => {
         let nodes = await screen();
@@ -361,13 +419,14 @@ export function connect({ serial, pkg, uiFile, adb = process.env.ADB ?? '/home/d
         // The tap waits until the screen holds still (two equal dumps), and it is a tapExpecting: run 24's plain tap
         // on + was lost (10 s later the Inbox was unchanged, + enabled, nothing over it), and a plain tap is never
         // repeated. tapExpecting repeats it once, and only when the first provably changed nothing.
-        for (let wait = 0; wait < 10; wait += 1) {
-            await sleep(300);
-            const again = await screen();
-            if (signature(again) === signature(nodes)) break;
-            nodes = again;
+        nodes = await settle(nodes);
+        nodes = await tapExpecting(button(nodes, 'Add Task') ?? fail('no Add Task button on screen'), (current) => Boolean(field(current)), 'the capture sheet', 10_000);
+        // Add another is a remembered preference (as in RN). A run that stopped with it on left every later
+        // capture open (run 30), so each check starts with it off.
+        if (switchOn(nodes, 'Add another')) {
+            nodes = await tapExpecting(withDescription(nodes, 'Add another'), (current) => !switchOn(current, 'Add another'), 'Add another off');
         }
-        return tapExpecting(button(nodes, 'Add Task') ?? fail('no Add Task button on screen'), (current) => Boolean(field(current)), 'the capture sheet', 10_000);
+        return nodes;
     };
     const type = async (title) => {
         const nodes = await openCapture();
@@ -436,5 +495,5 @@ export function connect({ serial, pkg, uiFile, adb = process.env.ADB ?? '/home/d
     };
     /** Exact bytes of one app-private file (run-as, so the app must be debuggable). */
     const pull = (remote, local) => writeFileSync(local, adbRaw('exec-out', 'run-as', pkg, 'cat', remote));
-    return { adbRaw, sh, home, front, requireAppFront, launch, pid, tapExpecting, focusAtEnd, logs, screen, waitFor, tap, openCapture, type, swipe, signature, toTop, reveal, pull, revealAction, swipeDone, completeUntil };
+    return { adbRaw, sh, home, front, requireAppFront, launch, pid, tapExpecting, focusAtEnd, logs, screen, waitFor, tap, openCapture, type, swipe, signature, toTop, settle, reveal, pull, revealAction, swipeDone, completeUntil };
 }

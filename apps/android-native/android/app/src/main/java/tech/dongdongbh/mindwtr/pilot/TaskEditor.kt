@@ -48,7 +48,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -356,7 +355,7 @@ fun TaskEditorScreen(model: InboxViewModel, editor: TaskEditor) = with(model) {
                 val closeLabel = t("common.close")
                 Box(Modifier.size(44.dp).clickable(enabled = !busy && !failed, role = Role.Button, onClick = leave)
                     .semantics { contentDescription = closeLabel }, contentAlignment = Alignment.CenterStart) {
-                    Icon(Lucide.X, null, tint = c.tint, modifier = Modifier.size(22.dp).alpha(if (!busy && !failed) 1f else 0.5f))
+                    Icon(Lucide.X, null, tint = c.tint, modifier = Modifier.size(22.dp).fade(if (!busy && !failed) 1f else 0.5f))
                 }
             }
             Spacer(Modifier.weight(1f))
@@ -367,7 +366,7 @@ fun TaskEditorScreen(model: InboxViewModel, editor: TaskEditor) = with(model) {
                 .clickable(enabled = saveEnabled, role = Role.Button) { if (editor.readOnly) closeEditor() else saveEditor() },
                 contentAlignment = Alignment.CenterEnd) {
                 Text(t(if (editor.readOnly) "common.close" else "common.save"), style = rnText(18, 700), color = c.tint,
-                    modifier = Modifier.alpha(if (saveEnabled) 1f else 0.5f))
+                    modifier = Modifier.fade(if (saveEnabled) 1f else 0.5f))
             }
         }
         // Core's message; after a conflict, "Try again" takes the stored values of the fields core named and keeps the other edits.
@@ -492,6 +491,22 @@ fun DayPickerDialog(start: String?, dismiss: () -> Unit, pick: (String) -> Unit)
         },
         dismissButton = { TextButton(onClick = dismiss) { Text(t("common.cancel")) } },
     ) { DatePicker(state) }
+}
+
+/**
+ * The system time picker starting at [hour]:[minute]; OK hands [pick] the time as core's `HH:mm`, read from the
+ * picker's own fields. The capture popup's due time uses it.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ClockPickerDialog(hour: Int, minute: Int, dismiss: () -> Unit, pick: (String) -> Unit) {
+    val state = rememberTimePickerState(initialHour = hour, initialMinute = minute)
+    AlertDialog(
+        onDismissRequest = dismiss,
+        confirmButton = { TextButton(onClick = { pick(pickedTime(state.hour, state.minute)); dismiss() }) { Text(t("common.ok")) } },
+        dismissButton = { TextButton(onClick = dismiss) { Text(t("common.cancel")) } },
+        text = { TimePicker(state) },
+    )
 }
 
 /** A recurrence control's edit for core's editTaskDraft. */
@@ -956,7 +971,7 @@ private fun Chip(active: Boolean, enabled: Boolean, description: String, onClick
         .semantics { contentDescription = description }
         .then(if (toggle) Modifier.toggleable(value = active, enabled = enabled, role = Role.Button, onValueChange = { onClick() })
             else Modifier.selectable(selected = active, enabled = enabled, role = Role.Tab, onClick = onClick))
-        .alpha(if (enabled || active) 1f else 0.6f).padding(horizontal = horizontal.dp, vertical = 10.dp),
+        .fade(if (enabled || active) 1f else 0.6f).padding(horizontal = horizontal.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = if (compact) Arrangement.Center else Arrangement.Start) {
         content(if (active) c.onTint else c.secondaryText)
     }

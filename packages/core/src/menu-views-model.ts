@@ -1,10 +1,11 @@
 /**
- * The React Native Waiting, Someday, Reference and Done screens as data: which
+ * The React Native Inbox, Waiting, Someday, Reference and Done screens as data: which
  * tasks each lists, their order and groups, the counts, the empty states, and
  * the filters, sorts and groupings it offers. Mobile's screens call this and
  * keep only React state and wiring; the native host serves the same result.
  */
 import {
+    isTaskVisibleInInbox,
     projectMatchesAreaFilterSelection,
     taskMatchesAreaFilterSelection,
     type AreaFilterSelection,
@@ -443,31 +444,56 @@ export function buildSomedayViewModel(input: {
 }
 
 // ---------------------------------------------------------------------------
-// Reference and Done (mobile's TaskList for one status)
+// Inbox, Reference and Done (mobile's TaskList for one status)
 
-export type StatusListKind = 'reference' | 'done';
+export type StatusListKind = 'inbox' | 'reference' | 'done';
 export const TASK_LIST_GROUP_OPTIONS = ['none', 'context', 'area', 'project', 'tag'] as const satisfies readonly TaskGroupBy[];
 /** Grouping by completion only says something in a list of finished work (#945). */
 export const DONE_LIST_GROUP_OPTIONS = ['none', 'completedDate', 'context', 'area', 'project', 'tag'] as const satisfies readonly TaskGroupBy[];
 export const REFERENCE_LIST_DEFAULT_GROUP_BY: TaskGroupBy = 'area';
 export const DONE_LIST_DEFAULT_GROUP_BY: TaskGroupBy = 'none';
 
-/** The screen's title and its empty state when nothing is filtered. */
-export function getStatusListScreenText(kind: StatusListKind, t: Translate): { title: string; emptyText: string; emptyHint: string } {
+/** The Inbox's empty state offers voice capture when that is the default capture method. */
+const inboxCapturesAudio = (settings: AppSettings | undefined) => settings?.gtd?.defaultCaptureMethod === 'audio';
+
+/**
+ * The screen's title and its empty state when nothing is filtered. Only the
+ * Inbox's empty state has an action (capture); it reads the capture method.
+ */
+export function getStatusListScreenText(kind: StatusListKind, t: Translate, settings?: AppSettings): {
+    title: string;
+    emptyText: string;
+    emptyHint: string;
+    emptyActionLabel: string | null;
+} {
+    if (kind === 'inbox') {
+        const audio = inboxCapturesAudio(settings);
+        return {
+            title: t('inbox.title'),
+            emptyText: t('inbox.empty'),
+            emptyHint: audio ? t('inbox.emptyAddHintVoice') : t('inbox.emptyAddHint'),
+            emptyActionLabel: audio ? t('quickAdd.audioCaptureLabel') : t('nav.addTask'),
+        };
+    }
     return kind === 'reference'
         ? {
             title: tFallback(t, 'nav.reference', 'Reference'),
             emptyText: tFallback(t, 'reference.empty', 'Nothing filed yet'),
             emptyHint: tFallback(t, 'reference.emptyHint', 'Reference holds info you might want later — no action required.'),
+            emptyActionLabel: null,
         }
         : {
             title: tFallback(t, 'nav.done', 'Done'),
             emptyText: tFallback(t, 'list.done', 'Done'),
             emptyHint: tFallback(t, 'done.emptyHint', 'Completed tasks land here — a running log of what you finished.'),
+            emptyActionLabel: null,
         };
 }
 
-/** The tasks the list can show before filters: its status, the selected areas, and live projects. */
+/**
+ * The tasks the list can show before filters: its status, the selected areas, and
+ * live projects. The Inbox stays global across area selections.
+ */
 export function selectStatusListTasks(input: {
     kind: StatusListKind;
     /** Store tasks (state.tasks). */
@@ -482,6 +508,9 @@ export function selectStatusListTasks(input: {
     includeArchivedProjects?: boolean;
 }): Task[] {
     const projectById = new Map(input.projects.map((project) => [project.id, project]));
+    if (input.kind === 'inbox') {
+        return input.tasks.filter((task) => task.status === 'inbox' && isTaskVisibleInInbox(task, { projectById }));
+    }
     const allProjectById = new Map(input.allProjects.map((project) => [project.id, project]));
     const areaProjectLookup = input.kind === 'reference' ? allProjectById : projectById;
     return input.tasks.filter((task) => {
@@ -503,7 +532,7 @@ export function buildStatusListFilterOptions(input: {
     allProjects: readonly Project[];
     settings: AppSettings | undefined;
     t: Translate;
-    /** Done only: the screen offers time filters (both screens turn them off). */
+    /** Done only: the screen offers time filters (both screens turn them off). The Inbox never does. */
     timeEstimateFilters?: boolean;
     /** False skips the token scan; mobile builds tokens only while its filter sheet is open. */
     withTokens?: boolean;
@@ -530,7 +559,7 @@ export function buildStatusListFilterOptions(input: {
         timeEstimates: TIME_ESTIMATE_OPTIONS,
         visibility: getTaskMetadataFilterVisibility(input.tasks, {
             prioritiesEnabled: features.priorities,
-            timeEstimatesEnabled: input.timeEstimateFilters === true && features.timeEstimates,
+            timeEstimatesEnabled: input.kind !== 'inbox' && input.timeEstimateFilters === true && features.timeEstimates,
         }),
     };
 }
@@ -630,6 +659,8 @@ export function buildStatusListFilterSummary(input: {
     activeCount: number;
     hasActive: boolean;
     includeArchivedProjects: boolean;
+    /** The Inbox's unfiltered empty state reads the capture method. */
+    settings?: AppSettings;
     t: Translate;
 }): {
     chips: StatusListChip[];
@@ -643,8 +674,8 @@ export function buildStatusListFilterSummary(input: {
         ? [...input.chips, { id: REFERENCE_ARCHIVED_CHIP_ID, label: t('reference.includeArchivedProjects'), excluded: false }]
         : [...input.chips];
     const text = input.kind === 'someday'
-        ? { emptyText: t('someday.empty'), emptyHint: t('someday.emptyHint') }
-        : getStatusListScreenText(input.kind, t);
+        ? { emptyText: t('someday.empty'), emptyHint: t('someday.emptyHint'), emptyActionLabel: null }
+        : getStatusListScreenText(input.kind, t, input.settings);
     return {
         chips,
         activeCount: input.activeCount + (archived ? 1 : 0),
@@ -655,7 +686,78 @@ export function buildStatusListFilterSummary(input: {
                 hint: chips.slice(0, 3).map((chip) => chip.label).join(', '),
                 actionLabel: tFallback(t, 'filters.clear', 'Clear'),
             }
-            : { message: text.emptyText || t('list.noTasks'), hint: text.emptyHint, actionLabel: null },
+            : { message: text.emptyText || t('list.noTasks'), hint: text.emptyHint, actionLabel: text.emptyActionLabel },
+    };
+}
+
+/**
+ * The list header's labels, as mobile's TaskListHeader shows them: the Sort,
+ * Group and Filters controls (inline on the Inbox, in the overflow menu
+ * elsewhere), the active-filters count, and the chips with their Clear.
+ */
+export function getTaskListHeaderText(input: {
+    sortByLabel: string;
+    /** Undefined when the list offers no grouping. */
+    groupByLabel?: string;
+    hasActiveFilters: boolean;
+    filterActiveCount: number;
+    t: Translate;
+}) {
+    const { t } = input;
+    const filters = tFallback(t, 'filters.label', 'Filters');
+    const group = tFallback(t, 'list.groupBy', 'Group');
+    const all = tFallback(t, 'common.all', 'All');
+    const sort = t('sort.label');
+    const removeFilter = tFallback(t, 'filters.remove', 'Remove filter');
+    const excluded = tFallback(t, 'filters.excluded', 'Excluded');
+    const groupValue = input.groupByLabel ?? all;
+    return {
+        filters,
+        group,
+        sort,
+        more: tFallback(t, 'taskEdit.moreOptions', 'More options'),
+        back: tFallback(t, 'common.back', 'Back'),
+        close: tFallback(t, 'common.close', 'Close'),
+        /** The chip row's last chip, which clears every filter. */
+        clear: tFallback(t, 'filters.clear', t('common.clear')),
+        /** The overflow layout's active-filters button. */
+        activeFilters: `${filters} · ${input.filterActiveCount}`,
+        sortAccessibilityLabel: `${sort}: ${input.sortByLabel}`,
+        groupValue,
+        groupAccessibilityLabel: `${group}: ${groupValue}`,
+        filtersAccessibilityLabel: `${filters}: ${input.hasActiveFilters ? input.filterActiveCount : all}`,
+        /** Tapping a chip removes its filter; an excluded token says so. */
+        chipAccessibilityLabel: (chip: { label: string; excluded?: boolean }) => (chip.excluded
+            ? `${removeFilter}: ${chip.label} (${excluded})`
+            : `${removeFilter}: ${chip.label}`),
+    };
+}
+
+/**
+ * The Inbox screen's own parts around its list. `count` is the Inbox before the
+ * user's filters (selectStatusListTasks), so filters never change the Process count.
+ */
+export function buildInboxScreenModel(input: { count: number; settings: AppSettings | undefined; t: Translate }): {
+    title: string;
+    /** The line above the rows: the Inbox is global across area selections. */
+    scopeLabel: string;
+    /** Process Inbox; null while the Inbox is empty. The label caps at 99+, the spoken label does not. */
+    process: { label: string; accessibilityLabel: string; count: number } | null;
+    /** A pill beside the list controls while there are tasks; the primary action when the Inbox is empty. */
+    mindSweep: { label: string; placement: 'accessory' | 'primary' };
+    /** The empty state's capture action starts recording when voice is the capture method. */
+    autoRecord: boolean;
+} {
+    const { count, t } = input;
+    const process = t('inbox.processButton');
+    return {
+        title: getStatusListScreenText('inbox', t).title,
+        scopeLabel: t('projects.allAreas'),
+        process: count > 0
+            ? { label: `${process} (${count > 99 ? '99+' : count})`, accessibilityLabel: `${process} (${count})`, count }
+            : null,
+        mindSweep: { label: t('mindSweep.launchButton'), placement: count > 0 ? 'accessory' : 'primary' },
+        autoRecord: inboxCapturesAudio(input.settings),
     };
 }
 

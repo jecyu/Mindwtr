@@ -5,10 +5,12 @@ import {
     getDailyReviewBuckets,
     getExternalCalendarDaySummaries,
     getReviewOverviewGroups,
+    getReviewOverviewTasks,
     getStaleItems,
     getWeeklyReviewBuckets,
     getWeeklyReviewSummary,
     partitionByReviewDate,
+    isTaskDueForReview,
     parseStoredReviewStepSession,
     resolveReviewStepSession,
 } from './review-utils';
@@ -48,6 +50,36 @@ const createArea = (overrides: Partial<Area> = {}): Area => ({
     createdAt: staleUpdatedAt,
     updatedAt: staleUpdatedAt,
     ...overrides,
+});
+
+describe('Review due queue', () => {
+    const reviewNow = new Date(2026, 8, 23, 12);
+
+    it('requires a live actionable task with an explicit due review date', () => {
+        for (const status of ['inbox', 'next', 'waiting', 'someday'] as const) {
+            expect(isTaskDueForReview(createTask({ status, reviewAt: '2026-09-23' }), reviewNow)).toBe(true);
+        }
+        for (const status of ['done', 'archived', 'reference'] as const) {
+            expect(isTaskDueForReview(createTask({ status, reviewAt: '2026-09-23' }), reviewNow)).toBe(false);
+        }
+        expect(isTaskDueForReview(createTask({ reviewAt: '2026-09-23', deletedAt: staleUpdatedAt }), reviewNow)).toBe(false);
+        expect(isTaskDueForReview(createTask({ reviewAt: '2026-09-23', purgedAt: staleUpdatedAt }), reviewNow)).toBe(false);
+        expect(isTaskDueForReview(createTask({ reviewAt: undefined }), reviewNow)).toBe(false);
+        expect(isTaskDueForReview(createTask({ reviewAt: '2026-09-24' }), reviewNow)).toBe(false);
+        expect(isTaskDueForReview(createTask({ reviewAt: '2026-09-23T11:59:00' }), reviewNow)).toBe(true);
+        expect(isTaskDueForReview(createTask({ reviewAt: '2026-09-23T12:01:00' }), reviewNow)).toBe(false);
+    });
+
+    it('removes a marked item from due while keeping it in the overview', () => {
+        const due = createTask({ id: 'due', reviewAt: '2026-09-23' });
+        const future = createTask({ id: 'future', reviewAt: '2026-09-24' });
+        const noDate = createTask({ id: 'no-date' });
+        expect(getReviewOverviewTasks([due, future, noDate], 'due', reviewNow).map((task) => task.id)).toEqual(['due']);
+        const reviewed = { ...due, reviewAt: undefined };
+        expect(getReviewOverviewTasks([reviewed, future, noDate], 'due', reviewNow)).toEqual([]);
+        expect(getReviewOverviewTasks([reviewed, future, noDate], 'all', reviewNow).map((task) => task.id))
+            .toEqual(['due', 'future', 'no-date']);
+    });
 });
 
 describe('getStaleItems', () => {

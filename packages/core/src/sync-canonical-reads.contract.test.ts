@@ -645,6 +645,23 @@ describe('canonical local reads contract', () => {
         ),
     );
 
+    it('keeps editor updates and Reference moves canonical before and after storage', async () => {
+        for (const [label, updates] of [
+            ['editor', { title: 'Edited task', dueDate: '2026-09-03', suppressMindwtrReminders: undefined }],
+            ['reference', { status: 'reference' as const }],
+        ] as const) {
+            const written = await persistAfter(
+                convergeThroughStorage({ ...emptyData(), tasks: [task('editor-task', { suppressMindwtrReminders: true })] }),
+                () => useTaskStore.getState().updateTask('editor-task', updates),
+            );
+            expect(written.tasks[0].suppressMindwtrReminders, label).toBe(false);
+            expect(diffDocuments(written, runNormalizePass(written)), label).toEqual([]);
+            const readBack = throughLocalStorage(written);
+            expect(readBack.tasks[0].suppressMindwtrReminders, label).toBe(false);
+            expect(diffDocuments(readBack, runNormalizePass(readBack)), label).toEqual([]);
+        }
+    });
+
     it('reads showFutureRecurrence canonically after a store write without recurrence', async () => {
         const readBack = await persistTaskPatchAndRead({ showFutureRecurrence: true });
 

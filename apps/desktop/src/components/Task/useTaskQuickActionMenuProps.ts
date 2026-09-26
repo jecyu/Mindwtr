@@ -2,6 +2,7 @@ import { createElement, useCallback, useMemo } from 'react';
 import {
     canSkipRecurringTaskOccurrence,
     createBulkOrganizeProject,
+    createTaskCancellationUndo,
     DEFAULT_PROJECT_COLOR,
     isProjectedRecurringTask,
     isTaskActionable,
@@ -247,21 +248,53 @@ export function useTaskQuickActionMenuProps(
                 ? tFallback(t, 'task.cancelRecurringSeries', 'Cancel recurring series')
                 : tFallback(t, 'task.cancel', 'Cancel task'),
             onSelect: async () => {
-                try {
-                    const result = await useTaskStore.getState().cancelTask(task.id);
-                    if (!result.success) {
+                const before = useTaskStore.getState()._tasksById.get(task.id) ?? task;
+                let cancellationInFlight = false;
+                const attempt = async () => {
+                    if (cancellationInFlight) return;
+                    cancellationInFlight = true;
+                    try {
+                        const result = await useTaskStore.getState().cancelTask(task.id);
+                        if (!result.success) throw new Error(result.error || tFallback(t, 'task.cancelFailed', 'Failed to cancel task'));
+                        const cancelledAt = useTaskStore.getState()._tasksById.get(task.id)?.cancelledAt;
+                        const undoCancellation = createTaskCancellationUndo(before, cancelledAt);
+                        const restore = async () => {
+                            const outcome = await undoCancellation();
+                            if (outcome.success) return;
+                            reportError('Failed to undo task cancellation', new Error(outcome.error || 'Cancellation was superseded'));
+                            useUiStore.getState().showToast(
+                                outcome.error || tFallback(t, 'task.updateFailed', 'Could not update task.'),
+                                'error',
+                                5000,
+                                outcome.retryable
+                                    ? { label: tFallback(t, 'common.undo', 'Undo'), onClick: registerUndoableAction(() => { void restore(); }) }
+                                    : undefined,
+                            );
+                        };
+                        const undo = registerUndoableAction(() => { void restore(); });
                         useUiStore.getState().showToast(
-                            result.error || tFallback(t, 'task.cancelFailed', 'Failed to cancel task'),
-                            'error',
+                            tFallback(t, 'task.cancelledWithRestore', 'Task cancelled. You can restore it from Archive.'),
+                            'info',
+                            5000,
+                            useTaskStore.getState().settings?.undoNotificationsEnabled === false
+                                ? undefined
+                                : { label: tFallback(t, 'common.undo', 'Undo'), onClick: undo },
                         );
+                    } catch (error) {
+                        reportError('Failed to cancel task', error);
+                        useUiStore.getState().showToast(
+                            error instanceof Error ? error.message : tFallback(t, 'task.cancelFailed', 'Failed to cancel task'),
+                            'error',
+                            5000,
+                            useTaskStore.getState()._tasksById.has(task.id)
+                                ? { label: tFallback(t, 'common.retry', 'Try again'), onClick: () => { void attempt(); } }
+                                : undefined,
+                        );
+                    } finally {
+                        cancellationInFlight = false;
                     }
-                } catch (error) {
-                    reportError('Failed to cancel task', error);
-                    useUiStore.getState().showToast(
-                        tFallback(t, 'task.cancelFailed', 'Failed to cancel task'),
-                        'error',
-                    );
-                }
+                };
+                await attempt();
             },
         }];
     }, [readOnly, t, task]);

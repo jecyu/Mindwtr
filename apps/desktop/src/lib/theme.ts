@@ -210,17 +210,17 @@ export const applyThemeMode = (mode: DesktopThemeMode | null, systemTheme?: Syst
     root.classList.remove(...Object.values(THEME_MODE_CLASSES));
 
     const prefersDark = resolveSystemThemePreference(systemTheme) === 'dark';
-    root.classList.toggle(
-        'dark',
-        mode === 'system' || mode === null ? prefersDark : resolveThemeColorScheme(mode, 'light') === 'dark',
-    );
+    const isDark = mode === null ? prefersDark : resolveThemeColorScheme(mode, prefersDark ? 'dark' : 'light') === 'dark';
+    root.classList.toggle('dark', isDark);
 
-    const themeClass = THEME_MODE_CLASSES[mode as keyof typeof THEME_MODE_CLASSES];
+    const themeClass = mode === 'system-oled' && isDark
+        ? THEME_MODE_CLASSES.oled
+        : THEME_MODE_CLASSES[mode as keyof typeof THEME_MODE_CLASSES];
     if (themeClass) root.classList.add(themeClass);
 };
 
 export const resolveNativeTheme = (mode: DesktopThemeMode | null): 'light' | 'dark' | null => {
-    if (!mode || mode === 'system') return null;
+    if (!mode || mode === 'system' || mode === 'system-oled') return null;
     return resolveThemeColorScheme(mode, 'light');
 };
 

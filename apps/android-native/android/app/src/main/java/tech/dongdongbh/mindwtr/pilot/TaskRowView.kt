@@ -41,7 +41,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
@@ -141,6 +140,10 @@ fun TaskRowItem(
                                     if (swipeOn) customActions = listOf(CustomAccessibilityAction(swipeLabel) { onSwipe(); true },
                                         CustomAccessibilityAction(t("taskStatus.changeStatus")) { showStatusMenu(task); true })
                                 })
+                        if (meta.parts.any { it.kind == "recurrence" }) {
+                            Icon(Lucide.Repeat, null, tint = c.secondaryText,
+                                modifier = Modifier.padding(start = 4.dp).size(12.dp))
+                        }
                         if (showStar) StarButton(model, task, starBlocked?.takeIf { !task.isFocusedToday })
                     }
                     // TalkBack hears the line in core's label above, so it is not read twice.
@@ -219,7 +222,7 @@ fun FocusStar(focused: Boolean, disabled: Boolean, size: Int, modifier: Modifier
     val theme = LocalTheme.current
     Box(modifier, contentAlignment = Alignment.Center) {
         Icon(if (focused) Lucide.StarFilled else Lucide.Star, null, tint = if (focused) theme.star else theme.colors.secondaryText,
-            modifier = Modifier.size(size.dp).alpha(if (focused) 1f else if (disabled) 0.3f else 0.6f))
+            modifier = Modifier.size(size.dp).fade(if (focused) 1f else if (disabled) 0.3f else 0.6f))
     }
 }
 
@@ -279,7 +282,7 @@ fun StatusMenu(model: InboxViewModel) = with(model) {
                         Modifier.fillMaxWidth(0.42f).clip(RoundedCornerShape(20.dp)).then(if (current) Modifier.background(colors.bg) else Modifier)
                             .border(1.dp, colors.text, RoundedCornerShape(20.dp))
                             .clickable(enabled = enabled, role = Role.Button) { changeStatus(task, status) }
-                            .semantics { selected = current }.alpha(if (enabled) 1f else 0.5f)
+                            .semantics { selected = current }.fade(if (enabled) 1f else 0.5f)
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

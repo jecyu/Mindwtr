@@ -64,6 +64,18 @@ const renderListView = (statusFilter: 'inbox' | 'next' | 'waiting' | 'someday' |
   );
 
 describe('ListView', () => {
+  it('opens a Waiting task when double-clicking the bottom of its row', () => {
+    useTaskStore.setState({
+      _allTasks: [makeTask('waiting-row', { status: 'waiting', assignedTo: 'Maya' })],
+      lastDataChangeAt: 1,
+    });
+    const view = renderListView('waiting', 'Waiting');
+    const row = view.getByText('Task waiting-row').closest('[data-task-id]');
+    expect(row).not.toBeNull();
+    fireEvent.doubleClick(row!);
+    expect(view.getByDisplayValue('Task waiting-row')).toBeInTheDocument();
+  });
+
   it('keeps the quiet Waiting person selector functional and resettable', () => {
     useTaskStore.setState({
       _allTasks: [

@@ -38,7 +38,9 @@ import {
     normalizeWebdavUrl,
     probeWebdavSyncCompatibility,
     normalizeCloudUrl,
-    runDataTransferTransactionWithoutSnapshot,
+    runDataTransferTransaction,
+    prepareRestoredBackupDataForSync,
+    validateBackupJson,
     runSerializedSyncDocumentOperation,
     runSerializedSyncDocumentWriteOperation,
     createSyncDocumentWriteAdmission,
@@ -99,6 +101,7 @@ import { isTauriRuntime } from './runtime';
 import { getTauriHttpFetch } from './tauri-http';
 import { invokeNative } from './tauri-invoke';
 import { reportError } from './report-error';
+import { showSyncErrorToast } from './sync-error-toast';
 import { logInfo, logSyncError, logWarn, sanitizeLogMessage } from './app-log';
 import { useUiStore } from '../store/ui-store';
 import { markLocalSqliteWrite, markLocalWrite } from './local-data-watcher';
@@ -625,6 +628,7 @@ const releaseFileSyncLease = async (token: string): Promise<void> => {
 type LocalDataSaveOptions = {
     baseline?: AppData;
     mode?: 'exact';
+    expectedData?: AppData;
 };
 
 async function persistLocalDataForSync(
@@ -642,6 +646,7 @@ async function persistLocalDataForSync(
     const args: Record<string, unknown> = { data };
     if (baselineEntities) args.baselineEntities = baselineEntities;
     if (options.mode) args.mode = options.mode;
+    if (options.expectedData) args.expectedData = options.expectedData;
     const canonical = await invokeSyncNative<AppData>('save_data', args);
     // The sync store receives this target. Do not make canonical-only,
     // concurrently added rows eligible for omission before a persisted read.
@@ -1150,7 +1155,7 @@ export class SyncService {
                 logSyncWarning('Queued sync failed', queuedResult.error);
                 try {
                     const message = resolveSyncFailureMessage(queuedResult.error);
-                    useUiStore.getState().showToast(message, 'error', 6000);
+                    showSyncErrorToast(message, 6000);
                 } catch {
                     // UI store may be unavailable during shutdown/tests.
                 }
@@ -3380,18 +3385,33 @@ export class SyncService {
         if (!isTauriRuntimeEnv()) return { success: false, error: 'Desktop runtime is required.' };
         try {
             const writeAdmission = createSyncDocumentWriteAdmission();
-            await runSyncRestoreExclusive(() => runDataTransferTransactionWithoutSnapshot({
+            let expectedData: AppData | undefined;
+            await runSyncRestoreExclusive(() => runDataTransferTransaction({
                 operation: 'restoreDataSnapshot',
                 writeAdmission,
                 flushPendingSave: syncServiceDependencies.flushPendingSave,
                 getCurrentChangeAt: () => getStoreState().lastDataChangeAt,
                 readCurrentData: () => invokeSyncNative<AppData>('get_data'),
-                apply: (data) => ({ data, result: null }),
-                persistData: async () => {
-                    await invokeSyncNative<boolean>('restore_data_snapshot', { snapshotFileName });
+                apply: async (currentData) => {
+                    expectedData = currentData;
+                    const snapshot = await invokeSyncNative<AppData>('read_data_snapshot', { snapshotFileName });
+                    const validation = validateBackupJson(JSON.stringify(snapshot), { fileName: snapshotFileName });
+                    if (!validation.valid || !validation.data) {
+                        throw new Error(validation.errors[0] || 'Snapshot is not a valid backup.');
+                    }
+                    return {
+                        data: prepareRestoredBackupDataForSync(validation.data, { previousData: currentData }),
+                        result: null,
+                    };
                 },
-                refreshData: () => getStoreState().fetchData({ silent: true }),
+                createRecoverySnapshot: () => invokeSyncNative<string>('create_data_snapshot'),
+                persistData: (data) => persistLocalDataForSync(data, { mode: 'exact', expectedData }).then(() => undefined),
+                refreshData: () => getStoreState().fetchData({ silent: true, throwOnError: true }),
             }));
+            void syncServiceDependencies.logInfo('Recovery snapshot restore committed', {
+                scope: 'sync',
+                extra: { releaseCheck: 'v1.3.3/restore-snapshot-sync' },
+            }).catch(() => undefined);
             return { success: true };
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);

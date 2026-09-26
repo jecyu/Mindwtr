@@ -14,7 +14,43 @@ import {
   type ViewStyle,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { getCalendarDayOfMonth, getShortWeekdayLabels, getTaskCalendarOccurrenceDate, isProjectedRecurringTask, isTaskFinished, safeFormatDate, safeParseDate, type Task } from '@mindwtr/core';
+import {
+  CALENDAR_WEEK_DENSITY_VALUES,
+  CALENDAR_WEEK_VISIBLE_DAYS_MAX,
+  CALENDAR_WEEK_VISIBLE_DAYS_MIN,
+  calendarDateKey,
+  formatCalendarDurationChip,
+  formatCalendarScheduleDayTitle,
+  getCalendarComposerPlaceholders,
+  getCalendarDayAllDayTones,
+  getCalendarDetailsTaskLists,
+  getCalendarDayBounds,
+  getCalendarDayOfMonth,
+  getCalendarDayTimeline,
+  getCalendarDetailsEventRow,
+  getCalendarDetailsTaskRow,
+  getCalendarItemTitle,
+  getCalendarModeOptions,
+  getCalendarMonthCell,
+  getCalendarMonthPreviewTones,
+  getCalendarNavigationLabels,
+  getCalendarNowMinutes,
+  getCalendarMovedStart,
+  getCalendarWallMinutes,
+  getCalendarProjectedLabel,
+  getCalendarScheduleItemText,
+  getCalendarScheduleItemTones,
+  getCalendarScreenText,
+  getCalendarWeekAllDayItems,
+  getCalendarWeekAllDayTones,
+  getCalendarWeekdayLabel,
+  getCalendarWeekTimedEntries,
+  isCalendarAllDayItem,
+  safeFormatDate,
+  snapCalendarTimelineMinutes,
+  type CalendarTimedLayout,
+  type Task,
+} from '@mindwtr/core';
 import { Gesture, GestureDetector, ScrollView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,22 +60,10 @@ import { TaskEditModal } from '@/components/task-edit-modal';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { openContextsScreen, openProjectScreen } from '@/lib/task-meta-navigation';
 import { useAndroidKeyboardInset } from '@/lib/use-android-keyboard-inset';
-import {
-  buildTimedCalendarLayouts,
-  orderCalendarDayItemsForLimitedSlots,
-  type CalendarTimedLayout,
-  type CalendarTimedLayoutInput,
-} from '@mindwtr/core/calendar-day-items';
 import { styles } from './calendar/calendar-view.styles';
 import { CalendarPeriodNavigation } from './calendar/calendar-period-navigation';
 import { CalendarTaskComposerModal } from './calendar/calendar-task-composer-modal';
 import {
-  isAllDayScheduledTask,
-  isTimedScheduledTask,
-} from './calendar/calendar-task-items';
-import {
-  CALENDAR_WEEK_VISIBLE_DAYS_MAX,
-  CALENDAR_WEEK_VISIBLE_DAYS_MIN,
   CALENDAR_NAVIGATION_CAPTURE_DISTANCE,
   CALENDAR_NAVIGATION_FEEDBACK_DISTANCE,
   CALENDAR_NAVIGATION_SWIPE_VERTICAL_TOLERANCE,
@@ -62,10 +86,6 @@ const WEEK_TIME_GUTTER_WIDTH = 56;
 // The gutter is pinned by counter-translating it against this scroller's offset, so it needs to
 // be animatable. Wrapping the gesture-handler ScrollView keeps the existing scroll behaviour.
 const AnimatedWeekScrollView = Animated.createAnimatedComponent(ScrollView);
-const WEEK_DENSITY_VALUES = Array.from(
-  { length: CALENDAR_WEEK_VISIBLE_DAYS_MAX - CALENDAR_WEEK_VISIBLE_DAYS_MIN + 1 },
-  (_, index) => CALENDAR_WEEK_VISIBLE_DAYS_MIN + index
-);
 
 type CalendarNavigationMode = 'month' | 'day';
 
@@ -88,16 +108,6 @@ const getTimedBlockInsetStyle = (layout?: CalendarTimedLayout): TimedBlockInsetS
   };
 };
 
-const PROJECTED_RECURRENCE_LABEL_DATE_FORMAT = 'MMM d';
-
-const getProjectedRecurrenceDisplayLabel = (task: Task, projectedLabel: string): string => {
-  const occurrenceDateLabel = safeFormatDate(
-    getTaskCalendarOccurrenceDate(task),
-    PROJECTED_RECURRENCE_LABEL_DATE_FORMAT
-  );
-  return occurrenceDateLabel ? `${projectedLabel} · ${occurrenceDateLabel}` : projectedLabel;
-};
-
 type ScheduledTaskBlockProps = {
   DAY_END_HOUR: number;
   DAY_START_HOUR: number;
@@ -106,54 +116,52 @@ type ScheduledTaskBlockProps = {
   commitTaskDrag: (taskId: string, dayStartMs: number, startMinutes: number, durationMinutes: number) => void;
   dayStartMs: number;
   durationMinutes: number;
-  formatTimeRange: (start: Date, durationMinutes: number) => string;
   height: number;
   isDark: boolean;
   layoutStyle: TimedBlockInsetStyle;
   openTaskActions: (taskId: string) => void;
-  projectedLabel: string;
+  projected: boolean;
   reducedMotion: boolean;
   setTimelineScrollEnabled: (enabled: boolean) => void;
   task: Task;
   tc: ReturnType<typeof useCalendarViewController>['tc'];
+  /** The block's time line, with the projected label for an occurrence. */
+  timeLabel: string;
   toRgba: (hex: string, alpha: number) => string;
   top: number;
   triggerDragHaptic: () => void;
 };
 
 type PlanningTaskListProps = {
-  getScheduleSlotLabel: (date: Date | null, task: Task) => string | null;
+  getScheduleSlotLabel: (date: Date | null, task: Task) => string;
   planningTasks: Task[];
+  planningTitle: string;
   scheduleTaskOnSelectedDate: (taskId: string) => void;
   selectedDate: Date | null;
   selectedDatePlanningLabel: string;
-  t: ReturnType<typeof useCalendarViewController>['t'];
   tc: ReturnType<typeof useCalendarViewController>['tc'];
-  tr: ReturnType<typeof useCalendarViewController>['tr'];
   variant?: 'results' | 'section';
 };
 
 function PlanningTaskList({
   getScheduleSlotLabel,
   planningTasks,
+  planningTitle,
   scheduleTaskOnSelectedDate,
   selectedDate,
   selectedDatePlanningLabel,
-  t,
   tc,
-  tr,
   variant = 'results',
 }: PlanningTaskListProps) {
   const isSection = variant === 'section';
   const items = planningTasks.map((task) => {
-    const slotLabel = getScheduleSlotLabel(selectedDate, task);
     const taskContent = (
       <>
         <Text style={[styles.taskItemTitle, { color: tc.text }]} numberOfLines={1}>
           {task.title}
         </Text>
         <Text style={[styles.taskItemTime, { color: tc.secondaryText }]}>
-          {slotLabel ? `${t('calendar.scheduleAction')} · ${slotLabel}` : t('calendar.scheduleAction')}
+          {getScheduleSlotLabel(selectedDate, task)}
         </Text>
       </>
     );
@@ -171,7 +179,7 @@ function PlanningTaskList({
   return (
     <View style={isSection ? styles.scheduleSection : styles.scheduleResults}>
       <Text style={[isSection ? styles.scheduleDate : styles.scheduleResultsTitle, { color: tc.secondaryText }]}>
-        {tr('calendar.planningTitle')}
+        {planningTitle}
       </Text>
       <Text style={[styles.scheduleResultsSubtitle, { color: tc.secondaryText }]}>
         {selectedDatePlanningLabel}
@@ -189,16 +197,16 @@ function ScheduledTaskBlock({
   commitTaskDrag,
   dayStartMs,
   durationMinutes,
-  formatTimeRange,
   height,
   isDark,
   layoutStyle,
   openTaskActions,
-  projectedLabel,
+  projected,
   reducedMotion,
   setTimelineScrollEnabled,
   task,
   tc,
+  timeLabel,
   toRgba,
   top,
   triggerDragHaptic,
@@ -207,7 +215,6 @@ function ScheduledTaskBlock({
   const scale = useSharedValue(1);
   const zIndex = useSharedValue(1);
   const taskId = task.id;
-  const projected = isProjectedRecurringTask(task);
 
   const panGesture = Gesture.Pan()
     .activateAfterLongPress(140)
@@ -242,11 +249,8 @@ function ScheduledTaskBlock({
     zIndex: zIndex.value,
   }));
 
-  const start = task.startTime ? safeParseDate(task.startTime) : null;
-  const label = start ? formatTimeRange(start, durationMinutes) : '';
   const compact = height < 48;
   const showTime = height >= 44;
-  const projectedDisplayLabel = projected ? getProjectedRecurrenceDisplayLabel(task, projectedLabel) : projectedLabel;
 
   const blockContent = (
     <>
@@ -258,7 +262,7 @@ function ScheduledTaskBlock({
       </Text>
       {showTime && (
         <Text style={[styles.taskBlockTime, projected && { color: tc.secondaryText }]} numberOfLines={1}>
-          {projected ? `${label} · ${projectedDisplayLabel}` : label}
+          {timeLabel}
         </Text>
       )}
     </>
@@ -321,6 +325,7 @@ export function CalendarView() {
     calendarComposerCandidates,
     calendarComposerError,
     calendarComposerSelectedTask,
+    calendarDates,
     calendarSystem,
     calendarWeekVisibleDays,
     calendarNameById,
@@ -332,11 +337,9 @@ export function CalendarView() {
     externalCalendars,
     externalError,
     formatHourLabel,
-    formatTimeRange,
     getCalendarItemsForDate,
-    getExternalEventsForDate,
+    getDayLists,
     getScheduleSlotLabel,
-    getTaskCountForDate,
     handleNextMonth,
     handlePrevMonth,
     handleTimelineContentLayout,
@@ -347,7 +350,6 @@ export function CalendarView() {
     isSameDay,
     isToday,
     locale,
-    tr,
     markTaskDone,
     monthLabel,
     planningTasks,
@@ -431,46 +433,20 @@ export function CalendarView() {
   const ultraCompactWeekColumns = weekColumnWidth < 58;
   const weekDensityProgress = (calendarWeekVisibleDays - CALENDAR_WEEK_VISIBLE_DAYS_MIN)
     / (CALENDAR_WEEK_VISIBLE_DAYS_MAX - CALENDAR_WEEK_VISIBLE_DAYS_MIN);
-  const composerStartTimePlaceholder = safeFormatDate(new Date(2000, 0, 1, 9, 0), 'p', '09:00');
-  const composerEndTimePlaceholder = safeFormatDate(new Date(2000, 0, 1, 9, 30), 'p', '09:30');
-  const selectedDayTimedLayouts = useMemo(() => {
-    if (!selectedDayStart || !selectedDayEnd) return new Map<string, CalendarTimedLayout>();
-
-    const dayStartMs = selectedDayStart.getTime();
-    const dayEndMs = selectedDayEnd.getTime();
-    const layoutItems: CalendarTimedLayoutInput[] = [];
-
-    for (const event of selectedDateTimedEvents) {
-      const start = safeParseDate(event.start);
-      const end = safeParseDate(event.end);
-      if (!start || !end) continue;
-      const clampedStartMs = Math.max(start.getTime(), dayStartMs);
-      const clampedEndMs = Math.min(end.getTime(), dayEndMs);
-      if (clampedEndMs <= clampedStartMs) continue;
-      layoutItems.push({
-        id: `event:${event.id}`,
-        startMinutes: (clampedStartMs - dayStartMs) / 60_000,
-        endMinutes: (clampedEndMs - dayStartMs) / 60_000,
-      });
-    }
-
-    for (const task of selectedDayScheduledTasks) {
-      const start = task.startTime ? safeParseDate(task.startTime) : null;
-      if (!start) continue;
-      const durationMinutes = timeEstimateToMinutes(task.timeEstimate);
-      const endMs = start.getTime() + durationMinutes * 60_000;
-      const clampedStartMs = Math.max(start.getTime(), dayStartMs);
-      const clampedEndMs = Math.min(endMs, dayEndMs);
-      if (clampedEndMs <= clampedStartMs) continue;
-      layoutItems.push({
-        id: `task:${task.id}`,
-        startMinutes: (clampedStartMs - dayStartMs) / 60_000,
-        endMinutes: (clampedEndMs - dayStartMs) / 60_000,
-      });
-    }
-
-    return buildTimedCalendarLayouts(layoutItems);
-  }, [selectedDateTimedEvents, selectedDayEnd, selectedDayScheduledTasks, selectedDayStart, timeEstimateToMinutes]);
+  const { start: composerStartTimePlaceholder, end: composerEndTimePlaceholder } = getCalendarComposerPlaceholders(safeFormatDate);
+  const projectedLabel = getCalendarProjectedLabel(t);
+  const selectedDayTimeline = useMemo(() => {
+    if (!selectedDayStart || !selectedDayEnd) return { events: [], tasks: [] };
+    return getCalendarDayTimeline({
+      events: selectedDateTimedEvents,
+      tasks: selectedDayScheduledTasks,
+      dayStart: selectedDayStart,
+      dayEnd: selectedDayEnd,
+      timeEstimateToMinutes,
+      formatDate: safeFormatDate,
+      projectedLabel,
+    });
+  }, [projectedLabel, selectedDateTimedEvents, selectedDayEnd, selectedDayScheduledTasks, selectedDayStart, timeEstimateToMinutes]);
 
   const closeMonthDetailsPane = () => {
     setSelectedDate(null);
@@ -720,17 +696,11 @@ export function CalendarView() {
     setSelectedDate(date);
   };
 
-  const modeOptions = [
-    { value: 'month' as const, label: tr('calendar.mobile.month') },
-    { value: 'day' as const, label: tr('calendar.mobile.day') },
-    { value: 'week' as const, label: tr('calendar.mobile.week') },
-    { value: 'schedule' as const, label: tr('calendar.scheduleResults') },
-  ];
-  const formatDurationLabel = (minutes: number) => {
-    if (minutes < 60) return `${minutes}m`;
-    const hours = minutes / 60;
-    return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`;
-  };
+  const modeOptions = getCalendarModeOptions(t);
+  const formatDurationLabel = formatCalendarDurationChip;
+  const navigationLabels = getCalendarNavigationLabels(viewMode, t);
+  const text = getCalendarScreenText(t);
+  const detailTaskLists = getCalendarDetailsTaskLists({ deadlines: selectedDateDeadlines, scheduled: selectedDateScheduled });
 
   const renderModeToggle = () => (
     <View style={[styles.modeToggle, { backgroundColor: tc.inputBg, borderColor: tc.border }]}>
@@ -760,7 +730,7 @@ export function CalendarView() {
     <Pressable
       onPress={toggleShowCompleted}
       accessibilityRole="button"
-      accessibilityLabel={tr('calendar.showCompletedHint')}
+      accessibilityLabel={text.showCompletedHint}
       accessibilityState={{ selected: showCompleted }}
       style={[
         styles.showCompletedToggle,
@@ -771,7 +741,7 @@ export function CalendarView() {
       ]}
     >
       <Text style={[styles.showCompletedToggleText, { color: showCompleted ? tc.tint : tc.secondaryText }]}>
-        {tr('calendar.showCompleted')}
+        {text.showCompleted}
       </Text>
     </Pressable>
   );
@@ -783,6 +753,7 @@ export function CalendarView() {
       closeComposer={closeCalendarComposer}
       composer={calendarComposer}
       endTimePlaceholder={composerEndTimePlaceholder}
+      formatDate={safeFormatDate}
       error={calendarComposerError}
       formatDurationLabel={formatDurationLabel}
       isDark={isDark}
@@ -801,25 +772,14 @@ export function CalendarView() {
       t={t}
       tc={tc}
       toRgba={toRgba}
-      tr={tr}
     />
   );
 
   if (viewMode === 'day' && selectedDate && selectedDayStart && selectedDayEnd) {
-    const allDayItems = getCalendarItemsForDate(selectedDate)
-      .filter((item) => (
-        item.kind === 'deadline'
-        || item.kind === 'completed'
-        || (item.kind === 'scheduled' && isAllDayScheduledTask(item.task))
-        || (item.kind === 'event' && item.event.allDay)
-      ));
+    const allDayItems = getCalendarItemsForDate(selectedDate).filter(isCalendarAllDayItem);
     const handleDayTimelinePress = (event: GestureResponderEvent) => {
-      const dayMinutes = (DAY_END_HOUR - DAY_START_HOUR) * 60;
-      const defaultDurationMinutes = 30;
-      const rawMinutes = event.nativeEvent.locationY / PIXELS_PER_MINUTE;
-      const snappedMinutes = Math.round(rawMinutes / SNAP_MINUTES) * SNAP_MINUTES;
-      const clampedMinutes = Math.max(0, Math.min(dayMinutes - defaultDurationMinutes, snappedMinutes));
-      openQuickAddAtDateTime(new Date(selectedDayStart.getTime() + clampedMinutes * 60_000));
+      const clampedMinutes = snapCalendarTimelineMinutes(event.nativeEvent.locationY / PIXELS_PER_MINUTE);
+      openQuickAddAtDateTime(getCalendarMovedStart(selectedDayStart.getTime(), clampedMinutes));
     };
 
     return (
@@ -827,14 +787,14 @@ export function CalendarView() {
         <View style={[styles.dayModeHeader, { backgroundColor: tc.cardBg, borderBottomColor: tc.border }]}>
           <CalendarPeriodNavigation
             label={selectedDayModeLabel}
-            nextLabel={tr('calendar.nextDay')}
+            nextLabel={navigationLabels.next}
             onNext={() => shiftSelectedDate(1)}
             onPrevious={() => shiftSelectedDate(-1)}
             onToday={handleToday}
-            previousLabel={tr('calendar.prevDay')}
+            previousLabel={navigationLabels.previous}
             tc={tc}
             titleVariant="day"
-            todayLabel={tr('filters.datePreset.today')}
+            todayLabel={navigationLabels.today}
           />
           {renderModeToggle()}
           {renderShowCompletedToggle()}
@@ -848,29 +808,23 @@ export function CalendarView() {
                 missing on today. */}
             {allDayItems.length > 0 && (
               <View style={[styles.allDayCard, styles.allDayPinned, { backgroundColor: tc.cardBg, borderColor: tc.border }]}>
-                <Text style={[styles.sectionLabel, { color: tc.secondaryText }]}>{t('calendar.allDay')}</Text>
+                <Text style={[styles.sectionLabel, { color: tc.secondaryText }]}>{text.allDay}</Text>
                 <ScrollView style={styles.allDayList}>
-                {allDayItems.map((item) => {
-                  const task = item.kind === 'event' ? null : item.task;
-                  const projected = task ? isProjectedRecurringTask(task) : false;
-                  const projectedDisplayLabel = projected && task
-                    ? getProjectedRecurrenceDisplayLabel(task, tr('calendar.projectedRecurrence'))
-                    : '';
-                  return (
-                    <Pressable
-                      key={item.id}
-                      onPress={() => {
-                        if (item.kind === 'event') openExternalEvent(item.event);
-                        else openTaskActions(item.task.id);
-                      }}
-                      style={styles.allDayPressable}
-                    >
-                      <Text style={[styles.allDayItem, { color: projected ? tc.tint : tc.text }]} numberOfLines={1}>
-                        {projected ? `${item.title} · ${projectedDisplayLabel}` : item.title}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+                {allDayItems.map((item) => (
+                  <Pressable
+                    key={item.id}
+                    disabled={getCalendarDayAllDayTones(item).disabled}
+                    onPress={() => {
+                      if (item.kind === 'event') openExternalEvent(item.event);
+                      else openTaskActions(item.task.id);
+                    }}
+                    style={styles.allDayPressable}
+                  >
+                    <Text style={[styles.allDayItem, { color: getCalendarDayAllDayTones(item).text === 'tint' ? tc.tint : tc.text }]} numberOfLines={1}>
+                      {getCalendarItemTitle(item, projectedLabel, safeFormatDate)}
+                    </Text>
+                  </Pressable>
+                ))}
                 </ScrollView>
               </View>
             )}
@@ -909,17 +863,11 @@ export function CalendarView() {
                 )}
 
                 <View pointerEvents="box-none" style={styles.timelineItemsLayer}>
-                  {selectedDateTimedEvents.map((event) => {
-                    const start = safeParseDate(event.start);
-                    const end = safeParseDate(event.end);
-                    if (!start || !end) return null;
-                    const clampedStart = new Date(Math.max(start.getTime(), selectedDayStart.getTime()));
-                    const clampedEnd = new Date(Math.min(end.getTime(), selectedDayEnd.getTime()));
-                    const startMinutes = (clampedStart.getTime() - selectedDayStart.getTime()) / 60_000;
-                    const endMinutes = (clampedEnd.getTime() - selectedDayStart.getTime()) / 60_000;
+                  {selectedDayTimeline.events.map(({ event, start: clampedStart, end: clampedEnd, layout, timeLabel }) => {
+                    const startMinutes = getCalendarWallMinutes(selectedDayStart, clampedStart);
+                    const endMinutes = getCalendarWallMinutes(selectedDayStart, clampedEnd);
                     const top = Math.max(0, startMinutes) * PIXELS_PER_MINUTE;
                     const height = Math.max(16, (endMinutes - startMinutes) * PIXELS_PER_MINUTE);
-                    const timeLabel = formatTimeRange(clampedStart, Math.max(1, Math.round(endMinutes - startMinutes)));
                     const eventStyle = [
                       styles.eventBlock,
                       {
@@ -928,7 +876,7 @@ export function CalendarView() {
                         backgroundColor: toRgba(tc.secondaryText, isDark ? 0.35 : 0.18),
                         borderColor: sourceColorForId(event.sourceId),
                       },
-                      getTimedBlockInsetStyle(selectedDayTimedLayouts.get(`event:${event.id}`)),
+                      getTimedBlockInsetStyle(layout),
                     ];
                     const eventContent = (
                       <>
@@ -954,15 +902,9 @@ export function CalendarView() {
                     );
                   })}
 
-                  {selectedDayScheduledTasks.map((task) => {
-                    const start = task.startTime ? safeParseDate(task.startTime) : null;
-                    if (!start) return null;
-                    const durationMinutes = timeEstimateToMinutes(task.timeEstimate);
-                    const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
-                    const clampedStart = new Date(Math.max(start.getTime(), selectedDayStart.getTime()));
-                    const clampedEnd = new Date(Math.min(end.getTime(), selectedDayEnd.getTime()));
-                    const startMinutes = (clampedStart.getTime() - selectedDayStart.getTime()) / 60_000;
-                    const endMinutes = (clampedEnd.getTime() - selectedDayStart.getTime()) / 60_000;
+                  {selectedDayTimeline.tasks.map(({ task, durationMinutes, displayStart: clampedStart, displayEnd: clampedEnd, layout, projected, timeLabel }) => {
+                    const startMinutes = getCalendarWallMinutes(selectedDayStart, clampedStart);
+                    const endMinutes = getCalendarWallMinutes(selectedDayStart, clampedEnd);
                     const top = Math.max(0, startMinutes) * PIXELS_PER_MINUTE;
                     const height = Math.max(24, (endMinutes - startMinutes) * PIXELS_PER_MINUTE);
                     return (
@@ -978,14 +920,14 @@ export function CalendarView() {
                         top={top}
                         height={height}
                         durationMinutes={durationMinutes}
-                        formatTimeRange={formatTimeRange}
                         isDark={isDark}
-                        layoutStyle={getTimedBlockInsetStyle(selectedDayTimedLayouts.get(`task:${task.id}`))}
+                        layoutStyle={getTimedBlockInsetStyle(layout)}
                         openTaskActions={openTaskActions}
-                        projectedLabel={tr('calendar.projectedRecurrence')}
+                        projected={projected}
                         reducedMotion={reducedMotion}
                         setTimelineScrollEnabled={setTimelineScrollEnabled}
                         tc={tc}
+                        timeLabel={timeLabel}
                         toRgba={toRgba}
                         triggerDragHaptic={triggerDragHaptic}
                       />
@@ -1001,7 +943,7 @@ export function CalendarView() {
                   style={[styles.input, { backgroundColor: tc.inputBg, borderColor: tc.border, color: tc.text }]}
                   value={scheduleQuery}
                   onChangeText={setScheduleQuery}
-                  placeholder={t('calendar.schedulePlaceholder')}
+                  placeholder={text.schedulePlaceholder}
                   placeholderTextColor={tc.secondaryText}
                 />
               </View>
@@ -1009,25 +951,22 @@ export function CalendarView() {
               {searchCandidates.length > 0 && (
                 <View style={styles.scheduleResults}>
                   <Text style={[styles.scheduleResultsTitle, { color: tc.secondaryText }]}>
-                    {t('calendar.scheduleResults')}
+                    {text.searchResultsTitle}
                   </Text>
-                  {searchCandidates.map((task) => {
-                    const slotLabel = getScheduleSlotLabel(selectedDate, task);
-                    return (
-                      <Pressable
-                        key={task.id}
-                        style={[styles.taskItem, { backgroundColor: tc.inputBg, borderLeftColor: tc.tint }]}
-                        onPress={() => scheduleTaskOnSelectedDate(task.id)}
-                      >
-                        <Text style={[styles.taskItemTitle, { color: tc.text }]} numberOfLines={1}>
-                          {task.title}
-                        </Text>
-                        <Text style={[styles.taskItemTime, { color: tc.secondaryText }]}>
-                          {slotLabel ? `${t('calendar.scheduleAction')} · ${slotLabel}` : t('calendar.scheduleAction')}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
+                  {searchCandidates.map((task) => (
+                    <Pressable
+                      key={task.id}
+                      style={[styles.taskItem, { backgroundColor: tc.inputBg, borderLeftColor: tc.tint }]}
+                      onPress={() => scheduleTaskOnSelectedDate(task.id)}
+                    >
+                      <Text style={[styles.taskItemTitle, { color: tc.text }]} numberOfLines={1}>
+                        {task.title}
+                      </Text>
+                      <Text style={[styles.taskItemTime, { color: tc.secondaryText }]}>
+                        {getScheduleSlotLabel(selectedDate, task)}
+                      </Text>
+                    </Pressable>
+                  ))}
                 </View>
               )}
             </View>
@@ -1057,13 +996,13 @@ export function CalendarView() {
         <View style={[styles.header, { backgroundColor: tc.cardBg, borderBottomColor: tc.border }]}>
           <CalendarPeriodNavigation
             label={weekLabel}
-            nextLabel={tr('calendar.nextWeek')}
+            nextLabel={navigationLabels.next}
             onNext={() => shiftSelectedDate(7)}
             onPrevious={() => shiftSelectedDate(-7)}
             onToday={handleToday}
-            previousLabel={tr('calendar.prevWeek')}
+            previousLabel={navigationLabels.previous}
             tc={tc}
-            todayLabel={tr('filters.datePreset.today')}
+            todayLabel={navigationLabels.today}
           />
           {renderModeToggle()}
           {renderShowCompletedToggle()}
@@ -1096,7 +1035,7 @@ export function CalendarView() {
                   style={[styles.weekDayHeader, { width: weekColumnWidth, borderLeftColor: tc.border }, isToday(day) && { backgroundColor: toRgba(tc.tint, isDark ? 0.2 : 0.1) }]}
                 >
                   <Text style={[styles.weekDayName, compactWeekColumns && styles.weekDayNameCompact, { color: tc.secondaryText }]}>
-                    {getShortWeekdayLabels(locale)[day.getDay()]}
+                    {getCalendarWeekdayLabel(day, calendarDates)}
                   </Text>
                   <Text style={[styles.weekDayNumber, compactWeekColumns && styles.weekDayNumberCompact, { color: isToday(day) ? tc.tint : tc.text }]}>
                     {day.getDate()}
@@ -1107,29 +1046,18 @@ export function CalendarView() {
 
             <View style={[styles.weekAllDayRow, { borderBottomColor: tc.border }]}>
               <Animated.View style={[styles.weekTimeGutter, styles.weekTimeGutterPinned, { backgroundColor: tc.bg }, weekGutterPinStyle]}>
-                <Text style={[styles.weekAllDayLabel, { color: tc.secondaryText }]}>{t('calendar.allDay')}</Text>
+                <Text style={[styles.weekAllDayLabel, { color: tc.secondaryText }]}>{text.allDay}</Text>
               </Animated.View>
               {weekDays.map((day) => {
-                const allDayItems = getCalendarItemsForDate(day)
-                  .filter((item) =>
-                    item.kind === 'deadline'
-                    || item.kind === 'completed'
-                    || (item.kind === 'scheduled' && isAllDayScheduledTask(item.task))
-                    || (item.kind === 'event' && item.event.allDay)
-                  )
-                  .slice(0, 3);
+                const allDayItems = getCalendarWeekAllDayItems(getCalendarItemsForDate(day));
                 return (
                   <View key={`all-${day.toISOString()}`} style={[styles.weekAllDayCell, compactWeekColumns && styles.weekAllDayCellCompact, { width: weekColumnWidth, borderLeftColor: tc.border }]}>
                     {allDayItems.map((item) => {
-                      const isEvent = item.kind === 'event';
-                      const projected = item.kind !== 'event' && isProjectedRecurringTask(item.task);
-                      const projectedDisplayLabel = projected
-                        ? getProjectedRecurrenceDisplayLabel(item.task, tr('calendar.projectedRecurrence'))
-                        : '';
+                      const tones = getCalendarWeekAllDayTones(item);
                       return (
                         <Pressable
                           key={item.id}
-                          disabled={projected}
+                          disabled={tones.disabled}
                           onPress={(pressEvent) => {
                             pressEvent.stopPropagation();
                             if (item.kind === 'event') openExternalEvent(item.event);
@@ -1139,18 +1067,18 @@ export function CalendarView() {
                             styles.weekAllDayItem,
                             compactWeekColumns && styles.weekAllDayItemCompact,
                             {
-                              backgroundColor: isEvent ? toRgba(tc.secondaryText, isDark ? 0.28 : 0.14) : tc.inputBg,
-                              borderLeftColor: isEvent
+                              backgroundColor: tones.fill === 'secondary' ? toRgba(tc.secondaryText, isDark ? 0.28 : 0.14) : tc.inputBg,
+                              borderLeftColor: item.kind === 'event'
                                 ? sourceColorForId(item.event.sourceId)
-                                : projected
+                                : tones.accent === 'tint'
                                   ? tc.tint
                                   : tc.danger,
-                              borderStyle: projected ? 'dashed' : 'solid',
+                              borderStyle: tones.dashed ? 'dashed' : 'solid',
                             },
                           ]}
                         >
                           <Text style={[styles.weekAllDayText, compactWeekColumns && styles.weekAllDayTextCompact, { color: tc.text }]} numberOfLines={1}>
-                            {projected ? `${item.title} · ${projectedDisplayLabel}` : item.title}
+                            {getCalendarItemTitle(item, projectedLabel, safeFormatDate)}
                           </Text>
                         </Pressable>
                       );
@@ -1182,51 +1110,17 @@ export function CalendarView() {
                   })}
                 </Animated.View>
                 {weekDays.map((day) => {
-                  const now = new Date();
-                  const nowMinutes = (now.getHours() - DAY_START_HOUR) * 60 + now.getMinutes();
-                  const showNow = isToday(day) && nowMinutes >= 0 && nowMinutes <= (DAY_END_HOUR - DAY_START_HOUR) * 60;
-                  const dayStart = new Date(day);
-                  dayStart.setHours(DAY_START_HOUR, 0, 0, 0);
-                  const dayEnd = new Date(day);
-                  dayEnd.setHours(DAY_END_HOUR, 0, 0, 0);
-                  const dayStartMs = dayStart.getTime();
-                  const dayEndMs = dayEnd.getTime();
-                  const timedItems = getCalendarItemsForDate(day)
-                    .filter((item) =>
-                      (item.kind === 'scheduled' && isTimedScheduledTask(item.task))
-                      || (item.kind === 'event' && !item.event.allDay)
-                    );
-                  const timedLayoutInputs: CalendarTimedLayoutInput[] = [];
-                  for (const item of timedItems) {
-                    if (item.kind === 'event') {
-                      const start = safeParseDate(item.event.start);
-                      const end = safeParseDate(item.event.end);
-                      if (!start || !end) continue;
-                      const clampedStartMs = Math.max(start.getTime(), dayStartMs);
-                      const clampedEndMs = Math.min(end.getTime(), dayEndMs);
-                      if (clampedEndMs <= clampedStartMs) continue;
-                      timedLayoutInputs.push({
-                        id: `event:${item.event.id}`,
-                        startMinutes: (clampedStartMs - dayStartMs) / 60_000,
-                        endMinutes: (clampedEndMs - dayStartMs) / 60_000,
-                      });
-                      continue;
-                    }
-
-                    const start = item.task.startTime ? safeParseDate(item.task.startTime) : null;
-                    if (!start) continue;
-                    const durationMinutes = timeEstimateToMinutes(item.task.timeEstimate);
-                    const endMs = start.getTime() + durationMinutes * 60_000;
-                    const clampedStartMs = Math.max(start.getTime(), dayStartMs);
-                    const clampedEndMs = Math.min(endMs, dayEndMs);
-                    if (clampedEndMs <= clampedStartMs) continue;
-                    timedLayoutInputs.push({
-                      id: `task:${item.task.id}`,
-                      startMinutes: (clampedStartMs - dayStartMs) / 60_000,
-                      endMinutes: (clampedEndMs - dayStartMs) / 60_000,
-                    });
-                  }
-                  const timedLayouts = buildTimedCalendarLayouts(timedLayoutInputs);
+                  const nowMinutes = getCalendarNowMinutes(new Date());
+                  const showNow = isToday(day) && nowMinutes !== null;
+                  const { dayStart, dayEnd } = getCalendarDayBounds(day);
+                  const timedEntries = getCalendarWeekTimedEntries({
+                    items: getCalendarItemsForDate(day),
+                    dayStart,
+                    dayEnd,
+                    timeEstimateToMinutes,
+                    formatDate: safeFormatDate,
+                    projectedLabel,
+                  });
                   return (
                     <Pressable
                       key={`grid-${day.toISOString()}`}
@@ -1237,7 +1131,7 @@ export function CalendarView() {
                         <View key={idx} style={[styles.weekHourRule, { top: idx * 60 * PIXELS_PER_MINUTE, backgroundColor: tc.border }]} />
                       ))}
                       {showNow && (
-                        <View style={[styles.weekNowLine, { top: nowMinutes * PIXELS_PER_MINUTE }]}>
+                        <View style={[styles.weekNowLine, { top: (nowMinutes ?? 0) * PIXELS_PER_MINUTE }]}>
                           <View style={styles.nowDot} />
                           <View style={styles.nowRule} />
                         </View>
@@ -1250,15 +1144,11 @@ export function CalendarView() {
                           ultraCompactWeekColumns && styles.weekTimedItemsLayerUltraCompact,
                         ]}
                       >
-                        {timedItems.map((item) => {
-                          if (item.kind === 'event') {
-                            const start = safeParseDate(item.event.start);
-                            const end = safeParseDate(item.event.end);
-                            if (!start || !end) return null;
-                            const displayStart = new Date(Math.max(start.getTime(), dayStartMs));
-                            const displayEnd = new Date(Math.min(end.getTime(), dayEndMs));
-                            const top = ((displayStart.getTime() - dayStartMs) / 60_000) * PIXELS_PER_MINUTE;
-                            const height = Math.max(24, ((displayEnd.getTime() - displayStart.getTime()) / 60_000) * PIXELS_PER_MINUTE);
+                        {timedEntries.map((entry) => {
+                          if (entry.kind === 'event') {
+                            const { item, start: displayStart, end: displayEnd } = entry;
+                            const top = getCalendarWallMinutes(dayStart, displayStart) * PIXELS_PER_MINUTE;
+                            const height = Math.max(24, (getCalendarWallMinutes(dayStart, displayEnd) - getCalendarWallMinutes(dayStart, displayStart)) * PIXELS_PER_MINUTE);
                             const eventStyle = [
                               styles.weekBlock,
                               compactWeekColumns && styles.weekBlockCompact,
@@ -1269,14 +1159,14 @@ export function CalendarView() {
                                 backgroundColor: toRgba(tc.secondaryText, isDark ? 0.32 : 0.16),
                                 borderLeftColor: sourceColorForId(item.event.sourceId),
                               },
-                              getTimedBlockInsetStyle(timedLayouts.get(`event:${item.event.id}`)),
+                              getTimedBlockInsetStyle(entry.layout),
                             ];
                             const eventContent = (
                               <>
                                 <Text style={[styles.weekBlockTitle, compactWeekColumns && styles.weekBlockTitleCompact, { color: tc.text }]} numberOfLines={compactWeekColumns ? 2 : 1}>{item.title}</Text>
                                 {!compactWeekColumns && (
                                   <Text style={[styles.weekBlockTime, { color: tc.secondaryText }]} numberOfLines={1}>
-                                    {`${safeFormatDate(displayStart, 'p')}-${safeFormatDate(displayEnd, 'p')}`}
+                                    {entry.timeLabel}
                                   </Text>
                                 )}
                               </>
@@ -1295,17 +1185,9 @@ export function CalendarView() {
                             );
                           }
 
-                          const projected = isProjectedRecurringTask(item.task);
-                          const start = item.task.startTime ? safeParseDate(item.task.startTime) : null;
-                          if (!start) return null;
-                          const projectedDisplayLabel = projected
-                            ? getProjectedRecurrenceDisplayLabel(item.task, tr('calendar.projectedRecurrence'))
-                            : '';
-                          const durationMinutes = timeEstimateToMinutes(item.task.timeEstimate);
-                          const displayStartMs = Math.max(start.getTime(), dayStartMs);
-                          const displayEndMs = Math.min(start.getTime() + durationMinutes * 60_000, dayEndMs);
-                          const top = ((displayStartMs - dayStartMs) / 60_000) * PIXELS_PER_MINUTE;
-                          const height = Math.max(24, ((displayEndMs - displayStartMs) / 60_000) * PIXELS_PER_MINUTE);
+                          const { item, projected } = entry;
+                          const top = getCalendarWallMinutes(dayStart, entry.displayStart) * PIXELS_PER_MINUTE;
+                          const height = Math.max(24, (getCalendarWallMinutes(dayStart, entry.displayEnd) - getCalendarWallMinutes(dayStart, entry.displayStart)) * PIXELS_PER_MINUTE);
                           return (
                             <Pressable
                               key={item.id}
@@ -1328,13 +1210,13 @@ export function CalendarView() {
                                   borderLeftColor: tc.tint,
                                   borderStyle: projected ? 'dashed' : 'solid',
                                 },
-                                getTimedBlockInsetStyle(timedLayouts.get(`task:${item.task.id}`)),
+                                getTimedBlockInsetStyle(entry.layout),
                               ]}
                             >
                               <Text style={[styles.weekTaskBlockTitle, compactWeekColumns && styles.weekTaskBlockTitleCompact, projected && { color: tc.tint }]} numberOfLines={compactWeekColumns ? 2 : 1}>{item.title}</Text>
                               {!compactWeekColumns && (
                                 <Text style={[styles.weekTaskBlockTime, projected && { color: tc.secondaryText }]} numberOfLines={1}>
-                                  {projected ? `${formatTimeRange(start, durationMinutes)} · ${projectedDisplayLabel}` : formatTimeRange(start, durationMinutes)}
+                                  {entry.timeLabel}
                                 </Text>
                               )}
                             </Pressable>
@@ -1355,19 +1237,17 @@ export function CalendarView() {
               onLayout={handleWeekDensityTrackLayout}
               accessible
               accessibilityRole="adjustable"
-              accessibilityLabel={tr('calendar.mobile.visibleWeekDays')}
-              accessibilityHint={tr('calendar.mobile.swipeUpOrDownToShowMoreOrFewerDays')}
+              accessibilityLabel={text.weekDensity}
+              accessibilityHint={text.weekDensityHint}
               accessibilityValue={{
                 min: CALENDAR_WEEK_VISIBLE_DAYS_MIN,
                 max: CALENDAR_WEEK_VISIBLE_DAYS_MAX,
                 now: calendarWeekVisibleDays,
-                text: calendarWeekVisibleDays === 1
-                  ? tr('calendar.mobile.1Day')
-                  : tr('calendar.mobile.visibleDayCount', { dayCount: calendarWeekVisibleDays }),
+                text: text.weekDensityValue(calendarWeekVisibleDays),
               }}
               accessibilityActions={[
-                { name: 'increment', label: tr('calendar.mobile.showMoreDays') },
-                { name: 'decrement', label: tr('calendar.mobile.showFewerDays') },
+                { name: 'increment', label: text.weekDensityMore },
+                { name: 'decrement', label: text.weekDensityFewer },
               ]}
               onAccessibilityAction={handleWeekDensityAccessibilityAction}
               style={[styles.weekDensityTrack, { backgroundColor: tc.border }]}
@@ -1386,16 +1266,14 @@ export function CalendarView() {
             </View>
           </GestureDetector>
           <View style={styles.weekDensityTicks}>
-            {WEEK_DENSITY_VALUES.map((value) => {
+            {CALENDAR_WEEK_DENSITY_VALUES.map((value) => {
               const active = value === calendarWeekVisibleDays;
               return (
                 <Pressable
                   key={value}
                   onPress={() => setCalendarWeekVisibleDays(value)}
                   accessibilityRole="button"
-                  accessibilityLabel={value === 1
-                    ? tr('calendar.mobile.show1VisibleDay')
-                    : tr('calendar.mobile.showVisibleDayCount', { dayCount: value })}
+                  accessibilityLabel={text.weekDensityChoice(value)}
                   accessibilityState={{ selected: active }}
                   hitSlop={8}
                   style={styles.weekDensityTick}
@@ -1431,14 +1309,14 @@ export function CalendarView() {
         <View style={[styles.header, { backgroundColor: tc.cardBg, borderBottomColor: tc.border }]}>
           <View style={styles.headerTopRow}>
             <View style={styles.monthTitleWrap}>
-              <Text style={[styles.title, { color: tc.text }]}>{tr('calendar.scheduleResults')}</Text>
+              <Text style={[styles.title, { color: tc.text }]}>{text.scheduleTitle}</Text>
               <Pressable
                 onPress={handleScheduleToday}
                 accessibilityRole="button"
-                accessibilityLabel={tr('filters.datePreset.today')}
+                accessibilityLabel={navigationLabels.today}
                 style={[styles.todayButton, { borderColor: tc.border }]}
               >
-                <Text style={[styles.todayButtonText, { color: tc.tint }]}>{tr('filters.datePreset.today')}</Text>
+                <Text style={[styles.todayButtonText, { color: tc.tint }]}>{navigationLabels.today}</Text>
               </Pressable>
             </View>
           </View>
@@ -1458,32 +1336,29 @@ export function CalendarView() {
             <PlanningTaskList
               getScheduleSlotLabel={getScheduleSlotLabel}
               planningTasks={planningTasks}
+              planningTitle={text.planningTitle}
               scheduleTaskOnSelectedDate={scheduleTaskOnSelectedDate}
               selectedDate={selectedDate}
               selectedDatePlanningLabel={selectedDatePlanningLabel}
-              t={t}
               tc={tc}
-              tr={tr}
               variant="section"
             />
           ) : null}
           renderItem={({ item: section }) => (
             <View style={styles.scheduleSection}>
               <Text style={[styles.scheduleDate, { color: tc.secondaryText }]}>
-                {section.date.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' })}
-                {isToday(section.date) ? ` · ${tr('filters.datePreset.today')}` : ''}
+                {formatCalendarScheduleDayTitle(section.date, { dates: calendarDates, t })}
               </Text>
               <View style={styles.scheduleItems}>
                 {section.items.map((item) => {
+                  const itemText = getCalendarScheduleItemText(item, {
+                    t,
+                    formatDate: safeFormatDate,
+                    projectedLabel,
+                    sourceNames: calendarNameById,
+                    timeEstimateToMinutes,
+                  });
                   if (item.kind === 'event') {
-                    const start = safeParseDate(item.event.start);
-                    const end = safeParseDate(item.event.end);
-                    const timeLabel = item.event.allDay
-                      ? t('calendar.allDay')
-                        : start && end
-                          ? `${safeFormatDate(start, 'p')}-${safeFormatDate(end, 'p')}`
-                          : '';
-                    const sourceName = calendarNameById.get(item.event.sourceId);
                     const eventStyle = [
                       styles.scheduleItem,
                       styles.eventItem,
@@ -1498,7 +1373,7 @@ export function CalendarView() {
                           {item.title}
                         </Text>
                         <Text style={[styles.taskItemTime, { color: tc.secondaryText }]} numberOfLines={1}>
-                          {sourceName ? `${timeLabel} · ${sourceName}` : timeLabel}
+                          {itemText.detail}
                         </Text>
                       </View>
                     );
@@ -1507,7 +1382,7 @@ export function CalendarView() {
                         key={item.id}
                         onPress={() => openExternalEvent(item.event)}
                         accessibilityRole="button"
-                        accessibilityLabel={sourceName ? `${item.title}. ${timeLabel}. ${sourceName}` : `${item.title}. ${timeLabel}`}
+                        accessibilityLabel={itemText.accessibilityLabel}
                         style={eventStyle}
                       >
                         {eventContent}
@@ -1515,52 +1390,40 @@ export function CalendarView() {
                     );
                   }
 
-                  const projected = isProjectedRecurringTask(item.task);
-                  const completed = item.kind === 'completed';
-                  const start = item.task.startTime ? safeParseDate(item.task.startTime) : null;
-                  const timeLabel = completed
-                    ? (item.start ? safeFormatDate(item.start, 'p') : t('status.done'))
-                    : start && isAllDayScheduledTask(item.task)
-                    ? t('calendar.allDay')
-                    : start
-                    ? formatTimeRange(start, timeEstimateToMinutes(item.task.timeEstimate))
-                    : t('calendar.deadline');
-                  const projectedDisplayLabel = projected
-                    ? getProjectedRecurrenceDisplayLabel(item.task, tr('calendar.projectedRecurrence'))
-                    : '';
+                  const tones = getCalendarScheduleItemTones(item);
                   return (
                     <Pressable
                       key={item.id}
-                      disabled={projected}
-                      accessibilityRole="button"
-                      accessibilityLabel={projected ? `${item.title}. ${timeLabel}. ${projectedDisplayLabel}` : `${item.title}. ${timeLabel}`}
-                      accessibilityState={{ disabled: projected }}
+                      disabled={tones.disabled}
+                      accessibilityRole={tones.disabled ? undefined : 'button'}
+                      accessibilityLabel={itemText.accessibilityLabel}
+                      accessibilityState={{ disabled: tones.disabled }}
                       style={[
                         styles.scheduleItem,
                         {
-                          backgroundColor: item.kind === 'scheduled' || projected ? toRgba(tc.tint, isDark ? 0.2 : 0.12) : tc.inputBg,
-                          borderLeftColor: completed ? tc.secondaryText : item.kind === 'scheduled' ? tc.tint : tc.danger,
-                          borderStyle: projected ? 'dashed' : 'solid',
-                          opacity: completed ? 0.7 : 1,
+                          backgroundColor: tones.fill === 'tint' ? toRgba(tc.tint, isDark ? 0.2 : 0.12) : tc.inputBg,
+                          borderLeftColor: tones.accent === 'secondary' ? tc.secondaryText : tones.accent === 'tint' ? tc.tint : tc.danger,
+                          borderStyle: tones.dashed ? 'dashed' : 'solid',
+                          opacity: tones.faded ? 0.7 : 1,
                         },
                       ]}
                       onPress={() => {
-                        if (!projected) openTaskActions(item.task.id);
+                        if (!tones.disabled) openTaskActions(item.task.id);
                       }}
                     >
                       <View style={styles.taskItemMain}>
                         <Text
                           style={[
                             styles.taskItemTitle,
-                            { color: completed ? tc.secondaryText : tc.text },
-                            completed && { textDecorationLine: 'line-through' as const },
+                            { color: tones.title === 'secondary' ? tc.secondaryText : tc.text },
+                            tones.struck && { textDecorationLine: 'line-through' as const },
                           ]}
                           numberOfLines={1}
                         >
                           {item.title}
                         </Text>
                         <Text style={[styles.taskItemTime, { color: tc.secondaryText }]}>
-                          {projected ? `${timeLabel} · ${projectedDisplayLabel}` : timeLabel}
+                          {itemText.detail}
                         </Text>
                       </View>
                     </Pressable>
@@ -1570,7 +1433,7 @@ export function CalendarView() {
             </View>
           )}
           ListEmptyComponent={planningTasks.length > 0 ? null : (
-            <Text style={[styles.noTasks, { color: tc.secondaryText }]}>{t('calendar.noTasks')}</Text>
+            <Text style={[styles.noTasks, { color: tc.secondaryText }]}>{text.noTasks}</Text>
           )}
           removeClippedSubviews={false}
         />
@@ -1591,18 +1454,20 @@ export function CalendarView() {
     );
   }
 
+  const detailsRowOptions = { t, formatDate: safeFormatDate, projectedLabel, timeEstimateToMinutes };
+
   return (
     <View style={[styles.container, { backgroundColor: tc.bg }]}>
       <View style={[styles.header, { backgroundColor: tc.cardBg, borderBottomColor: tc.border }]}>
         <CalendarPeriodNavigation
           label={monthLabel}
-          nextLabel={tr('calendar.nextMonth')}
+          nextLabel={navigationLabels.next}
           onNext={handleNextMonth}
           onPrevious={handlePrevMonth}
           onToday={handleToday}
-          previousLabel={tr('calendar.prevMonth')}
+          previousLabel={navigationLabels.previous}
           tc={tc}
-          todayLabel={tr('filters.datePreset.today')}
+          todayLabel={navigationLabels.today}
         />
         {renderModeToggle()}
         {renderShowCompletedToggle()}
@@ -1625,23 +1490,13 @@ export function CalendarView() {
               }
 
               const date = day;
-              const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-              const taskCount = getTaskCountForDate(date);
-              const eventCount = getExternalEventsForDate(date).length;
-              const calendarItems = getCalendarItemsForDate(date);
-              // One-off items claim the cell's few visible rows before
-              // projected recurring occurrences, which repeat every day.
-              const visibleItems = orderCalendarDayItemsForLimitedSlots(calendarItems)
-                .slice(0, calendarItems.length >= 6 ? 0 : 2);
-              const showOverflowIndicator = calendarItems.length > visibleItems.length;
+              const dateKey = calendarDateKey(date);
+              const cell = getCalendarMonthCell(date, getDayLists(date), { dates: calendarDates, t });
+              const { taskCount, eventCount } = cell;
+              const visibleItems = cell.previewItems;
               const isSelected = selectedDate && isSameDay(date, selectedDate);
               const todayCellBg = toRgba(tc.tint, isDark ? 0.12 : 0.08);
               const selectedCellBg = toRgba(tc.tint, isDark ? 0.2 : 0.16);
-              const dayAccessibilityParts = [
-                date.toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric' }),
-                taskCount > 0 ? `${taskCount} ${t('common.tasks')}` : '',
-                eventCount > 0 ? `${eventCount} ${tr('calendar.events')}` : '',
-              ].filter(Boolean);
 
               return (
                 <Pressable
@@ -1654,7 +1509,7 @@ export function CalendarView() {
                   ]}
                   onPress={() => handleMonthDayPress(date)}
                   accessibilityRole="button"
-                  accessibilityLabel={dayAccessibilityParts.join('. ')}
+                  accessibilityLabel={cell.accessibilityLabel}
                   accessibilityState={{ selected: Boolean(isSelected) }}
                 >
                   <View
@@ -1680,51 +1535,44 @@ export function CalendarView() {
                   {visibleItems.length > 0 && (
                     <View style={styles.monthPreviewList}>
                       {visibleItems.map((item) => {
-                        const isEvent = item.kind === 'event';
-                        const projected = item.kind !== 'event' && isProjectedRecurringTask(item.task);
-                        const projectedDisplayLabel = projected
-                          ? getProjectedRecurrenceDisplayLabel(item.task, tr('calendar.projectedRecurrence'))
-                          : '';
+                        const tones = getCalendarMonthPreviewTones(item);
+                        const toneColor = (tone: string) => (
+                          tone === 'tint' ? tc.tint : tone === 'danger' ? tc.danger : tone === 'secondary' ? tc.secondaryText : tc.text
+                        );
                         return (
                           <View
                             key={item.id}
                             style={[
                               styles.monthPreviewItem,
                               {
-                                backgroundColor: item.kind === 'scheduled'
+                                backgroundColor: tones.fill === 'tint'
                                   ? toRgba(tc.tint, isDark ? 0.24 : 0.14)
-                                  : item.kind === 'deadline'
+                                  : tones.fill === 'none'
                                     ? 'transparent'
                                     : toRgba(tc.secondaryText, isDark ? 0.28 : 0.16),
-                                borderLeftColor: isEvent
+                                borderLeftColor: item.kind === 'event'
                                   ? sourceColorForId(item.event.sourceId)
-                                  : projected
-                                    ? tc.tint
-                                    : item.kind === 'deadline'
-                                    ? tc.danger
-                                    : item.kind === 'completed'
-                                    ? tc.secondaryText
-                                    : tc.tint,
-                                borderStyle: projected ? 'dashed' : 'solid',
+                                  : toneColor(tones.accent),
+                                borderStyle: tones.dashed ? 'dashed' : 'solid',
                               },
                             ]}
                           >
                             <Text
                               style={[
                                 styles.monthPreviewText,
-                                { color: item.kind === 'scheduled' || projected ? tc.tint : item.kind === 'completed' ? tc.secondaryText : tc.text },
-                                item.kind === 'completed' && { textDecorationLine: 'line-through' as const },
+                                { color: toneColor(tones.text) },
+                                tones.struck && { textDecorationLine: 'line-through' as const },
                               ]}
                               numberOfLines={1}
                             >
-                              {projected ? `${item.title} · ${projectedDisplayLabel}` : item.title}
+                              {getCalendarItemTitle(item, projectedLabel, safeFormatDate)}
                             </Text>
                           </View>
                         );
                       })}
                     </View>
                   )}
-                  {showOverflowIndicator && (taskCount > 0 || eventCount > 0) && (
+                  {cell.showCounts && (
                     <View style={styles.indicatorRow}>
                       {taskCount > 0 && (
                         <View style={[styles.taskDot, { backgroundColor: tc.tint }]}>
@@ -1749,8 +1597,8 @@ export function CalendarView() {
         <Animated.View style={[styles.monthDetailsPane, bottomSheetStyle, { backgroundColor: tc.cardBg, borderTopColor: tc.border }]}>
           <GestureDetector gesture={bottomSheetGesture}>
             <View
-              accessibilityHint={tr('calendar.mobile.swipeUpOrDownToResizeTheDayDetailsPanel')}
-              accessibilityLabel={tr('calendar.mobile.dayDetailsPanelHandle')}
+              accessibilityHint={text.detailsHandleHint}
+              accessibilityLabel={text.detailsHandle}
               accessibilityRole="adjustable"
               style={styles.sheetHandleWrap}
             >
@@ -1765,10 +1613,10 @@ export function CalendarView() {
               <Pressable
                 onPress={() => openQuickAddForDate(selectedDate)}
                 accessibilityRole="button"
-                accessibilityLabel={t('calendar.addTask')}
+                accessibilityLabel={text.addTask}
                 style={styles.addTaskButton}
               >
-                <Text style={[styles.addTaskButtonText, { color: tc.tint }]}>{t('calendar.addTask')}</Text>
+                <Text style={[styles.addTaskButtonText, { color: tc.tint }]}>{text.addTask}</Text>
               </Pressable>
             </View>
 
@@ -1777,7 +1625,7 @@ export function CalendarView() {
                 style={[styles.input, { backgroundColor: tc.inputBg, borderColor: tc.border, color: tc.text }]}
                 value={scheduleQuery}
                 onChangeText={setScheduleQuery}
-                placeholder={t('calendar.schedulePlaceholder')}
+                placeholder={text.schedulePlaceholder}
                 placeholderTextColor={tc.secondaryText}
               />
             </View>
@@ -1786,36 +1634,33 @@ export function CalendarView() {
               {searchCandidates.length > 0 && (
                 <View style={styles.scheduleResults}>
                   <Text style={[styles.scheduleResultsTitle, { color: tc.secondaryText }]}>
-                    {t('calendar.scheduleResults')}
+                    {text.searchResultsTitle}
                   </Text>
-                  {searchCandidates.map((task) => {
-                    const slotLabel = getScheduleSlotLabel(selectedDate, task);
-                    return (
-                      <Pressable
-                        key={task.id}
-                        style={[styles.taskItem, { backgroundColor: tc.inputBg, borderLeftColor: tc.tint }]}
-                        onPress={() => scheduleTaskOnSelectedDate(task.id)}
-                      >
-                        <Text style={[styles.taskItemTitle, { color: tc.text }]} numberOfLines={1}>
-                          {task.title}
-                        </Text>
-                        <Text style={[styles.taskItemTime, { color: tc.secondaryText }]}>
-                          {slotLabel ? `${t('calendar.scheduleAction')} · ${slotLabel}` : t('calendar.scheduleAction')}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
+                  {searchCandidates.map((task) => (
+                    <Pressable
+                      key={task.id}
+                      style={[styles.taskItem, { backgroundColor: tc.inputBg, borderLeftColor: tc.tint }]}
+                      onPress={() => scheduleTaskOnSelectedDate(task.id)}
+                    >
+                      <Text style={[styles.taskItemTitle, { color: tc.text }]} numberOfLines={1}>
+                        {task.title}
+                      </Text>
+                      <Text style={[styles.taskItemTime, { color: tc.secondaryText }]}>
+                        {getScheduleSlotLabel(selectedDate, task)}
+                      </Text>
+                    </Pressable>
+                  ))}
                 </View>
               )}
 
-              {externalCalendars.length > 0 && (
+              {(externalCalendars.length > 0 || externalError) && (
                 <View style={styles.scheduleResults}>
                   <Text style={[styles.scheduleResultsTitle, { color: tc.secondaryText }]}>
-                    {t('calendar.events')}
+                    {text.events}
                   </Text>
                   {isExternalLoading && (
                     <Text style={[styles.taskItemTime, { color: tc.secondaryText }]}>
-                      {tr('calendar.mobile.loading')}
+                      {text.loading}
                     </Text>
                   )}
                   {externalError && (
@@ -1825,20 +1670,15 @@ export function CalendarView() {
                   )}
                   {selectedDateExternalEvents.map((event) => {
                     const eventStyle = [styles.taskItem, styles.eventItem, { backgroundColor: tc.inputBg, borderLeftColor: sourceColorForId(event.sourceId) }];
+                    const row = getCalendarDetailsEventRow(event, { t, formatDate: safeFormatDate, sourceNames: calendarNameById });
                     const eventContent = (
                       <>
                         <View style={styles.taskItemMain}>
                           <Text style={[styles.taskItemTitle, { color: tc.text }]} numberOfLines={1}>
-                            {event.title}
-                            {calendarNameById.get(event.sourceId) ? ` (${calendarNameById.get(event.sourceId)})` : ''}
+                            {row.title}
                           </Text>
                           <Text style={[styles.taskItemTime, { color: tc.secondaryText }]}>
-                            {event.allDay ? t('calendar.allDay') : (() => {
-                              const start = safeParseDate(event.start);
-                              const end = safeParseDate(event.end);
-                              if (!start || !end) return '';
-                              return `${safeFormatDate(start, 'p')}-${safeFormatDate(end, 'p')}`;
-                            })()}
+                            {row.detail}
                           </Text>
                         </View>
                       </>
@@ -1856,11 +1696,9 @@ export function CalendarView() {
                 </View>
               )}
 
-              {selectedDateDeadlines.map((task) => {
-                const projected = isProjectedRecurringTask(task);
-                const projectedDisplayLabel = projected
-                  ? getProjectedRecurrenceDisplayLabel(task, tr('calendar.projectedRecurrence'))
-                  : '';
+              {detailTaskLists.deadlines.map((task) => {
+                const row = getCalendarDetailsTaskRow(task, 'deadline', detailsRowOptions);
+                const projected = row.projected;
                 return (
                   <View
                     key={task.id}
@@ -1884,26 +1722,24 @@ export function CalendarView() {
                         {task.title}
                       </Text>
                       <Text style={[styles.taskItemTime, { color: tc.secondaryText }]}>
-                        {projected ? `${t('calendar.deadline')} · ${projectedDisplayLabel}` : t('calendar.deadline')}
+                        {row.detail}
                       </Text>
                     </Pressable>
-                    {!projected && !isTaskFinished(task) && (
+                    {row.showDone && (
                       <Pressable
                         style={[styles.quickDoneButton, { borderColor: toRgba(tc.tint, 0.35), backgroundColor: toRgba(tc.tint, 0.16) }]}
                         onPress={() => markTaskDone(task.id)}
                       >
-                        <Text style={[styles.quickDoneButtonText, { color: tc.tint }]}>{t('status.done')}</Text>
+                        <Text style={[styles.quickDoneButtonText, { color: tc.tint }]}>{text.done}</Text>
                       </Pressable>
                     )}
                   </View>
                 );
               })}
 
-              {selectedDateScheduled.map((task) => {
-                const projected = isProjectedRecurringTask(task);
-                const projectedDisplayLabel = projected
-                  ? getProjectedRecurrenceDisplayLabel(task, tr('calendar.projectedRecurrence'))
-                  : '';
+              {detailTaskLists.scheduled.map((task) => {
+                const row = getCalendarDetailsTaskRow(task, 'scheduled', detailsRowOptions);
+                const projected = row.projected;
                 return (
                   <Pressable
                     key={task.id}
@@ -1925,19 +1761,10 @@ export function CalendarView() {
                         {task.title}
                       </Text>
                       <Text style={[styles.taskItemTime, { color: tc.secondaryText }]}>
-                        {(() => {
-                          const start = safeParseDate(task.startTime);
-                          if (!start) return '';
-                          const durMs = timeEstimateToMinutes(task.timeEstimate) * 60 * 1000;
-                          const end = new Date(start.getTime() + durMs);
-                          const label = !isTimedScheduledTask(task)
-                            ? t('calendar.allDay')
-                            : `${safeFormatDate(start, 'p')}-${safeFormatDate(end, 'p')}`;
-                          return projected ? `${label} · ${projectedDisplayLabel}` : label;
-                        })()}
+                        {row.detail}
                       </Text>
                     </View>
-                    {!projected && !isTaskFinished(task) && (
+                    {row.showDone && (
                       <Pressable
                         style={[styles.quickDoneButton, { borderColor: toRgba(tc.tint, 0.35), backgroundColor: toRgba(tc.tint, 0.16) }]}
                         onPress={(event) => {
@@ -1945,17 +1772,17 @@ export function CalendarView() {
                           markTaskDone(task.id);
                         }}
                       >
-                        <Text style={[styles.quickDoneButtonText, { color: tc.tint }]}>{t('status.done')}</Text>
+                        <Text style={[styles.quickDoneButtonText, { color: tc.tint }]}>{text.done}</Text>
                       </Pressable>
                     )}
                   </Pressable>
                 );
               })}
 
-              {selectedDateDeadlines.length === 0
-                && selectedDateScheduled.length === 0
+              {detailTaskLists.deadlines.length === 0
+                && detailTaskLists.scheduled.length === 0
                 && selectedDateExternalEvents.length === 0 && (
-                <Text style={[styles.noTasks, { color: tc.secondaryText }]}>{t('calendar.noTasks')}</Text>
+                <Text style={[styles.noTasks, { color: tc.secondaryText }]}>{text.noTasks}</Text>
               )}
             </View>
           </ScrollView>

@@ -262,6 +262,7 @@ function TaskEditModalInner({
         aiModal,
         acknowledgeRecoveredActivityInput,
         checklistDraftRef,
+        cancelRetryPending,
         contextInputDraft,
         customWeekdays,
         descriptionDebounceRef,
@@ -1097,7 +1098,7 @@ function TaskEditModalInner({
                         onShare={handleShare}
                         onDuplicate={handleDuplicateTask}
                         onPromoteToProject={handlePromoteTaskToProject}
-                        onCancelTask={task && isTaskActionable(task) && !isProjectedRecurringTask(task)
+                        onCancelTask={task && (cancelRetryPending || isTaskActionable(task)) && !isProjectedRecurringTask(task)
                             ? handleCancelTask
                             : undefined}
                         onSkipOccurrence={task && !readOnly && !isProjectedRecurringTask(task) && canSkipRecurringTaskOccurrence(task)

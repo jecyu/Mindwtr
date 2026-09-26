@@ -105,6 +105,8 @@ const RELEASE_CHECK_FIELD_NAMES = [
     'action', 'focusCount', 'timerPhase', 'timerRunning',
     // Cloud Focus creation and PATCH policy (apps/cloud/src/server.ts)
     'operation',
+    // cloudkit-retry-hint (desktop and mobile cloudkit-sync.ts)
+    'retryAfterMs',
     // font-family-applied (apps/desktop/src/App.tsx, #1244) — the chosen font's name, and
     // whether the renderer found a real bold face for it or is faking one.
     'family', 'boldFace',

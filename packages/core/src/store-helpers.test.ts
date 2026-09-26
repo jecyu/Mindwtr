@@ -135,6 +135,7 @@ describe('reference task invariants', () => {
         expect(updatedTask).toMatchObject({
             status: 'reference',
             isFocusedToday: false,
+            suppressMindwtrReminders: false,
             pushCount: 0,
         });
         for (const field of [
@@ -145,7 +146,6 @@ describe('reference task invariants', () => {
             'recurrence',
             'priority',
             'timeEstimate',
-            'suppressMindwtrReminders',
             'repeatReminderMinutes',
             'showFutureRecurrence',
             'focusOrder',

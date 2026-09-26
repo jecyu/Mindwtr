@@ -29,6 +29,7 @@ const THEME_VALUE_FLAGS: Record<ThemeValue, true> = {
     light: true,
     dark: true,
     system: true,
+    'system-oled': true,
     eink: true,
     nord: true,
     sepia: true,

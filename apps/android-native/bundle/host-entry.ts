@@ -107,7 +107,7 @@ const unwrap = <T>(result: { ok: true; value: T } | { ok: false; error: { code: 
     return result.value;
 };
 type Command = 'create' | 'complete' | 'update' | 'saveTaskDraft' | 'taskFocus' | 'projectFocus' | 'createProject' | 'areaFilter'
-    | 'saveSearch' | 'inboxCommit' | 'inboxSkip';
+    | 'saveSearch' | 'inboxCommit' | 'inboxSkip' | 'quickCapture' | 'quickCaptureLines' | 'quickCapturePicker';
 const taskResult = <T>(operation: Command, result: Parameters<typeof unwrap<T>>[0]): T => {
     const meta = {
         scope: 'native-android',
@@ -291,7 +291,7 @@ globalThis.MindwtrHost = {
                 mode,
                 preset: preset ?? 'default',
                 material: mode === 'material3-light' || mode === 'material3-dark',
-                scheme: descriptor?.scheme ?? null,
+                scheme: descriptor?.scheme === 'system' ? null : descriptor?.scheme ?? null,
                 // Core's status palettes ({ bg, text, border } per status): RN's badges, glyphs, and Done swipe.
                 status: {
                     light: STATUS_COLORS_BY_THEME[preset ?? 'light'],
@@ -322,8 +322,42 @@ globalThis.MindwtrHost = {
     saveDraft(json: string): string {
         return submit(async () => taskResult('saveTaskDraft', await contract.saveTaskDraft(JSON.parse(json))));
     },
-    create(title: string, captureId: string): string {
-        return submit(async () => taskResult('create', await contract.createInboxTask({ title, captureId })));
+    /** The capture popup (RN's quick capture sheet): an empty draft with the starting options. */
+    captureOpen(): string {
+        return submit(async () => {
+            requireSaved();
+            return unwrap(contract.openQuickCapture());
+        });
+    },
+    /** `json` is `{ text, options, picker? }`, passed to core unchanged. */
+    captureView(json: string): string {
+        return submit(async () => {
+            requireSaved();
+            return unwrap(contract.getQuickCaptureView(JSON.parse(json)));
+        });
+    },
+    /** `json` is `{ text, options, edit, picker? }`: one control's edit. Nothing is written. */
+    captureEdit(json: string): string {
+        return submit(async () => {
+            requireSaved();
+            return unwrap(contract.editQuickCapture(JSON.parse(json)));
+        });
+    },
+    /** `json` is `{ text, options, captureId, openAfterSave }`. Reusing captureId retries: the draft is written at most once. */
+    captureSubmit(json: string): string {
+        return submit(async () => taskResult('quickCapture', await contract.submitQuickCapture(JSON.parse(json))));
+    },
+    /** The recovery snapshot before a several-lines capture; `{ snapshot: null }` in sandbox mode. */
+    captureSnapshot(): string {
+        return submit(async () => ({ snapshot: unwrap(await contract.createQuickCaptureSnapshot()) }));
+    },
+    /** `json` is `{ text, options, captureIds, snapshotFileName }`: one task per line, in one write. */
+    captureLines(json: string): string {
+        return submit(async () => taskResult('quickCaptureLines', await contract.submitQuickCaptureLines(JSON.parse(json))));
+    },
+    /** `json` is `{ picker, query, text, options, requestId }`: the project or area picker's search, chosen or created. */
+    capturePicker(json: string): string {
+        return submit(async () => taskResult('quickCapturePicker', await contract.submitQuickCapturePickerQuery(JSON.parse(json))));
     },
     complete(id: string): string {
         return submit(async () => taskResult('complete', await contract.completeTask({ id })));

@@ -115,7 +115,7 @@ export type NativeMoreMenu = Omit<MoreMenuModel, 'savedSearches'> & {
     savedSearches: NativeWindow<MoreMenuItem>;
 };
 
-type TokenOption = { value: string; state: 'included' | 'excluded' | 'none'; edit: ListFilterEdit };
+export type TokenOption = { value: string; state: 'included' | 'excluded' | 'none'; edit: ListFilterEdit };
 type ProjectOption = { id: string; title: string; selected: boolean; edit: ListFilterEdit };
 
 /** The filter picker: options carry the exact edit to send back as `filterEdit`. */
@@ -221,8 +221,11 @@ export type NativeStatusListItem =
     | { type: 'section'; id: string; title: string; count: number; muted: boolean; collapsible: boolean; collapsed: boolean }
     | { type: 'task'; row: NativeTaskRow & { readOnly: boolean }; groupId: string | null };
 
+/** Reference and Done; the Inbox has its own view (native-host-contract-inbox-view.ts). */
+type MenuStatusListKind = Exclude<StatusListKind, 'inbox'>;
+
 export type NativeStatusListView = Paged<{
-    kind: StatusListKind;
+    kind: MenuStatusListKind;
     title: string;
     items: NativeStatusListItem[];
     /** Tasks shown (the header count). */
@@ -253,14 +256,15 @@ const VIEW_COLLECTIONS: Record<string, readonly MenuViewCollectionName[]> = {
     done: ['tokens'],
 };
 
-const fail = (code: NativeHostErrorCode, message: string): NativeHostResult<never> => ({ ok: false, error: { code, message } });
-const isObjectRecord = (value: unknown): value is Record<string, unknown> => (
+// The helpers below, down to nativeFilterView, are shared with the Inbox view (native-host-contract-inbox-view.ts).
+export const fail = (code: NativeHostErrorCode, message: string): NativeHostResult<never> => ({ ok: false, error: { code, message } });
+export const isObjectRecord = (value: unknown): value is Record<string, unknown> => (
     typeof value === 'object' && value !== null && !Array.isArray(value)
 );
 // ponytail: id lists (a selection) stop at 1000; raise with the selection UI if people select more.
 const MAX_IDS = 1000;
 const isText = (value: unknown, max = 500): value is string => typeof value === 'string' && value.length <= max;
-const isTextList = (value: unknown, max = MAX_IDS): value is string[] => (
+export const isTextList = (value: unknown, max = MAX_IDS): value is string[] => (
     Array.isArray(value) && value.length <= max && value.every((entry) => isText(entry))
 );
 const MATCH_MODES = new Set(['all', 'any']);
@@ -282,7 +286,7 @@ const FILTER_STATE_CHECKS: Record<keyof ListFilterState, (value: unknown) => boo
 };
 
 /** A partial state is completed from the empty one; unknown keys are refused. */
-const readFilterState = (value: unknown): ListFilterState | null => {
+export const readFilterState = (value: unknown): ListFilterState | null => {
     if (value === undefined) return EMPTY_LIST_FILTER_STATE;
     if (!isObjectRecord(value)) return null;
     for (const [key, entry] of Object.entries(value)) {
@@ -292,7 +296,7 @@ const readFilterState = (value: unknown): ListFilterState | null => {
     return { ...EMPTY_LIST_FILTER_STATE, ...(value as Partial<ListFilterState>) };
 };
 
-const isFilterEdit = (edit: unknown): edit is ListFilterEdit => {
+export const isFilterEdit = (edit: unknown): edit is ListFilterEdit => {
     if (!isObjectRecord(edit)) return false;
     switch (edit.type) {
         case 'toggleToken':
@@ -318,8 +322,8 @@ const isFilterEdit = (edit: unknown): edit is ListFilterEdit => {
     }
 };
 
-type PageInput = { offset: number; limit: number; revision?: string };
-const isPaging = (input: Record<string, unknown>) => (
+export type PageInput = { offset: number; limit: number; revision?: string };
+export const isPaging = (input: Record<string, unknown>) => (
     Number.isSafeInteger(input.offset) && (input.offset as number) >= 0
     && Number.isSafeInteger(input.limit) && (input.limit as number) >= 1 && (input.limit as number) <= NATIVE_HOST_MAX_WINDOW
     && (input.revision === undefined || typeof input.revision === 'string')
@@ -327,7 +331,7 @@ const isPaging = (input: Record<string, unknown>) => (
 );
 
 /** A short, stable key for a view's own inputs, so a page of one filter never continues another. */
-const paramsKey = (params: unknown): string => {
+export const paramsKey = (params: unknown): string => {
     const text = JSON.stringify(params);
     let hash = 2166136261;
     for (let index = 0; index < text.length; index += 1) {
@@ -337,10 +341,10 @@ const paramsKey = (params: unknown): string => {
     return hash.toString(36);
 };
 
-const page = <T,>(items: readonly T[], input: { offset: number; limit: number }) => items.slice(input.offset, input.offset + input.limit);
-const firstWindow = <T,>(items: readonly T[]): NativeWindow<T> => ({ total: items.length, items: items.slice(0, NATIVE_HOST_MAX_WINDOW) });
+export const page = <T,>(items: readonly T[], input: { offset: number; limit: number }) => items.slice(input.offset, input.offset + input.limit);
+export const firstWindow = <T,>(items: readonly T[]): NativeWindow<T> => ({ total: items.length, items: items.slice(0, NATIVE_HOST_MAX_WINDOW) });
 
-const tokenOptions = (options: ListFilterOptions, state: ListFilterState): TokenOption[] => options.tokens.map((value) => ({
+export const tokenOptions = (options: ListFilterOptions, state: ListFilterState): TokenOption[] => options.tokens.map((value) => ({
     value,
     state: state.tokens.includes(value) ? 'included' : state.excludedTokens.includes(value) ? 'excluded' : 'none',
     edit: { type: 'toggleToken', value },
@@ -351,7 +355,7 @@ const projectOptions = (options: ListFilterOptions, state: ListFilterState): Pro
     edit: { type: 'toggleProject', value: project.id },
 })) ?? null;
 
-const nativeFilterView = (
+export const nativeFilterView = (
     resolved: ResolvedListFilter,
     options: ListFilterOptions,
     tokens: TokenOption[],
@@ -543,7 +547,7 @@ export function createMenuViewMethods(deps: MenuViewDeps) {
         } satisfies Built<typeof data>;
     };
 
-    const readStatusParams = (kind: StatusListKind, input: Record<string, unknown>) => {
+    const readStatusParams = (kind: MenuStatusListKind, input: Record<string, unknown>) => {
         const groupOptions: readonly string[] = kind === 'done' ? DONE_LIST_GROUP_OPTIONS : TASK_LIST_GROUP_OPTIONS;
         const filters = readFilterState(input.filters);
         if (!filters
@@ -618,7 +622,7 @@ export function createMenuViewMethods(deps: MenuViewDeps) {
         } satisfies Built<typeof data>;
     };
 
-    const statusListView = (kind: StatusListKind, input: Record<string, unknown>): NativeHostResult<NativeStatusListView> => {
+    const statusListView = (kind: MenuStatusListKind, input: Record<string, unknown>): NativeHostResult<NativeStatusListView> => {
         const ready = deps.readiness();
         if (!ready.ok) return ready;
         const params = isObjectRecord(input) ? readStatusParams(kind, input) : null;

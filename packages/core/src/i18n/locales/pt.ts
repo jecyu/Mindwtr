@@ -564,6 +564,8 @@ export const ptOverrides: Record<string, string> = {
         'calendar.scheduleResults': 'Agendar',
         'calendar.scheduleAction': 'Agendar',
         'calendar.events': 'Eventos',
+        'calendar.eventSingular': 'evento',
+        'calendar.eventPlural': 'eventos',
         'calendar.allDay': 'O dia todo',
         'calendar.deadline': 'Prazo final',
         'calendar.showCompleted': 'Concluídas',

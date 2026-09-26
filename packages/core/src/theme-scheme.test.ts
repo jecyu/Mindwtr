@@ -12,11 +12,12 @@ import type { AppTheme, TaskStatus } from './types';
 
 const TASK_STATUSES: TaskStatus[] = ['inbox', 'next', 'waiting', 'someday', 'reference', 'done', 'archived'];
 const CONCRETE_THEMES = SETTINGS_THEME_VALUES.filter((theme): theme is Exclude<AppTheme, 'system'> => theme !== 'system');
+const FIXED_THEMES = CONCRETE_THEMES.filter((theme): theme is Exclude<AppTheme, 'system' | 'system-oled'> => theme !== 'system-oled');
 
 // The one place the intended light/dark split is stated independently of the
 // registry — without it the tests below would only prove the registry agrees
 // with itself. A theme missing here has no expected scheme, so the loop fails.
-const EXPECTED_SCHEMES: Record<Exclude<AppTheme, 'system'>, ThemeColorScheme> = {
+const EXPECTED_SCHEMES: Record<Exclude<AppTheme, 'system' | 'system-oled'>, ThemeColorScheme> = {
     'light': 'light',
     'dark': 'dark',
     'eink': 'light',
@@ -31,7 +32,7 @@ const EXPECTED_SCHEMES: Record<Exclude<AppTheme, 'system'>, ThemeColorScheme> = 
 
 describe('resolveThemeColorScheme', () => {
     it('classifies every concrete theme regardless of system scheme', () => {
-        for (const theme of CONCRETE_THEMES) {
+        for (const theme of FIXED_THEMES) {
             expect(resolveThemeColorScheme(theme, 'light')).toBe(EXPECTED_SCHEMES[theme]);
             expect(resolveThemeColorScheme(theme, 'dark')).toBe(EXPECTED_SCHEMES[theme]);
         }
@@ -40,6 +41,8 @@ describe('resolveThemeColorScheme', () => {
     it('defers to systemScheme for system', () => {
         expect(resolveThemeColorScheme('system', 'dark')).toBe('dark');
         expect(resolveThemeColorScheme('system', 'light')).toBe('light');
+        expect(resolveThemeColorScheme('system-oled', 'dark')).toBe('dark');
+        expect(resolveThemeColorScheme('system-oled', 'light')).toBe('light');
     });
 });
 
@@ -60,8 +63,8 @@ describe('themeDescriptor', () => {
 
     it('points every theme at a status palette that exists', () => {
         for (const theme of CONCRETE_THEMES) {
-            const { scheme, statusPreset } = THEME_DESCRIPTORS[theme];
-            expect(STATUS_COLORS_BY_THEME[statusPreset ?? scheme]).toBeDefined();
+            const { statusPreset } = THEME_DESCRIPTORS[theme];
+            expect(STATUS_COLORS_BY_THEME[statusPreset ?? resolveThemeColorScheme(theme, 'light')]).toBeDefined();
         }
     });
 });

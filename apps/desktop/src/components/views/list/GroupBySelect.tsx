@@ -10,6 +10,7 @@ type GroupBySelectProps<Axis extends TaskGroupAxis> = {
     disabledAxes?: readonly Axis[];
     onChange: (value: Axis) => void;
     t: (key: string) => string;
+    label?: string;
     className?: string;
 };
 
@@ -21,9 +22,10 @@ export function GroupBySelect<Axis extends TaskGroupAxis>({
     disabledAxes = [],
     onChange,
     t,
+    label,
     className,
 }: GroupBySelectProps<Axis>) {
-    const groupLabel = tFallback(t, 'list.groupBy', 'Group');
+    const groupLabel = label ?? tFallback(t, 'list.groupBy', 'Group');
     // Gated here rather than at each toolbar: Focus, the status lists and
     // Someday all render this select, and a new one must not be able to leak a
     // disabled feature's axis. Callers pass the resolved axis ('priority' reads

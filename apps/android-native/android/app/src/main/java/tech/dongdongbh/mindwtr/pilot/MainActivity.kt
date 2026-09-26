@@ -55,7 +55,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
@@ -151,8 +150,9 @@ class MainActivity : ComponentActivity() {
                                 }
                                 TabBar(model)
                             }
-                            ToastCard(model, Modifier.align(Alignment.BottomCenter).padding(bottom = 78.dp))
-                            if (capturing) CaptureSheet(model)
+                            // The capture popup shows its own toasts above its keyboard, as RN's sheet does.
+                            if (capture == null) ToastCard(model, Modifier.align(Alignment.BottomCenter).padding(bottom = 78.dp))
+                            capture?.let { CapturePopup(model, it) }
                             if (areaSheet) AreaSheet(model)
                             StatusMenu(model)
                         }
@@ -246,7 +246,7 @@ private fun RowScope.TabItem(model: InboxViewModel, tab: Screen, icon: ImageVect
         Modifier.weight(1f).fillMaxHeight().selectable(selected = active, role = Role.Tab, onClick = { show(tab) }),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
     ) {
-        Icon(icon, null, tint = color, modifier = Modifier.size(if (active) 26.dp else 24.dp).alpha(if (active) 1f else 0.8f))
+        Icon(icon, null, tint = color, modifier = Modifier.size(if (active) 26.dp else 24.dp).fade(if (active) 1f else 0.8f))
         Text(t(tab.label), style = rnText(10, if (active) 700 else 600, 12), color = color, maxLines = 1,
             overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
     }
@@ -259,7 +259,7 @@ private fun RowScope.CaptureButton(model: InboxViewModel) {
     val shape = RoundedCornerShape(theme.captureRadius)
     val label = t("nav.addTask")
     Box(
-        Modifier.weight(1f).fillMaxHeight().clickable(role = Role.Button) { model.showCapture(true) }
+        Modifier.weight(1f).fillMaxHeight().clickable(role = Role.Button) { model.openCapture() }
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
@@ -294,67 +294,6 @@ private fun ProcessButton(model: InboxViewModel) = with(model) {
 }
 
 /**
- * RN's quick capture sheet: a backdrop, then a card from the bottom with the title,
- * Close, the task title field, and Save. It is the Inbox capture unchanged: the
- * same draft, capture UUID, and exact retry through core's createInboxTask. While
- * a capture's retry is owed the sheet stays open with the draft locked, and Back
- * is left to the system.
- */
-@Composable
-private fun CaptureSheet(model: InboxViewModel) = with(model) {
-    val theme = LocalTheme.current
-    val c = theme.colors
-    val closable = !busy && failedAction == null
-    BackHandler(enabled = failedAction == null) { if (!busy) showCapture(false) }
-    val focus = remember { FocusRequester() }
-    val keyboard = LocalSoftwareKeyboardController.current
-    LaunchedEffect(Unit) {
-        if (!busy && failedAction == null) { focus.requestFocus(); keyboard?.show() }
-    }
-    // As RN's modal does: the keyboard leaves with the sheet. Compose keeps it up when the
-    // focused field just disappears, and it would then cover the list's lower rows.
-    DisposableEffect(Unit) { onDispose { keyboard?.hide() } }
-    Box(Modifier.fillMaxSize()) {
-        // The backdrop has no semantics: TalkBack closes the sheet with Close or Back.
-        Box(Modifier.fillMaxSize().background(theme.scrim).pointerInput(closable) { detectTapGestures { if (closable) showCapture(false) } })
-        Column(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth().imePadding()
-                .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)).background(c.cardBg)
-                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp),
-        ) {
-            Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(t("nav.addTask"), style = rnText(16, 700), color = c.text, modifier = Modifier.weight(1f).semantics { heading() })
-                val close = t("common.close")
-                IconButton(onClick = { showCapture(false) }, enabled = closable, modifier = Modifier.semantics { contentDescription = close }) {
-                    Icon(Lucide.X, null, tint = c.secondaryText, modifier = Modifier.size(18.dp))
-                }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = draft,
-                    onValueChange = model::editDraft,
-                    placeholder = { Text(t("quickAdd.inputLabel"), color = c.secondaryText) },
-                    singleLine = true,
-                    enabled = !busy && failedAction == null,
-                    modifier = Modifier.weight(1f).focusRequester(focus),
-                    shape = RoundedCornerShape(12.dp),
-                    textStyle = rnText(15, 400),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = c.inputBg, unfocusedContainerColor = c.inputBg, disabledContainerColor = c.inputBg,
-                        focusedBorderColor = c.tint, unfocusedBorderColor = c.border, disabledBorderColor = c.border,
-                        focusedTextColor = c.text, unfocusedTextColor = c.text, disabledTextColor = c.secondaryText,
-                    ),
-                )
-            }
-            Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.End) {
-                PillButton(t("common.save"), filled = true, onClick = model::add, enabled = writable && !busy && draft.isNotBlank() &&
-                    (failedAction == null || failedAction == FailedAction("create", captureId, draft)))
-            }
-        }
-    }
-}
-
-/**
  * RN's pill button: filled with the tint (RN's Save) or outlined (RN's empty-state
  * action, and this app's More). [description] replaces the spoken label when set.
  */
@@ -366,7 +305,7 @@ fun PillButton(label: String, filled: Boolean = false, onClick: () -> Unit, enab
             .then(if (filled) Modifier.background(c.tint) else Modifier.border(1.dp, c.text, CircleShape))
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier)
-            .alpha(if (enabled) 1f else 0.5f).padding(horizontal = 16.dp),
+            .fade(if (enabled) 1f else 0.5f).padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(label, style = rnText(if (filled) 15 else 13, 700), color = if (filled) c.onTint else c.text)
@@ -420,7 +359,7 @@ private fun InboxList(model: InboxViewModel, modifier: Modifier) = with(model) {
             Text(t("projects.allAreas"), style = rnText(13, 600), color = c.secondaryText, modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
         }
         if (total == 0) item(key = "empty") {
-            EmptyState(t("inbox.empty"), t("inbox.emptyAddHint"), t("nav.addTask")) { showCapture(true) }
+            EmptyState(t("inbox.empty"), t("inbox.emptyAddHint"), t("nav.addTask")) { openCapture() }
         }
         items(rows, key = { it.id }) { task -> TaskRowItem(model, task, status = RowStatus.Icon) }
         if (rows.size < total) item(key = "more") {

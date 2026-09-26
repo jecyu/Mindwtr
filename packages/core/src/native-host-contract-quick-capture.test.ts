@@ -252,6 +252,19 @@ describe('native host contract: the capture popup', () => {
             .toEqual([['Buy eggs', ['@errands']], ['Call plumber', []]]);
     });
 
+    it('accepts the clash name the host wrote for the snapshot, and nothing else', async () => {
+        const { host } = await openHost('base');
+        const options = value(host.openQuickCapture()).options;
+        const snapshot = value(await host.createQuickCaptureSnapshot())!;
+        const clash = snapshot.fileName.replace(/\.snapshot\.json$/u, '.1.snapshot.json');
+        for (const other of ['data.other.snapshot.json', snapshot.fileName.replace(/\.snapshot\.json$/u, '.x.snapshot.json'), `${snapshot.fileName}.1`]) {
+            expect(await host.submitQuickCaptureLines({ text: 'a\nb', options, captureIds: [generateUUID(), generateUUID()], snapshotFileName: other }))
+                .toMatchObject({ ok: false, error: { code: 'STALE_REVISION' } });
+        }
+        expect(value(await host.submitQuickCaptureLines({ text: 'a\nb', options, captureIds: [generateUUID(), generateUUID()], snapshotFileName: clash })))
+            .toMatchObject({ kind: 'saved' });
+    });
+
     it('refuses a batch whose snapshot is older than the data', async () => {
         const { host } = await openHost('base');
         const options = value(host.openQuickCapture()).options;

@@ -1024,10 +1024,14 @@ fn persist_data_snapshot(
     Ok(refresh_data_json_from_sqlite(&conn, &get_data_path(app)).unwrap_or(canonical))
 }
 
-fn persist_data_snapshot_exact(app: &tauri::AppHandle, data: &Value) -> Result<Value, String> {
+fn persist_data_snapshot_exact(
+    app: &tauri::AppHandle,
+    data: &Value,
+    expected_data: Option<&Value>,
+) -> Result<Value, String> {
     ensure_data_file(app)?;
     let mut conn = open_sqlite(app)?;
-    let canonical = replace_json_in_sqlite(&mut conn, data)?;
+    let canonical = replace_json_in_sqlite_if_unchanged(&mut conn, data, expected_data)?;
     Ok(refresh_data_json_from_sqlite(&conn, &get_data_path(app)).unwrap_or(canonical))
 }
 
@@ -1117,9 +1121,10 @@ pub(crate) fn persist_data_snapshot_with_retries(
 fn persist_data_snapshot_exact_with_retries(
     app: &tauri::AppHandle,
     data: &Value,
+    expected_data: Option<&Value>,
 ) -> Result<Value, String> {
     for attempt in 0..STORAGE_RETRY_ATTEMPTS {
-        match persist_data_snapshot_exact(app, data) {
+        match persist_data_snapshot_exact(app, data, expected_data) {
             Ok(canonical) => return Ok(canonical),
             Err(error) => {
                 let can_retry =
@@ -1855,7 +1860,8 @@ fn build_fts_query(input: &str) -> Option<String> {
     let tokens: Vec<String> = cleaned
         .split_whitespace()
         .filter(|t| !t.is_empty())
-        .map(|t| format!("{}*", t))
+        // Cleaning excludes quotes; quote tokens so @/# remain literal FTS5 text (#1264).
+        .map(|t| format!("\"{}\"*", t))
         .collect();
     if tokens.is_empty() {
         None
@@ -3557,10 +3563,26 @@ fn migrate_json_to_sqlite(conn: &mut Connection, data: &Value) -> Result<(), Str
     merge_json_to_sqlite(conn, data, None).map(|_| ())
 }
 
+#[cfg(test)]
 fn replace_json_in_sqlite(conn: &mut Connection, data: &Value) -> Result<Value, String> {
+    replace_json_in_sqlite_if_unchanged(conn, data, None)
+}
+
+fn replace_json_in_sqlite_if_unchanged(
+    conn: &mut Connection,
+    data: &Value,
+    expected_data: Option<&Value>,
+) -> Result<Value, String> {
     conn.execute_batch("BEGIN IMMEDIATE")
         .map_err(|e| e.to_string())?;
     let result = (|| {
+        // Native/API writers bypass the renderer's write barrier. Check under
+        // the SQLite writer lock so a restore cannot erase a later commit.
+        if let Some(expected) = expected_data {
+            if &read_sqlite_data(conn)? != expected {
+                return Err("Local data changed during restore. Please try again.".to_string());
+            }
+        }
         let canonical = replace_data_in_transaction(conn, data.clone())?;
         conn.execute_batch("COMMIT").map_err(|e| e.to_string())?;
         Ok(canonical)
@@ -4002,12 +4024,13 @@ pub(crate) async fn save_data(
     data: Value,
     baseline_entities: Option<Value>,
     mode: Option<String>,
+    expected_data: Option<Value>,
 ) -> Result<Value, String> {
     tauri::async_runtime::spawn_blocking(move || match mode.as_deref() {
         None | Some("merge") => {
             persist_data_snapshot_with_retries(&app, &data, baseline_entities.as_ref())
         }
-        Some("exact") => persist_data_snapshot_exact_with_retries(&app, &data),
+        Some("exact") => persist_data_snapshot_exact_with_retries(&app, &data, expected_data.as_ref()),
         Some(unsupported) => Err(format!("Unsupported save_data mode: {unsupported}")),
     })
     .await
@@ -5355,13 +5378,7 @@ pub(crate) fn list_data_snapshots(app: tauri::AppHandle) -> Result<Vec<String>, 
     Ok(names)
 }
 
-#[tauri::command(async)]
-pub(crate) fn restore_data_snapshot(
-    app: tauri::AppHandle,
-    snapshot_file_name: String,
-) -> Result<bool, String> {
-    let _snapshot_guard = lock_snapshot_operation()?;
-    ensure_data_file(&app)?;
+fn snapshot_file_path(snapshot_dir: &Path, snapshot_file_name: &str) -> Result<PathBuf, String> {
     let trimmed = snapshot_file_name.trim();
     if trimmed.is_empty() || trimmed.contains('/') || trimmed.contains('\\') {
         return Err("Invalid snapshot file name".to_string());
@@ -5369,15 +5386,26 @@ pub(crate) fn restore_data_snapshot(
     if !is_snapshot_file_name(trimmed) {
         return Err("Invalid snapshot file format".to_string());
     }
-    let snapshot_dir = get_snapshot_dir(&app)?;
     let snapshot_path = snapshot_dir.join(trimmed);
-    if !snapshot_path.exists() {
-        return Err("Snapshot file not found".to_string());
+    match fs::symlink_metadata(&snapshot_path) {
+        Ok(metadata) if metadata.file_type().is_file() => Ok(snapshot_path),
+        Ok(_) => Err("Invalid snapshot file".to_string()),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            Err("Snapshot file not found".to_string())
+        }
+        Err(error) => Err(error.to_string()),
     }
+}
 
-    let data = read_json_with_retries(&snapshot_path, 2)?;
-    persist_data_snapshot_exact_with_retries(&app, &data)?;
-    Ok(true)
+#[tauri::command(async)]
+pub(crate) fn read_data_snapshot(
+    app: tauri::AppHandle,
+    snapshot_file_name: String,
+) -> Result<Value, String> {
+    let _snapshot_guard = lock_snapshot_operation()?;
+    let snapshot_dir = get_snapshot_dir(&app)?;
+    let snapshot_path = snapshot_file_path(&snapshot_dir, &snapshot_file_name)?;
+    read_json_with_retries(&snapshot_path, 2)
 }
 
 #[tauri::command(async)]
@@ -5868,6 +5896,36 @@ mod tests {
             let again = merge_json_to_sqlite(&mut conn, &actual, None).unwrap();
             assert_eq!(again, actual, "second save must converge: {scenario}");
         }
+    }
+
+    #[test]
+    fn exact_restore_rejects_a_native_write_after_its_baseline() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("restore-writers.db");
+        let mut conn = open_sqlite_path(&path).unwrap();
+        let seed = serde_json::json!({"tasks":[{"id":"old","title":"Old","rev":8}],
+            "projects":[],"sections":[],"areas":[],"people":[],"settings":{}});
+        let observed = replace_json_in_sqlite(&mut conn, &seed).unwrap();
+        let mut restored = observed.clone();
+        restored["tasks"][0]["title"] = serde_json::json!("Restored");
+        restored["tasks"][0]["rev"] = serde_json::json!(9);
+        let other = open_sqlite_path(&path).unwrap();
+        other.execute_batch("BEGIN IMMEDIATE").unwrap();
+        replace_task_row(
+            &other,
+            &serde_json::json!({"id":"external","title":"New capture","rev":1}),
+        ).unwrap();
+        other.execute_batch("COMMIT").unwrap();
+        let current = read_sqlite_data(&other).unwrap();
+        let error = replace_json_in_sqlite_if_unchanged(&mut conn, &restored, Some(&observed))
+            .expect_err("a late native write must abort the replacement");
+        assert!(error.contains("Local data changed"));
+        assert_eq!(read_sqlite_data(&other).unwrap(), current);
+
+        // A fresh preparation can proceed; this models carrying the newly read
+        // data through the core restore rules before retrying the exact write.
+        let saved = replace_json_in_sqlite_if_unchanged(&mut conn, &current, Some(&current)).unwrap();
+        assert_eq!(saved, current);
     }
 
     #[test]
@@ -10887,7 +10945,34 @@ mod tests {
         assert_eq!(task.get("projectId"), None);
     }
 
-    // create_data_snapshot/restore_data_snapshot need a real tauri::AppHandle,
+    #[test]
+    fn snapshot_reader_rejects_invalid_paths_and_accepts_regular_snapshot() {
+        let dir = tempfile::tempdir().expect("temporary snapshot directory");
+        let name = "data.2026-07-31.snapshot.json";
+        let path = dir.path().join(name);
+        fs::write(&path, "{}").expect("write snapshot");
+        assert_eq!(snapshot_file_path(dir.path(), name).unwrap(), path);
+
+        for invalid in [
+            "",
+            "../data.2026-07-31.snapshot.json",
+            "data.2026-07-31.snapshot.json/other",
+            "data.2026-07-31.snapshot.json\\other",
+            "/data.2026-07-31.snapshot.json",
+            "other.json",
+        ] {
+            assert!(snapshot_file_path(dir.path(), invalid).is_err(), "accepted {invalid}");
+        }
+
+        #[cfg(unix)]
+        {
+            let link = dir.path().join("data.link.snapshot.json");
+            std::os::unix::fs::symlink(&path, &link).expect("create snapshot symlink");
+            assert!(snapshot_file_path(dir.path(), "data.link.snapshot.json").is_err());
+        }
+    }
+
+    // create_data_snapshot/read_data_snapshot need a real tauri::AppHandle,
     // which this crate has no test harness to construct — this proves the
     // lock those commands share (lock_snapshot_operation) actually serializes
     // two concurrent holders, the mechanism they rely on now that both run

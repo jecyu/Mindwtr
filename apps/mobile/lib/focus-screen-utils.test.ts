@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getFocusTokenOptions, splitFocusedTasks } from './focus-screen-utils';
+import { splitFocusedTasks } from './focus-screen-utils';
 
 describe('splitFocusedTasks', () => {
     it('separates focused tasks while preserving relative order inside each group', () => {
@@ -36,16 +36,6 @@ describe('splitFocusedTasks', () => {
     });
 });
 
-describe('getFocusTokenOptions', () => {
-    it('returns sorted unique contexts and tags', () => {
-        expect(getFocusTokenOptions([
-            { contexts: ['@work', '@home', ''], tags: ['#deep'] },
-            { contexts: ['@work/calls', '@home'], tags: ['#deep', '#ops'] },
-            { contexts: [], tags: [] },
-        ] as any)).toEqual(['@home', '@work', '@work/calls', '#deep', '#ops']);
-    });
-});
-
 describe('buildFocusTaskSections', () => {
     const task = (id: string) => ({ id, title: id } as unknown as import('@mindwtr/core').Task);
     const translate = (key: string) => ({ 'agenda.todaysFocus': 'Starred', 'focus.schedule': 'Today', 'agenda.reviewDue': 'Review', 'focus.nextActions': 'Next', 'agenda.upcoming': 'Soon' } as Record<string, string>)[key];
@@ -56,11 +46,11 @@ describe('buildFocusTaskSections', () => {
             focusedTasks: [task('f')], schedule: [task('s')], reviewDue: [], nextActions: [task('n')], upcoming: [task('u')],
         }, translate);
         expect(full.map((section) => [section.key, section.title, section.items.length])).toEqual([
-            ['focus', 'Starred', 1], ['schedule', 'Today', 1], ['reviewDue', 'Review', 0], ['next', 'Next', 1], ['upcoming', 'Soon', 1],
+            ['focus', 'Starred', 1], ['schedule', 'Today', 1], ['next', 'Next', 1], ['reviewDue', 'Review', 0], ['upcoming', 'Soon', 1],
         ]);
 
         const sparse = buildFocusTaskSections({ focusedTasks: [], schedule: [], reviewDue: [], nextActions: [], upcoming: [] }, () => undefined);
-        expect(sparse.map((section) => section.key)).toEqual(['schedule', 'reviewDue', 'next']);
-        expect(sparse.map((section) => section.title)).toEqual(['Today', 'Review Due', 'Next actions']);
+        expect(sparse.map((section) => section.key)).toEqual(['schedule', 'next', 'reviewDue']);
+        expect(sparse.map((section) => section.title)).toEqual(['Today', 'Next actions', 'Review Due']);
     });
 });

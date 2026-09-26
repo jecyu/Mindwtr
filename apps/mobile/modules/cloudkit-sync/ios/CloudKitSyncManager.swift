@@ -22,6 +22,14 @@ final class CloudKitSyncManager {
 
     private init() {}
 
+    private static func preservingRecordErrors(_ errors: [Error]) -> Error {
+        let primary = errors[0] as NSError
+        var details = primary.userInfo
+        details[CKPartialErrorsByItemIDKey] = Dictionary(uniqueKeysWithValues:
+            errors.enumerated().map { (AnyHashable($0.offset), $0.element) })
+        return NSError(domain: primary.domain, code: primary.code, userInfo: details)
+    }
+
     private let attachmentRecordType = "MindwtrAttachment"
     private let attachmentAssetField = "asset"
 
@@ -398,6 +406,8 @@ final class CloudKitSyncManager {
             var userInfo: [String: Any] = [
                 NSLocalizedDescriptionKey: message,
                 NSUnderlyingErrorKey: primary,
+                CKPartialErrorsByItemIDKey: Dictionary(uniqueKeysWithValues:
+                    nonConflictErrors.enumerated().map { (AnyHashable($0.offset), $0.element) }),
             ]
             if !conflictIDs.isEmpty {
                 userInfo["conflictIDs"] = conflictIDs.joined(separator: ",")
@@ -447,7 +457,7 @@ final class CloudKitSyncManager {
                         if !perRecordErrors.isEmpty {
                             let descriptions = perRecordErrors.prefix(5).map { $0.localizedDescription }.joined(separator: "; ")
                             NSLog("[CloudKitSyncManager] fetchRecordsByID had \(perRecordErrors.count) per-record error(s): \(descriptions)")
-                            continuation.resume(throwing: perRecordErrors[0])
+                            continuation.resume(throwing: CloudKitSyncManager.preservingRecordErrors(perRecordErrors))
                             return
                         }
                         continuation.resume(returning: results)
@@ -460,7 +470,7 @@ final class CloudKitSyncManager {
                             } else {
                                 let descriptions = perRecordErrors.prefix(5).map { $0.localizedDescription }.joined(separator: "; ")
                                 NSLog("[CloudKitSyncManager] fetchRecordsByID had \(perRecordErrors.count) real partial error(s): \(descriptions)")
-                                continuation.resume(throwing: perRecordErrors[0])
+                                continuation.resume(throwing: CloudKitSyncManager.preservingRecordErrors(perRecordErrors))
                             }
                         } else {
                             continuation.resume(throwing: error)
@@ -518,7 +528,7 @@ final class CloudKitSyncManager {
                                 } else {
                                     let descriptions = realErrors.prefix(5).map { $0.localizedDescription }.joined(separator: "; ")
                                     NSLog("[CloudKitSyncManager] deleteRecords had \(realErrors.count) real error(s): \(descriptions)")
-                                    continuation.resume(throwing: realErrors[0])
+                                    continuation.resume(throwing: CloudKitSyncManager.preservingRecordErrors(realErrors))
                                 }
                             } else {
                                 continuation.resume(throwing: error)

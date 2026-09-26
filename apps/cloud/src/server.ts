@@ -11,6 +11,7 @@ import {
     buildCaptureTaskProps,
     buildHttpRemoteFileFingerprint,
     buildNewProject,
+    canonicalRecurringFollowUp,
     compactPurgedProjectSectionTombstone,
     compactPurgedProjectTombstone,
     filterNotDeleted,
@@ -376,17 +377,12 @@ function finalizeCloudDataForWrite(
     return repaired;
 }
 
-// Mirrors the store's stampNewRecurringFollowUp (packages/core/src/store-tasks.ts):
-// a follow-up is a fresh task, so it needs a reserved project order (missing sorts
-// as +Infinity in compareTasksByProjectOrder, dumping it below its siblings) and a
-// zeroed push count, same as every other task-creation path.
-// Mirrors core's stampNewRecurringFollowUp: the next occurrence inherits the
-// completed instance's place (that instance leaves the active list, and a series
-// only ever has one active instance) and only reserves a fresh order when the
-// completed task had none.
+// The next occurrence inherits the completed instance's place (that instance leaves the
+// active list, and a series has one active instance); it reserves a fresh order only when
+// the completed task had none. Its shape comes from core's canonicalRecurringFollowUp.
 const stampRecurringFollowUp = (task: Task, completedTask: Task, existingTasks: Task[]): Task => {
     const order = getTaskOrder(completedTask) ?? getNextProjectOrder(task.projectId, existingTasks);
-    return { ...task, pushCount: 0, order, orderNum: order };
+    return { ...canonicalRecurringFollowUp(task), order, orderNum: order };
 };
 
 type CloudEntity = {

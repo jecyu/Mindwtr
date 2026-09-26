@@ -224,7 +224,7 @@ const core = (db, mode, extra = {}) => JSON.parse(execFileSync('bun', ['-e', `
                 pruned += oldTasks.length;
             }
             // The other checks' captures from earlier runs, by each script's exact title shape (a 12-digit run id):
-            // lifecycle 81-86, focus 71-72, editor 91 (plus the 7 and 78 its renames append), search 51, Process Inbox 52.
+            // lifecycle 81-86, focus 71-72, editor 91 (plus the 7 and 78 its renames append), search 51, Process Inbox 52, capture 53-59 (57 appends a line number).
             // No other title matches. [0-9], not \\d: this code sits in a template literal, which drops the backslash.
             const shapes = {
                 lifecycle: /^8[1-6][0-9]{12}$/,
@@ -232,6 +232,7 @@ const core = (db, mode, extra = {}) => JSON.parse(execFileSync('bun', ['-e', `
                 editor: /^91[0-9]{12}(7(8)?)?$/,
                 search: /^51[0-9]{12}$/,
                 processInbox: /^52[0-9]{12}$/,
+                capture: /^5[3-9][0-9]{12}[12]?$/,
             };
             for (const [check, shape] of Object.entries(shapes)) {
                 const ids = live(store()._allTasks).filter((item) => shape.test(item.title)).map((item) => item.id);

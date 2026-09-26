@@ -527,6 +527,8 @@ export const ruOverrides: Record<string, string> = {
         'calendar.scheduleResults': 'Расписание',
         'calendar.scheduleAction': 'Расписание',
         'calendar.events': 'События',
+        'calendar.eventSingular': 'событие',
+        'calendar.eventPlural': 'события',
         'calendar.allDay': 'Весь день',
         'calendar.deadline': 'Крайний срок',
         'calendar.projectedRecurrence': 'Предпросмотр',

@@ -696,12 +696,12 @@ export type QuickCaptureView = {
     focus: { selected: boolean; enabled: boolean; label: string; accessibilityLabel: string; edit: QuickCaptureEdit };
     due: {
         label: string;
-        /** The Custom chip: send setDueDay with the picked day; a long press sends `clear`. */
-        custom: { label: string; accessibilityLabel: string };
+        /** The Custom chip: send setDueDay with the picked day; a long press sends `clear`. The picker opens on `startDay` (yyyy-MM-dd): the due date's day, or today, as mobile's picker does. */
+        custom: { label: string; accessibilityLabel: string; startDay: string };
         clear: QuickCaptureEdit;
         quickDates: (Choice & { preset: QuickCaptureDatePreset })[];
-        /** Shown with a due date: send setDueTime with the picked time; a long press sends `clear`. */
-        time: { label: string; accessibilityLabel: string; clear: QuickCaptureEdit } | null;
+        /** Shown with a due date: send setDueTime with the picked time; a long press sends `clear`. The picker opens on `start` (HH:mm), the due date's clock time, as mobile's picker does. */
+        time: { label: string; accessibilityLabel: string; clear: QuickCaptureEdit; start: string } | null;
     };
     addAnother: { label: string; value: boolean; edit: QuickCaptureEdit };
     /** The toasts mobile shows when a save (`save`) or several lines (`lines`) could not be written. */
@@ -744,7 +744,11 @@ export function buildQuickCaptureView(text: string, options: QuickCaptureOptions
         },
         due: {
             label: labels.due,
-            custom: { label: copy.customDate, accessibilityLabel: `${t('taskEdit.dueDateLabel')}: ${labels.due}` },
+            custom: {
+                label: copy.customDate,
+                accessibilityLabel: `${t('taskEdit.dueDateLabel')}: ${labels.due}`,
+                startDay: context.formatDate(dueDate ?? context.now, 'yyyy-MM-dd'),
+            },
             clear: { type: 'clearDueDate' },
             quickDates: QUICK_CAPTURE_DATE_PRESETS.map((preset) => {
                 const selected = isQuickDatePresetSelected(preset, dueDate, context.now);
@@ -758,7 +762,12 @@ export function buildQuickCaptureView(text: string, options: QuickCaptureOptions
                 };
             }),
             time: dueDate
-                ? { label: labels.dueTime, accessibilityLabel: `${t('task.aria.dueTime')}: ${labels.dueTime}`, clear: { type: 'clearDueTime' } }
+                ? {
+                    label: labels.dueTime,
+                    accessibilityLabel: `${t('task.aria.dueTime')}: ${labels.dueTime}`,
+                    clear: { type: 'clearDueTime' },
+                    start: context.formatDate(dueDate, 'HH:mm'),
+                }
                 : null,
         },
         addAnother: { label: copy.addAnother, value: options.addAnother, edit: { type: 'setAddAnother', value: !options.addAnother } },

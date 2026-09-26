@@ -12,7 +12,9 @@ import {
 import { buildEntityMap } from './store-helpers';
 import { computeSyncPayloadFingerprint } from './sync-helpers';
 import { mergeAppData } from './sync';
-import { shouldShowTaskForStart } from './task-utils';
+import { mockAppData } from './sync-test-utils';
+import { shouldShowTaskForStart, sortTasksByBoardOrder } from './task-utils';
+import { generateUUID } from './uuid';
 import type { StorageAdapter } from './storage';
 import type { AppData, Area, Project, Task } from './types';
 import { runDataTransferTransaction, runSerializedSyncDocumentWriteOperation } from './data-transfer-transaction';
@@ -767,6 +769,72 @@ describe('TaskStore', () => {
         const visibleAfter = useTaskStore.getState().tasks.filter((task) => task.title === 'Context Bank');
         expect(visibleAfter).toHaveLength(2);
         expect(useTaskStore.getState()._tasksById.get(duplicateResult.id!)?.title).toBe('Context Bank');
+    });
+
+    it('places a Board copy immediately after its source with its own board order', async () => {
+        const { addTask, duplicateTask, updateTask } = useTaskStore.getState();
+        const a = (await addTask('A', { status: 'next' })).id!;
+        const b = (await addTask('B', { status: 'next' })).id!;
+        const c = (await addTask('C', { status: 'next' })).id!;
+        await updateTask(a, { boardOrder: 0 });
+        await updateTask(b, { boardOrder: 1024 });
+        await updateTask(c, { boardOrder: 2048 });
+        const copy = await duplicateTask(b, false);
+        const tasks = useTaskStore.getState().tasks.filter((task) => [a, b, c, copy.id].includes(task.id));
+        expect(sortTasksByBoardOrder(tasks).map((task) => task.id)).toEqual([a, b, copy.id, c]);
+        expect(tasks.find((task) => task.id === copy.id)?.boardOrder).not.toBe(1024);
+    });
+
+    it('duplicates an unordered task without changing other rows or losing a concurrent completion', async () => {
+        const { addTask, duplicateTask } = useTaskStore.getState();
+        vi.setSystemTime(new Date('2026-09-24T12:00:00.000Z'));
+        const ids = await Promise.all(Array.from({ length: 31 }, (_, index) => addTask(`Task ${index}`, { status: 'next' })));
+        const before = useTaskStore.getState()._allTasks.map((task) => ({ ...task }));
+        const completed = { ...before[5], status: 'done' as const, completedAt: '2026-09-24T12:00:30.000Z', updatedAt: '2026-09-24T12:00:30.000Z', rev: before[5].rev + 1, revBy: 'device-b' };
+        vi.setSystemTime(new Date('2026-09-24T12:01:00.000Z'));
+        const copy = await duplicateTask(ids[0].id!, false);
+        const after = useTaskStore.getState()._allTasks;
+        expect(after).toHaveLength(32);
+        expect(after.filter((task) => !before.some((old) => old.id === task.id))).toHaveLength(1);
+        expect(after.find((task) => task.id === copy.id)).toMatchObject({ boardOrder: undefined, rev: 1 });
+        expect(after.filter((task) => before.some((old) => old.id === task.id))).toEqual(before);
+        const merged = mergeAppData(mockAppData(after), mockAppData(before.map((task, index) => index === 5 ? completed : task)), { nowIso: '2026-09-24T12:01:00.000Z' });
+        expect(merged.tasks.find((task) => task.id === completed.id)?.status).toBe('done');
+    });
+
+    it('leaves a copy unordered when no whole-number Board slot is free', async () => {
+        const { addTask, duplicateTask, updateTask } = useTaskStore.getState();
+        const source = (await addTask('Source', { status: 'next' })).id!;
+        const next = (await addTask('Next', { status: 'next' })).id!;
+        await updateTask(source, { boardOrder: 1024 });
+        await updateTask(next, { boardOrder: 1025 });
+        const before = useTaskStore.getState()._allTasks.map((task) => ({ ...task }));
+        const copy = await duplicateTask(source, false);
+        expect(useTaskStore.getState()._allTasks.find((task) => task.id === copy.id)?.boardOrder).toBeUndefined();
+        expect(useTaskStore.getState()._allTasks.slice(0, 2)).toEqual(before);
+    });
+
+    it('reuses a Board copy id for the same source and refuses another source', async () => {
+        const { addTask, duplicateTask } = useTaskStore.getState();
+        const a = (await addTask('A', { status: 'next' })).id!;
+        const b = (await addTask('B', { status: 'next' })).id!;
+        const copyId = generateUUID();
+        expect(await duplicateTask(a, false, copyId)).toMatchObject({ success: true, id: copyId });
+        const before = useTaskStore.getState()._allTasks.map((task) => [task.id, task.rev]);
+        expect(await duplicateTask(a, false, copyId)).toMatchObject({ success: true, id: copyId });
+        expect(await duplicateTask(b, false, copyId)).toMatchObject({ success: false });
+        expect(useTaskStore.getState()._allTasks.map((task) => [task.id, task.rev])).toEqual(before);
+    });
+
+    it('reuses the requested copy even when an earlier duplicate has identical fields', async () => {
+        const { addTask, duplicateTask } = useTaskStore.getState();
+        const a = (await addTask('Same', { status: 'next' })).id!;
+        expect((await duplicateTask(a, false)).success).toBe(true);
+        const copyId = generateUUID();
+        expect(await duplicateTask(a, false, copyId)).toMatchObject({ success: true, id: copyId });
+        const before = useTaskStore.getState()._allTasks.map((task) => [task.id, task.rev]);
+        expect(await duplicateTask(a, false, copyId)).toMatchObject({ success: true, id: copyId });
+        expect(useTaskStore.getState()._allTasks.map((task) => [task.id, task.rev])).toEqual(before);
     });
 
     it('sends a duplicated done task back to the Inbox to be re-clarified', async () => {

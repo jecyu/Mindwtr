@@ -105,6 +105,7 @@ export function SwipeableTaskItemContent({
     // Age is detail: the Focus "hide details" toggle drops it with the rest.
     const ageLabel = hideDetails ? null : meta.ageLabel;
     const descriptionPreview = hideDetails ? null : meta.descriptionPreview;
+    const compactRecurrence = hideDetails && meta.parts.some((part) => part.kind === 'recurrence');
     const statusColors = useStatusColors()[task.status];
     const isAvailableNextAction = sequenceCue === 'available';
     const canNavigateMeta = !selectionMode;
@@ -425,6 +426,7 @@ export function SwipeableTaskItemContent({
                     >
                         {task.title}
                     </Text>
+                    {compactRecurrence && <Repeat size={12} color={tc.secondaryText} strokeWidth={2} />}
                     {canShowFocusToggle && !selectionMode && (
                         <Pressable
                             onPress={(event) => {

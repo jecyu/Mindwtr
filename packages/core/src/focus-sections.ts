@@ -275,8 +275,8 @@ export interface FocusTaskSection {
 
 /**
  * The Focus screen's task sections in screen order with the screen's titles:
- * Today's Focus (only when starred tasks exist), Today, Review Due, Next
- * actions, Upcoming (only when non-empty). `translate` returns undefined for a
+ * Today's Focus (only when starred tasks exist), Today, Next actions, Review
+ * Due, Upcoming (only when non-empty). `translate` returns undefined for a
  * missing key so both `t()` and a raw dictionary lookup fit.
  */
 export function buildFocusTaskSections(
@@ -289,8 +289,8 @@ export function buildFocusTaskSections(
     }
     sections.push(
         { key: 'schedule', title: translate('focus.schedule') ?? 'Today', items: lists.schedule },
-        { key: 'reviewDue', title: translate('agenda.reviewDue') ?? 'Review Due', items: lists.reviewDue },
         { key: 'next', title: translate('focus.nextActions') ?? translate('list.next') ?? 'Next actions', items: lists.nextActions },
+        { key: 'reviewDue', title: translate('agenda.reviewDue') ?? 'Review Due', items: lists.reviewDue },
     );
     if (lists.upcoming.length > 0) {
         sections.push({ key: 'upcoming', title: translate('agenda.upcoming') ?? 'Upcoming', items: lists.upcoming });

@@ -138,6 +138,7 @@ describe('ReviewView', () => {
 
         const { getByRole, getByText, queryByText } = renderWithProviders(<ReviewView />);
 
+        fireEvent.click(getByRole('button', { name: 'All open tasks' }));
         fireEvent.click(getByRole('combobox', { name: 'Status' }));
         expect(getByRole('option', { name: 'Open tasks (1)' })).toBeInTheDocument();
         expect(getByText('Open review task')).toBeInTheDocument();
@@ -162,6 +163,7 @@ describe('ReviewView', () => {
 
         const { getAllByRole, getByRole } = renderWithProviders(<ReviewView />);
 
+        fireEvent.click(getByRole('button', { name: 'All open tasks' }));
         fireEvent.click(getByRole('button', { name: 'Select' }));
         fireEvent.click(getByRole('button', { name: 'Select All' }));
 
@@ -189,10 +191,49 @@ describe('ReviewView', () => {
 
         const { getByRole } = renderWithProviders(<ReviewView />);
 
+        fireEvent.click(getByRole('button', { name: 'All open tasks' }));
         fireEvent.click(getByRole('button', { name: 'Select' }));
         fireEvent.click(getByRole('button', { name: 'Select All' }));
 
         expect(getByRole('button', { name: 'Bulk organize' })).toBeInTheDocument();
+    });
+
+    it('defaults to due reminders and keeps future and undated tasks in the overview', () => {
+        const due = makeTask('due', { title: 'Due reminder', reviewAt: dateStringFromToday(0) });
+        const future = makeTask('future', { title: 'Future reminder', reviewAt: dateStringFromToday(1) });
+        const undated = makeTask('undated', { title: 'Undated task' });
+        const done = makeTask('done', { title: 'Completed task', status: 'done' });
+        const archived = makeTask('archived', { title: 'Archived task', status: 'archived' });
+        useTaskStore.setState({ tasks: [due, future, undated, done, archived], _allTasks: [due, future, undated, done, archived] });
+        const { getByRole, getByText, queryByText } = renderWithProviders(<ReviewView />);
+        expect(getByText('Due reminder')).toBeInTheDocument();
+        expect(queryByText('Future reminder')).not.toBeInTheDocument();
+        expect(queryByText('Undated task')).not.toBeInTheDocument();
+
+        fireEvent.click(getByRole('button', { name: 'All open tasks' }));
+        expect(getByText('Future reminder')).toBeInTheDocument();
+        expect(getByText('Undated task')).toBeInTheDocument();
+        expect(queryByText('Archived task')).not.toBeInTheDocument();
+        fireEvent.click(getByRole('button', { name: 'Done tasks' }));
+        expect(getByText('Completed task')).toBeInTheDocument();
+        expect(queryByText('Due reminder')).not.toBeInTheDocument();
+    });
+
+    it('marks selected due reminders reviewed after the write succeeds', async () => {
+        const due = makeTask('due', { title: 'Due reminder', reviewAt: dateStringFromToday(0) });
+        const batchUpdateTasks = vi.fn(async (updates: { id: string; updates: Partial<Task> }[]) => {
+            useTaskStore.setState((state) => ({ tasks: state.tasks.map((task) => updates.find(({ id }) => id === task.id)
+                ? { ...task, reviewAt: undefined } : task) }));
+            return { success: true };
+        });
+        useTaskStore.setState({ tasks: [due], _allTasks: [due], batchUpdateTasks });
+        const { getByRole, getByText, queryByText } = renderWithProviders(<ReviewView />);
+        fireEvent.click(getByRole('button', { name: 'Select' }));
+        fireEvent.click(getByRole('button', { name: 'Select All' }));
+        fireEvent.click(getByRole('button', { name: 'Mark reviewed' }));
+        await waitFor(() => expect(batchUpdateTasks).toHaveBeenCalledWith([{ id: 'due', updates: { reviewAt: undefined } }]));
+        await waitFor(() => expect(queryByText('Due reminder')).not.toBeInTheDocument());
+        expect(getByText('No review reminders are due.')).toBeInTheDocument();
     });
 
     it('auto-skips an empty weekly review to the all-clear state while showing checked stages', async () => {

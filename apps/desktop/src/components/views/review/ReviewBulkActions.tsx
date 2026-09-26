@@ -13,6 +13,8 @@ type ReviewBulkActionsProps = {
     onExportCsv?: () => void;
     isExporting?: boolean;
     onDelete: () => void;
+    onMarkReviewed?: () => void;
+    markReviewedBusy?: boolean;
     statusOptions: TaskStatus[];
     t: (key: string) => string;
 };
@@ -29,6 +31,8 @@ export function ReviewBulkActions({
     onExportCsv,
     isExporting = false,
     onDelete,
+    onMarkReviewed,
+    markReviewedBusy = false,
     statusOptions,
     t,
 }: ReviewBulkActionsProps) {
@@ -66,6 +70,14 @@ export function ReviewBulkActions({
                 </div>
             </div>
             <div className="flex items-center gap-2">
+                {onMarkReviewed && <button
+                    type="button"
+                    onClick={onMarkReviewed}
+                    disabled={markReviewedBusy}
+                    className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground disabled:opacity-50"
+                >
+                    {t('review.markReviewed')}
+                </button>}
                 {onBulkOrganize && (
                     <button
                         onClick={onBulkOrganize}

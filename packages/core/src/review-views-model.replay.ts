@@ -182,12 +182,12 @@ async function replayReview(contract: Contract, scenario: ReviewScenario, record
     const read = (edit?: NativeReviewExpansionEdit) => {
         if (edit) {
             // The edit resolves the expansion; the screen keeps what comes back.
-            const edited = ok(contract.getReviewOverview({ expandedAreaIds, expandedProjectIds, selectedIds: selected, expansionEdit: edit, offset: 0, limit: 1 }));
+            const edited = ok(contract.getReviewOverview({ scope: 'all', expandedAreaIds, expandedProjectIds, selectedIds: selected, expansionEdit: edit, offset: 0, limit: 1 }));
             expandedAreaIds = edited.expandedAreaIds;
             expandedProjectIds = edited.expandedProjectIds;
         }
         return readAll(
-            (window) => contract.getReviewOverview({ expandedAreaIds, expandedProjectIds, selectedIds: selected, ...window }),
+            (window) => contract.getReviewOverview({ scope: 'all', expandedAreaIds, expandedProjectIds, selectedIds: selected, ...window }),
             (view: NativeReviewOverview) => view.items,
         );
     };

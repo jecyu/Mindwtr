@@ -2,7 +2,7 @@ import React from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { ArrowUpDown, Folder, SlidersHorizontal, X } from 'lucide-react-native';
 
-import { formatListItemCount, tFallback } from '@mindwtr/core';
+import { formatListItemCount, getTaskListHeaderText } from '@mindwtr/core';
 
 import { ListOverflowMenu } from '@/components/list-overflow-menu';
 import { styles } from './task-list.styles';
@@ -72,16 +72,8 @@ export function TaskListHeader({
   themeColors,
   title,
 }: TaskListHeaderProps) {
-  const filtersLabel = tFallback(t, 'filters.label', 'Filters');
-  const groupLabel = tFallback(t, 'list.groupBy', 'Group');
-  const allLabel = tFallback(t, 'common.all', 'All');
-  const moreOptionsLabel = tFallback(t, 'taskEdit.moreOptions', 'More options');
-  const backLabel = tFallback(t, 'common.back', 'Back');
-  const closeLabel = tFallback(t, 'common.close', 'Close');
-  const clearLabel = tFallback(t, 'filters.clear', t('common.clear'));
-  const removeFilterLabel = tFallback(t, 'filters.remove', 'Remove filter');
-  const excludedStateLabel = tFallback(t, 'filters.excluded', 'Excluded');
-  const activeFiltersLabel = `${filtersLabel} · ${filterActiveCount}`;
+  // Every label comes from core, shared with the native host.
+  const text = getTaskListHeaderText({ sortByLabel, groupByLabel, hasActiveFilters, filterActiveCount, t });
   const activeFilterControl = !directControls && showFilterButton && hasActiveFilters ? (
     <TouchableOpacity
       onPress={onOpenFilters}
@@ -90,19 +82,19 @@ export function TaskListHeader({
         { borderColor: themeColors.tint, backgroundColor: themeColors.filterBg },
       ]}
       accessibilityRole="button"
-      accessibilityLabel={activeFiltersLabel}
+      accessibilityLabel={text.activeFilters}
       accessibilityState={{ selected: true }}
       hitSlop={8}
     >
       <SlidersHorizontal size={16} color={themeColors.tint} strokeWidth={2} />
-      <Text style={[styles.activeFiltersButtonText, { color: themeColors.tint }]}>{activeFiltersLabel}</Text>
+      <Text style={[styles.activeFiltersButtonText, { color: themeColors.tint }]}>{text.activeFilters}</Text>
     </TouchableOpacity>
   ) : null;
   const directControlGroup = directControls ? (
     <View style={styles.headerAccessoryControls}>
       {showSort ? (
         <TouchableOpacity
-          accessibilityLabel={`${t('sort.label')}: ${sortByLabel}`}
+          accessibilityLabel={text.sortAccessibilityLabel}
           accessibilityRole="button"
           onPress={onOpenSort}
           style={styles.directControlButton}
@@ -114,7 +106,7 @@ export function TaskListHeader({
       ) : null}
       {onOpenGroup ? (
         <TouchableOpacity
-          accessibilityLabel={`${groupLabel}: ${groupByLabel ?? allLabel}`}
+          accessibilityLabel={text.groupAccessibilityLabel}
           accessibilityRole="button"
           onPress={onOpenGroup}
           style={styles.directControlButton}
@@ -126,7 +118,7 @@ export function TaskListHeader({
       ) : null}
       {showFilterButton ? (
         <TouchableOpacity
-          accessibilityLabel={`${filtersLabel}: ${hasActiveFilters ? filterActiveCount : allLabel}`}
+          accessibilityLabel={text.filtersAccessibilityLabel}
           accessibilityRole="button"
           accessibilityState={{ selected: hasActiveFilters }}
           onPress={onOpenFilters}
@@ -163,31 +155,31 @@ export function TaskListHeader({
       actions={[
         ...(showFilterButton ? [{
           id: 'filters',
-          label: filtersLabel,
+          label: text.filters,
           icon: (color: string) => <SlidersHorizontal size={18} color={color} strokeWidth={2} />,
           onPress: onOpenFilters,
           selected: hasActiveFilters,
         }] : []),
         ...(showSort ? [{
           id: 'sort',
-          label: t('sort.label'),
-          accessibilityLabel: `${t('sort.label')}: ${sortByLabel}`,
+          label: text.sort,
+          accessibilityLabel: text.sortAccessibilityLabel,
           icon: (color: string) => <ArrowUpDown size={18} color={color} strokeWidth={2} />,
           onPress: onOpenSort,
           value: sortByLabel,
         }] : []),
         ...(onOpenGroup ? [{
           id: 'group',
-          label: groupLabel,
-          accessibilityLabel: `${groupLabel}: ${groupByLabel ?? allLabel}`,
+          label: text.group,
+          accessibilityLabel: text.groupAccessibilityLabel,
           icon: (color: string) => <Folder size={18} color={color} strokeWidth={2} />,
           onPress: onOpenGroup,
-          value: groupByLabel ?? allLabel,
+          value: text.groupValue,
         }] : []),
       ]}
-      backLabel={backLabel}
-      closeLabel={closeLabel}
-      moreLabel={moreOptionsLabel}
+      backLabel={text.back}
+      closeLabel={text.close}
+      moreLabel={text.more}
       themeColors={themeColors}
       triggerStyle={renderOverflowOnly ? styles.navigationOverflowButton : undefined}
     />
@@ -234,9 +226,7 @@ export function TaskListHeader({
                 <TouchableOpacity
                   key={chip.id}
                   accessibilityRole="button"
-                  accessibilityLabel={chip.excluded
-                    ? `${removeFilterLabel}: ${chip.label} (${excludedStateLabel})`
-                    : `${removeFilterLabel}: ${chip.label}`}
+                  accessibilityLabel={text.chipAccessibilityLabel(chip)}
                   onPress={chip.onPress}
                   style={[
                     styles.filterChip,
@@ -261,12 +251,12 @@ export function TaskListHeader({
             })}
             <TouchableOpacity
               accessibilityRole="button"
-              accessibilityLabel={clearLabel}
+              accessibilityLabel={text.clear}
               onPress={onClearFilters}
               style={[styles.filterChip, { borderColor: themeColors.border, backgroundColor: themeColors.filterBg }]}
             >
               <Text style={[styles.filterChipText, { color: themeColors.secondaryText }]}>
-                {clearLabel}
+                {text.clear}
               </Text>
             </TouchableOpacity>
           </ScrollView>

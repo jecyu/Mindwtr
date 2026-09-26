@@ -36,7 +36,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -430,5 +429,5 @@ private fun SaveSearchDialog(model: InboxViewModel, state: SearchState, name: St
 private fun DialogButton(label: String, color: Color, enabled: Boolean, onClick: () -> Unit) =
     Box(Modifier.heightIn(min = 44.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(horizontal = 8.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center) {
-        Text(label, style = rnText(14, 600), color = color, modifier = Modifier.alpha(if (enabled) 1f else 0.5f))
+        Text(label, style = rnText(14, 600), color = color, modifier = Modifier.fade(if (enabled) 1f else 0.5f))
     }

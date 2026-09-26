@@ -534,6 +534,8 @@ export const trOverrides: Record<string, string> = {
         'calendar.scheduleResults': 'Takvim',
         'calendar.scheduleAction': 'Takvim',
         'calendar.events': 'Olaylar',
+        'calendar.eventSingular': 'olay',
+        'calendar.eventPlural': 'olaylar',
         'calendar.allDay': 'Bütün gün',
         'calendar.deadline': 'Son teslim tarihi',
         'calendar.projectedRecurrence': 'Önizleme',

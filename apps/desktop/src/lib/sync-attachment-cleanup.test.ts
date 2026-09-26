@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type AppData } from '@mindwtr/core';
 
 import {
@@ -63,6 +63,8 @@ const buildDeps = (): AttachmentCleanupDeps => ({
 });
 
 describe('desktop attachment cleanup freshness', () => {
+    afterEach(() => vi.useRealTimers());
+
     beforeEach(() => {
         vi.clearAllMocks();
         fsMocks.readDir.mockResolvedValue([]);
@@ -176,6 +178,9 @@ describe('desktop attachment cleanup freshness', () => {
     });
 
     it('bounds remote cleanup and resumes the retained queue on the next pass', async () => {
+        // Keep the fixture within retention; this test covers batching, not expiry.
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2026-08-27T00:00:00.000Z'));
         const pendingRemoteDeletes = Array.from({ length: 26 }, (_, index) => ({
             cloudKey: `attachments/orphan-${index + 1}.pdf`,
             title: `orphan-${index + 1}.pdf`,

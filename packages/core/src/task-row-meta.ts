@@ -162,7 +162,7 @@ export function buildTaskRowMeta(input: TaskRowMetaInput): TaskRowMeta {
 
     const parts: TaskRowMetaPart[] = [];
     const add = (part: TaskRowMetaPartBody & { text: string }) => {
-        parts.push({ ...part, detail: DETAIL_PART_KINDS.has(part.kind) } as TaskRowMetaPart);
+        parts.push({ ...part, detail: DETAIL_PART_KINDS.has(part.kind) && (part.kind !== 'assignedTo' || task.status !== 'waiting') } as TaskRowMetaPart);
     };
 
     if (!input.hideProjectMeta && project) {
@@ -184,7 +184,7 @@ export function buildTaskRowMeta(input: TaskRowMetaInput): TaskRowMeta {
     if (!isReference && !input.hideContexts && task.contexts?.length) {
         add({ kind: 'context', text: task.contexts[0], overflowCount: task.contexts.length - 1 });
     }
-    if (isReference && task.assignedTo?.trim()) {
+    if ((isReference || task.status === 'waiting') && task.assignedTo?.trim()) {
         add({ kind: 'assignedTo', text: task.assignedTo.trim() });
     }
     if (task.tags?.length) {

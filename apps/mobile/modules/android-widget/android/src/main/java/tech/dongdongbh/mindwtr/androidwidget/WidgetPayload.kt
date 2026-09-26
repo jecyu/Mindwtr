@@ -1,6 +1,7 @@
 package tech.dongdongbh.mindwtr.androidwidget
 
 import android.content.Context
+import android.content.res.Configuration
 import java.net.URI
 import java.net.URISyntaxException
 import java.net.URLDecoder
@@ -122,6 +123,14 @@ data class WidgetPayload(
   /** True when the launcher's own day/night resources should color the widget. */
   val usesSystemColors: Boolean get() = palette == null || themeMode == "system"
 
+  fun resolvedPalette(context: Context): Palette? = when {
+    themeMode == "system-oled" -> if (
+      (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+    ) OLED_PALETTE else null
+    usesSystemColors -> null
+    else -> palette
+  }
+
   /** Every task id the payload can draw, across the flat list, the sections and every named list. */
   fun allTaskIds(): Set<String> {
     val ids = HashSet<String>()
@@ -236,6 +245,12 @@ data class WidgetPayload(
     .replace("{count}", count.toString())
 
   companion object {
+    private val OLED_PALETTE = Palette(
+      background = 0xFF000000.toInt(), card = 0xFF000000.toInt(),
+      text = 0xFFE5E7EB.toInt(), mutedText = 0xFF9CA3AF.toInt(),
+      accent = 0xFF4F9DFF.toInt(), onAccent = 0xFF000000.toInt(),
+      border = 0xFF1F2937.toInt(), warning = 0xFFFBBF24.toInt(),
+    )
     const val DEFAULT_FOCUS_URI = "mindwtr:///focus"
     const val NEXT_LIST_ID = "next"
     const val MAX_ITEMS = 200

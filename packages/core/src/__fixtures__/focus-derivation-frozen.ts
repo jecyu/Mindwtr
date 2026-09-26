@@ -385,6 +385,8 @@ export function frozenDeriveFocusTaskLists(pools: FocusPools, ctx: FrozenFocusLi
     };
 }
 
+// Focus #1281 manually changes only the presentation order in this frozen
+// reference. Pool membership and task ordering within each section stay frozen.
 export function frozenBuildFocusTaskSections(
     lists: Pick<FocusTaskLists, 'focusedTasks' | 'schedule' | 'reviewDue' | 'nextActions' | 'upcoming'>,
     translate: (key: string) => string | undefined,
@@ -395,8 +397,8 @@ export function frozenBuildFocusTaskSections(
     }
     sections.push(
         { key: 'schedule', title: translate('focus.schedule') ?? 'Today', items: lists.schedule },
-        { key: 'reviewDue', title: translate('agenda.reviewDue') ?? 'Review Due', items: lists.reviewDue },
         { key: 'next', title: translate('focus.nextActions') ?? translate('list.next') ?? 'Next actions', items: lists.nextActions },
+        { key: 'reviewDue', title: translate('agenda.reviewDue') ?? 'Review Due', items: lists.reviewDue },
     );
     if (lists.upcoming.length > 0) {
         sections.push({ key: 'upcoming', title: translate('agenda.upcoming') ?? 'Upcoming', items: lists.upcoming });

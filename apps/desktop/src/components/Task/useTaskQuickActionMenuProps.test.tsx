@@ -175,3 +175,92 @@ describe('useTaskQuickActionMenuProps project creation', () => {
         expect(reportError).toHaveBeenCalledWith('Failed to log task-menu project creation', diagnosticError);
     });
 });
+
+describe('task cancellation quick action', () => {
+    const cancelledAt = '2026-09-24T12:00:00.000Z';
+    const focusedTask = { ...task, isFocusedToday: true, focusOrder: 3, boardOrder: 7 };
+    const initialTaskState = useTaskStore.getState();
+    const initialUiState = useUiStore.getState();
+
+    afterEach(() => {
+        act(() => {
+            useTaskStore.setState(initialTaskState, true);
+            useUiStore.setState(initialUiState, true);
+        });
+    });
+
+    it.each([false, true])('shows Archive feedback and undoes a %s recurring task without losing newer edits', async (recurring) => {
+        const original: Task = recurring
+            ? { ...focusedTask, recurrence: { rule: 'daily', strategy: 'strict' } }
+            : focusedTask;
+        const showToast = vi.fn();
+        const cancelTask = vi.fn(async () => {
+            const cancelled = { ...original, status: 'archived' as const, cancelledAt, isFocusedToday: false, focusOrder: undefined, boardOrder: undefined };
+            useTaskStore.setState({ _allTasks: [cancelled], _tasksById: new Map([[task.id, cancelled]]) });
+            return { success: true };
+        });
+        const updateTask = vi.fn(async (_id: string, patch: Partial<Task>) => {
+            const current = useTaskStore.getState()._tasksById.get(task.id)!;
+            const restored = { ...current, ...patch };
+            useTaskStore.setState({ _allTasks: [restored], _tasksById: new Map([[task.id, restored]]) });
+            return { success: true };
+        });
+        act(() => {
+            useTaskStore.setState({ _allTasks: [original], _tasksById: new Map([[task.id, original]]), cancelTask, updateTask });
+            useUiStore.setState({ showToast });
+        });
+        const { result } = renderHook(() => useTaskQuickActionMenuProps(original));
+
+        await act(async () => {
+            await result.current.extraActions?.find((action) => action.id === 'cancel-task')?.onSelect();
+        });
+        expect(cancelTask).toHaveBeenCalledExactlyOnceWith(task.id);
+        expect(showToast).toHaveBeenCalledWith(
+            'Task cancelled. You can restore it from Archive.', 'info', 5000,
+            expect.objectContaining({ label: 'Undo' }),
+        );
+        const undo = showToast.mock.calls[0][3].onClick as () => void;
+        const newer = { ...useTaskStore.getState()._tasksById.get(task.id)!, title: 'Later edit' };
+        act(() => useTaskStore.setState({ _allTasks: [newer], _tasksById: new Map([[task.id, newer]]) }));
+
+        await act(async () => { undo(); await Promise.resolve(); });
+        expect(updateTask).toHaveBeenCalledExactlyOnceWith(task.id, {
+            status: 'next', cancelledAt: undefined, completedAt: undefined,
+            isFocusedToday: true, focusOrder: 3, boardOrder: 7,
+        });
+        expect(useTaskStore.getState()._tasksById.get(task.id)).toMatchObject({ title: 'Later edit', status: 'next', isFocusedToday: true });
+    });
+
+    it('offers a durable retry after optimistic cancellation fails, then undoes to the original status', async () => {
+        const showToast = vi.fn();
+        const cancelled = { ...task, status: 'archived' as const, cancelledAt };
+        const cancelTask = vi.fn()
+            .mockImplementationOnce(async () => {
+                useTaskStore.setState({ _allTasks: [cancelled], _tasksById: new Map([[task.id, cancelled]]) });
+                return { success: false, error: 'disk full' };
+            })
+            .mockResolvedValueOnce({ success: true });
+        const updateTask = vi.fn(async (_id: string, patch: Partial<Task>) => {
+            const restored = { ...useTaskStore.getState()._tasksById.get(task.id)!, ...patch };
+            useTaskStore.setState({ _allTasks: [restored], _tasksById: new Map([[task.id, restored]]) });
+            return { success: true };
+        });
+        act(() => {
+            useTaskStore.setState({ _allTasks: [task], _tasksById: new Map([[task.id, task]]), cancelTask, updateTask });
+            useUiStore.setState({ showToast });
+        });
+        const { result } = renderHook(() => useTaskQuickActionMenuProps(task));
+        await act(async () => {
+            await result.current.extraActions?.find((action) => action.id === 'cancel-task')?.onSelect();
+        });
+        expect(showToast).toHaveBeenCalledExactlyOnceWith('disk full', 'error', 5000, expect.objectContaining({ label: 'Try again' }));
+        await act(async () => { showToast.mock.calls[0][3].onClick(); await Promise.resolve(); });
+        expect(cancelTask).toHaveBeenCalledTimes(2);
+        expect(showToast).toHaveBeenLastCalledWith(
+            'Task cancelled. You can restore it from Archive.', 'info', 5000,
+            expect.objectContaining({ label: 'Undo' }),
+        );
+        await act(async () => { showToast.mock.lastCall?.[3].onClick(); await Promise.resolve(); });
+        expect(updateTask).toHaveBeenCalledWith(task.id, expect.objectContaining({ status: 'next', cancelledAt: undefined }));
+    });
+});

@@ -28,6 +28,7 @@ import {
     type ProjectNextActionState,
     type ReviewOverviewAreaGroup,
     type ReviewSchedulePartition,
+    type ReviewOverviewScope,
     type ReviewSessionCadence,
     type ReviewStepFlags,
     type StoredReviewStepSession,
@@ -65,6 +66,13 @@ export function getReviewOverviewText(t: Translate) {
         waiting: t('status.waiting'),
         needsAction: t('review.needsAction'),
         empty: t('review.noTasks'),
+        dueEmpty: t('review.dueEmpty'),
+        overviewEmpty: t('review.overviewEmpty'),
+        scopeDue: t('review.scopeDue'),
+        scopeAll: t('review.scopeAll'),
+        dueHelp: t('review.dueHelp'),
+        overviewHelp: t('review.overviewHelp'),
+        markReviewed: t('review.markReviewed'),
         dailyReview: t('dailyReview.title'),
         weeklyReview: t('review.openGuide'),
         cancel: t('common.cancel'),
@@ -131,9 +139,10 @@ export function decorateReviewOverviewGroups(
         /** settings.appearance.unassignedAreaColor */
         unassignedAreaColor: string | undefined;
         text: ReviewOverviewText;
+        scope?: ReviewOverviewScope;
     },
 ): ReviewAreaSection[] {
-    const { areaById, text } = options;
+    const { areaById, text, scope = 'all' } = options;
     const unassignedAreaColor = options.unassignedAreaColor || DEFAULT_AREA_COLOR;
     return groups.map((group) => {
         const area = group.areaId ? areaById.get(group.areaId) : undefined;
@@ -147,7 +156,7 @@ export function decorateReviewOverviewGroups(
         const summary = [
             group.projectCount > 0 ? text.countProject(group.projectCount) : null,
             taskSummary,
-            group.needsActionCount > 0 ? `${group.needsActionCount} ${text.needsActionSummary}` : null,
+            scope === 'all' && group.needsActionCount > 0 ? `${group.needsActionCount} ${text.needsActionSummary}` : null,
         ].filter(Boolean).join(' · ');
         return {
             id,
@@ -165,7 +174,9 @@ export function decorateReviewOverviewGroups(
                 const groupTitle = projectGroup.project?.title || text.singleActions;
                 const state = projectGroup.nextActionState;
                 const stateLabel = state === 'next' ? text.hasNextAction : state === 'waiting' ? text.waiting : text.needsAction;
-                const projectSummary = isSingleActions
+                const projectSummary = scope === 'due'
+                    ? text.countTask(projectGroup.tasks.length)
+                    : isSingleActions
                     ? text.countTask(projectGroup.tasks.length)
                     : `${projectGroup.tasks.length} ${projectGroup.tasks.length === 1 ? text.activeTask : text.activeTasks} · ${stateLabel}`;
                 return {
@@ -179,8 +190,8 @@ export function decorateReviewOverviewGroups(
                     summaryText: isSingleActions ? `${projectSummary} · ${text.singleActions}` : projectSummary,
                     accessibilityLabel: `${groupTitle}, ${projectSummary}`,
                     // Delegated (waiting) stays amber; truly stuck turns red (#1086).
-                    statusTone: isSingleActions ? null : state === 'next' ? 'success' : state === 'waiting' ? 'warning' : 'danger',
-                    summaryTone: !isSingleActions && state === 'none' ? 'warning' : 'secondary',
+                    statusTone: scope === 'due' || isSingleActions ? null : state === 'next' ? 'success' : state === 'waiting' ? 'warning' : 'danger',
+                    summaryTone: scope === 'all' && !isSingleActions && state === 'none' ? 'warning' : 'secondary',
                 };
             }),
         };

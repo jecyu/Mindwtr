@@ -8,7 +8,7 @@
  */
 import { requireNativeModule, type NativeModule } from 'expo-modules-core';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CLOUDKIT_ATTACHMENT_RECORD_TYPE, type AppData } from '@mindwtr/core';
+import { CLOUDKIT_ATTACHMENT_RECORD_TYPE, parseCloudKitRetryAfterMs, type AppData } from '@mindwtr/core';
 import { logInfo, logWarn, logError } from './app-log';
 import { getBackgroundSafeFetchDeadline } from './background-safe-fetch';
 import { CLOUDKIT_CHANGE_TOKEN_KEY, CLOUDKIT_SEEDED_KEY, CLOUDKIT_ZONE_CREATED_KEY } from './sync-constants';
@@ -191,6 +191,16 @@ const runNativeOperation = async <T>(
         return result;
     } catch (error) {
         logCloudKitOperationTimeoutIfNeeded(operationName, startedAt, error);
+        if (!isAbortLikeError(error, signal)) {
+            const retryAfterMs = parseCloudKitRetryAfterMs(error);
+            if (retryAfterMs !== null) {
+                void logInfo('CloudKit retry interval received', {
+                    scope: 'cloudkit',
+                    force: true,
+                    extra: { releaseCheck: 'v1.3.3/cloudkit-retry-hint', operation: operationName, retryAfterMs },
+                });
+            }
+        }
         throw error;
     }
 };

@@ -189,6 +189,14 @@ const snapshotFileNameAt = (date: Date) => {
     return `data.${day}T${time.replace(/Z$/u, '').replace(/:/gu, '-')}.snapshot.json`;
 };
 
+const SNAPSHOT_SUFFIX = '.snapshot.json';
+/** The name the host wrote: core's name, or its clash name with `.1`, `.2` before the suffix (as mobile writes it). */
+const isWrittenSnapshotName = (sent: string, taken: string): boolean => {
+    if (sent === taken) return true;
+    const base = taken.slice(0, -SNAPSHOT_SUFFIX.length);
+    return sent.startsWith(`${base}.`) && /^[1-9][0-9]{0,2}\.snapshot\.json$/u.test(sent.slice(base.length + 1));
+};
+
 const isEdit = (edit: unknown): edit is QuickCaptureEdit => {
     if (!isObjectRecord(edit)) return false;
     const state = useTaskStore.getState();
@@ -455,7 +463,7 @@ export function createQuickCaptureMethods(deps: QuickCaptureDeps) {
          * the saved data, serialized as a backup, and the file name mobile gives
          * it. Write it to the host's snapshots folder (through a temporary file,
          * keeping the 5 newest, adding `.1`, `.2` before `.snapshot.json` on a
-         * name clash), then send `fileName` with the batch. Null in sandbox mode,
+         * name clash), then send the name you wrote with the batch. Null in sandbox mode,
          * where mobile takes none.
          */
         async createQuickCaptureSnapshot(): Promise<NativeHostResult<{ fileName: string; contents: string } | null>> {
@@ -533,7 +541,8 @@ export function createQuickCaptureMethods(deps: QuickCaptureDeps) {
                     rebuildParseOptions();
                     return { ok: true, value: { kind: 'saved', taskIds } };
                 }
-                if (!isSandboxMode() && (!lastSnapshot || input.snapshotFileName !== lastSnapshot.fileName
+                if (!isSandboxMode() && (!lastSnapshot || input.snapshotFileName === null
+                    || !isWrittenSnapshotName(input.snapshotFileName, lastSnapshot.fileName)
                     || state.lastDataChangeAt !== lastSnapshot.changeAt)) {
                     return fail('STALE_REVISION', 'Take the recovery snapshot (createQuickCaptureSnapshot) right before this batch');
                 }

@@ -10,8 +10,24 @@ import Animated, {
   runOnJS,
   type SharedValue,
 } from 'react-native-reanimated';
-import { shallow, sortTasksByBoardOrder, useTaskStore, createTaskFilterPredicate, hasActiveFilterCriteria, getUsedTaskTokens, normalizeBulkTaskTokenInput, resolveFeatureFlags, tFallback, projectMatchesAreaFilterSelection, SAVED_FILTER_NO_PROJECT_ID } from '@mindwtr/core';
-import type { Task, TaskStatus, FilterCriteria, TaskMetadataFilterVisibility } from '@mindwtr/core';
+import {
+  BOARD_CARD_SWIPES,
+  BOARD_COLUMNS,
+  BOARD_FILTER_VISIBILITY,
+  buildBoardColumns,
+  getBoardCard,
+  getBoardCardText,
+  getBoardFilterOptions,
+  getBoardFilterSummary,
+  getBoardProjectBadges,
+  planBoardDrop,
+  selectBoardTasks,
+  shallow,
+  toggleBoardDuePreset,
+  useTaskStore,
+  resolveFeatureFlags,
+} from '@mindwtr/core';
+import type { BoardCard, BoardDuePreset, BoardProjectBadge, Task, FilterCriteria } from '@mindwtr/core';
 import { useToast } from '@/contexts/toast-context';
 import { useVisibleTaskContext } from '@/hooks/use-visible-tasks';
 import { useThemeColors, type ThemeColors } from '@/hooks/use-theme-colors';
@@ -21,38 +37,9 @@ import { useLanguage } from '../../contexts/language-context';
 import { TaskEditModal } from '../task-edit-modal';
 import { FilterChip, TaskFilterSheet, type TaskFilterSheetActiveChip } from '../task-filter-sheet';
 import { useTaskFilterSelections } from '@/hooks/use-task-filter-selections';
-import { BOARD_DUE_DATE_PRESETS, countActiveBoardFilters, resolveBoardColumnReorder, resolveBoardDropColumnIndex, resolveBoardDropColumnIndexFromY, toggleCriteriaDuePreset, type BoardDuePreset } from './board-view.utils';
+import { resolveBoardColumnDropTarget, resolveBoardDropColumnIndex, resolveBoardDropColumnIndexFromY } from './board-view.utils';
 
-const COLUMNS: { id: TaskStatus; label: string; labelKey: string }[] = [
-  { id: 'inbox', label: 'Inbox', labelKey: 'status.inbox' },
-  { id: 'next', label: 'Next', labelKey: 'status.next' },
-  { id: 'waiting', label: 'Waiting', labelKey: 'status.waiting' },
-  { id: 'someday', label: 'Someday', labelKey: 'status.someday' },
-  { id: 'done', label: 'Done', labelKey: 'status.done' },
-];
-const BOARD_FILTER_VISIBILITY: TaskMetadataFilterVisibility = {
-  energyLevel: false,
-  location: false,
-  priority: false,
-  timeEstimate: false,
-};
-
-function resolveColumnColor(status: TaskStatus, tc: ThemeColors): string {
-  switch (status) {
-    case 'inbox':
-      return tc.text;
-    case 'next':
-      return tc.tint;
-    case 'waiting':
-      return tc.warning;
-    case 'someday':
-      return tc.secondaryText;
-    case 'done':
-      return tc.success;
-    default:
-      return tc.secondaryText;
-  }
-}
+type SwipeSide = keyof typeof BOARD_CARD_SWIPES;
 
 type RelativeTaskLayout = {
   columnIndex: number;
@@ -80,15 +67,12 @@ interface DraggableTaskProps {
   onDragMove: (absoluteY: number, translationY: number) => void;
   onDragEnd: () => void;
   onTap: (task: Task) => void;
-  onDelete: (taskId: string) => void;
-  onDuplicate: (task: Task) => void;
+  onSwipe: (task: Task, side: SwipeSide) => void;
   deleteLabel: string;
   duplicateLabel: string;
   dragScrollCompensation: SharedValue<number>;
   isDragActive: boolean;
-  projectTitle?: string;
-  projectColor?: string;
-  timeEstimatesEnabled: boolean;
+  card: BoardCard;
   onLayout: (taskId: string, columnIndex: number, y: number, height: number) => void;
 }
 
@@ -101,15 +85,12 @@ function DraggableTask({
   onDragMove,
   onDragEnd,
   onTap,
-  onDelete,
-  onDuplicate,
+  onSwipe,
   deleteLabel,
   duplicateLabel,
   dragScrollCompensation,
   isDragActive,
-  projectTitle,
-  projectColor,
-  timeEstimatesEnabled,
+  card,
   onLayout,
 }: DraggableTaskProps) {
   const translateY = useSharedValue(0);
@@ -169,17 +150,8 @@ function DraggableTask({
     opacity: isDragging.value ? 0.85 : 1,
   }));
 
-  const timeEstimateLabel = (() => {
-    if (!timeEstimatesEnabled || !task.timeEstimate) return null;
-    const estimate = String(task.timeEstimate);
-    if (estimate.endsWith('min')) return estimate.replace('min', 'm');
-    if (estimate.endsWith('hr+')) return estimate.replace('hr+', 'h+');
-    if (estimate.endsWith('hr')) return estimate.replace('hr', 'h');
-    return estimate;
-  })();
-
-  const resolvedProjectColor = projectColor || tc.secondaryText;
-  const showMetaRow = Boolean(projectTitle) || (task.tags?.length ?? 0) > 0 || (task.contexts?.length ?? 0) > 0 || Boolean(timeEstimateLabel);
+  const { projectTitle, timeEstimateLabel } = card;
+  const resolvedProjectColor = card.projectColor || tc.secondaryText;
 
   return (
     <GestureDetector gesture={composedGesture}>
@@ -199,13 +171,12 @@ function DraggableTask({
               <Text style={[styles.duplicateActionText, { color: tc.text }]}>{duplicateLabel}</Text>
             </View>
           )}
-          onSwipeableLeftOpen={() => onDuplicate(task)}
           renderRightActions={() => (
             <View style={[styles.deleteAction, { backgroundColor: tc.bg, borderColor: tc.danger }]}>
               <Text style={[styles.deleteActionText, { color: tc.text }]}>{deleteLabel}</Text>
             </View>
           )}
-          onSwipeableOpen={() => onDelete(task.id)}
+          onSwipeableOpen={(side, swipeable) => { swipeable.close(); onSwipe(task, side); }}
         >
 	          <View style={[
 	            styles.taskCard,
@@ -214,7 +185,7 @@ function DraggableTask({
 	            <Text style={[styles.taskTitle, { color: tc.text }]} numberOfLines={2}>
 	              {task.title}
 	            </Text>
-              {showMetaRow && (
+              {card.showMetaRow && (
                 <View style={styles.contextsRow}>
                   {projectTitle && (
                     <View style={[styles.projectBadge, { backgroundColor: tc.filterBg, borderColor: resolvedProjectColor }]}>
@@ -224,7 +195,7 @@ function DraggableTask({
                       </Text>
                     </View>
                   )}
-                  {(task.tags || []).slice(0, 6).map((tag, idx) => (
+                  {card.tags.map((tag, idx) => (
                     <Text
                       key={`${tag}-${idx}`}
                       style={[
@@ -235,7 +206,7 @@ function DraggableTask({
                       {tag}
                     </Text>
                   ))}
-                  {(task.contexts || []).slice(0, 6).map((ctx, idx) => (
+                  {card.contexts.map((ctx, idx) => (
                     <Text
                       key={`${ctx}-${idx}`}
                       style={[
@@ -273,15 +244,15 @@ interface ColumnProps {
   onDragMove: (absoluteY: number, translationY: number) => void;
   onDragEnd: () => void;
   onTap: (task: Task) => void;
-  onDelete: (taskId: string) => void;
-  onDuplicate: (task: Task) => void;
-  noTasksLabel: string;
+  onSwipe: (task: Task, side: SwipeSide) => void;
+  noTasksLabel: string | null;
   deleteLabel: string;
   duplicateLabel: string;
   draggingTaskId: string | null;
   dragScrollCompensation: SharedValue<number>;
-  projectById: Record<string, { title: string; color?: string }>;
+  badges: Map<string, BoardProjectBadge>;
   timeEstimatesEnabled: boolean;
+  t: (key: string) => string;
   onColumnLayout: (columnIndex: number, y: number, height: number) => void;
   onColumnContentLayout: (columnIndex: number, y: number) => void;
   onTaskLayout: (taskId: string, columnIndex: number, y: number, height: number) => void;
@@ -299,15 +270,15 @@ function Column({
   onDragMove,
   onDragEnd,
   onTap,
-  onDelete,
-  onDuplicate,
+  onSwipe,
   noTasksLabel,
   deleteLabel,
   duplicateLabel,
   draggingTaskId,
   dragScrollCompensation,
-  projectById,
+  badges,
   timeEstimatesEnabled,
+  t,
   onColumnLayout,
   onColumnContentLayout,
   onTaskLayout,
@@ -345,19 +316,16 @@ function Column({
             onDragMove={onDragMove}
             onDragEnd={onDragEnd}
             onTap={onTap}
-            onDelete={onDelete}
-            onDuplicate={onDuplicate}
+            onSwipe={onSwipe}
             deleteLabel={deleteLabel}
             duplicateLabel={duplicateLabel}
             isDragActive={draggingTaskId === task.id}
             dragScrollCompensation={dragScrollCompensation}
-            projectTitle={task.projectId ? projectById[task.projectId]?.title : undefined}
-            projectColor={task.projectId ? projectById[task.projectId]?.color : undefined}
-            timeEstimatesEnabled={timeEstimatesEnabled}
+            card={getBoardCard(task, { badges, timeEstimatesEnabled, t })}
             onLayout={onTaskLayout}
           />
         ))}
-        {tasks.length === 0 && (
+        {noTasksLabel !== null && (
           <View style={styles.emptyColumn}>
             <Text style={[styles.emptyText, { color: tc.secondaryText }]}>
               {noTasksLabel}
@@ -413,47 +381,18 @@ export function BoardView() {
   );
 
   const { areaById, resolvedAreaFilter, visibleTasks } = useVisibleTaskContext();
-  const sortedProjects = useMemo(() => (
-    projects
-      .filter((project) => !project.deletedAt)
-      .filter((project) => projectMatchesAreaFilterSelection(project, resolvedAreaFilter, areaById))
-      .sort((a, b) => a.title.localeCompare(b.title))
-  ), [projects, resolvedAreaFilter, areaById]);
-  const projectById = useMemo(() => {
-    return projects.reduce((acc, project) => {
-      const projectColor = project.areaId ? areaById.get(project.areaId)?.color : undefined;
-      acc[project.id] = { title: project.title, color: projectColor };
-      return acc;
-    }, {} as Record<string, { title: string; color?: string }>);
-  }, [projects, areaById]);
+  const badges = useMemo(() => getBoardProjectBadges(projects, areaById), [projects, areaById]);
 
   // Tasks visible after the global area filter, before the board-level filter bar.
-  const areaActiveTasks = useMemo(
-    () => visibleTasks.filter((task) => task.status !== 'reference'),
-    [visibleTasks],
-  );
+  const areaActiveTasks = useMemo(() => selectBoardTasks(visibleTasks), [visibleTasks]);
 
-  const allTokens = useMemo(
-    () => getUsedTaskTokens(areaActiveTasks, (task) => [
-      ...(task.contexts ?? []).map((token) => normalizeBulkTaskTokenInput(token, 'contexts')),
-      ...(task.tags ?? []).map((token) => normalizeBulkTaskTokenInput(token, 'tags')),
-    ]),
-    [areaActiveTasks],
-  );
-
-  const projectFilterOptions = useMemo(() => [
-    { id: SAVED_FILTER_NO_PROJECT_ID, title: t('taskEdit.noProjectOption') },
-    ...sortedProjects.map((project) => ({ id: project.id, title: project.title })),
-  ], [sortedProjects, t]);
+  const filterOptions = useMemo(() => getBoardFilterOptions({
+    tasks: areaActiveTasks, projects, areaFilter: resolvedAreaFilter, areaById, badges, t,
+  }), [areaActiveTasks, projects, resolvedAreaFilter, areaById, badges, t]);
   const projectFilterOptionIds = useMemo(
-    () => projectFilterOptions.map((project) => project.id),
-    [projectFilterOptions],
+    () => filterOptions.projects.map((project) => project.id),
+    [filterOptions.projects],
   );
-  const getProjectFilterLabel = useCallback((projectId: string) => (
-    projectId === SAVED_FILTER_NO_PROJECT_ID
-      ? t('taskEdit.noProjectOption')
-      : projectById[projectId]?.title
-  ), [projectById, t]);
   const clearBoardFilterExtras = useCallback(() => {
     setBoardCriteria({});
     setDueFilterExpanded(false);
@@ -465,9 +404,9 @@ export function BoardView() {
     view: 'focus',
     t,
     visibility: BOARD_FILTER_VISIBILITY,
-    retainTokens: allTokens,
+    retainTokens: filterOptions.tokens,
     retainProjects: projectFilterOptionIds,
-    getProjectLabel: getProjectFilterLabel,
+    getProjectLabel: filterOptions.getProjectLabel,
     onClear: clearBoardFilterExtras,
   });
   const {
@@ -496,67 +435,33 @@ export function BoardView() {
     ...selections.criteria,
     ...boardCriteria,
   }), [boardCriteria, selections.criteria]);
-  const activeDuePreset = useMemo<BoardDuePreset | null>(() => {
-    const dueDateRange = boardCriteria.dueDateRange;
-    if (!dueDateRange || !('preset' in dueDateRange)) return null;
-    return BOARD_DUE_DATE_PRESETS.includes(dueDateRange.preset as BoardDuePreset)
-      ? dueDateRange.preset as BoardDuePreset
-      : null;
-  }, [boardCriteria.dueDateRange]);
-  const additionalActiveChips = useMemo<TaskFilterSheetActiveChip[]>(() => (
-    [
-      ...(searchQuery.trim()
-        ? [{
-            id: 'board-search',
-            label: `${t('common.search')}: ${searchQuery.trim()}`,
-            onPress: () => setSearchQuery(''),
-          }]
-        : []),
-      ...(activeDuePreset
-        ? [{
-          id: 'board-due-date',
-          label: `${tFallback(t, 'search.due.label', 'Due date')}: ${t(`filters.datePreset.${activeDuePreset}`)}`,
-          onPress: () => {
-            setBoardCriteria((current) => {
-              const next = { ...current };
-              delete next.dueDateRange;
-              return next;
-            });
-            setDueFilterExpanded(false);
-          },
-        }]
-        : []),
-    ]
-  ), [activeDuePreset, searchQuery, t]);
+  const summary = useMemo(() => getBoardFilterSummary({ criteria, searchQuery, t }), [criteria, searchQuery, t]);
+  const activeDuePreset = summary.duePreset;
+  const additionalActiveChips = useMemo<TaskFilterSheetActiveChip[]>(() => summary.chips.map((chip) => ({
+    ...chip,
+    onPress: chip.id === 'board-search'
+      ? () => setSearchQuery('')
+      : () => {
+        setBoardCriteria((current) => {
+          const next = { ...current };
+          delete next.dueDateRange;
+          return next;
+        });
+        setDueFilterExpanded(false);
+      },
+  })), [summary.chips]);
 
-  const filtersActive = hasActiveFilterCriteria(criteria);
-  const searchActive = searchQuery.trim().length > 0;
-  const boardFiltersActive = filtersActive || searchActive;
-  const activeFilterCount = countActiveBoardFilters(criteria);
-  const boardActiveFilterCount = activeFilterCount + (searchActive ? 1 : 0);
-
-  const criteriaFilteredTasks = useMemo(() => {
-    const now = new Date();
-    return filtersActive
-      ? areaActiveTasks.filter(createTaskFilterPredicate(criteria, { projects, now }))
-      : areaActiveTasks;
-  }, [areaActiveTasks, criteria, filtersActive, projects]);
-  const normalizedSearch = useMemo(() => searchQuery.trim().toLowerCase(), [searchQuery]);
+  const searchActive = summary.searchActive;
+  const boardFiltersActive = summary.active;
 
   // Apply the board filter bar (search / contexts / tags / dates / projects) and group by status.
-  const tasksByStatus = useMemo(() => {
-    const visibleTasks = normalizedSearch
-      ? criteriaFilteredTasks.filter((task) => task.title.toLowerCase().includes(normalizedSearch))
-      : criteriaFilteredTasks;
-    const grouped: Record<string, Task[]> = {};
-    COLUMNS.forEach(col => {
-      grouped[col.id] = sortTasksByBoardOrder(visibleTasks.filter(t => t.status === col.id));
-    });
-    return grouped;
-  }, [criteriaFilteredTasks, normalizedSearch]);
+  const columns = useMemo(() => buildBoardColumns({
+    tasks: areaActiveTasks, criteria, searchQuery, projects, now: new Date(), t,
+  }), [areaActiveTasks, criteria, searchQuery, projects, t]);
+  const cardText = useMemo(() => getBoardCardText(t), [t]);
 
   const handleToggleDuePreset = useCallback((preset: BoardDuePreset) => {
-    setBoardCriteria((prev) => toggleCriteriaDuePreset(prev, preset));
+    setBoardCriteria((prev) => toggleBoardDuePreset(prev, preset));
     setDueFilterExpanded(false);
   }, []);
   const clearFilters = selections.clear;
@@ -576,7 +481,7 @@ export function BoardView() {
   }, []);
 
   const getColumnBounds = useCallback(() => {
-    const bounds = COLUMNS.map((_, index) => {
+    const bounds = BOARD_COLUMNS.map((_, index) => {
       const layout = columnLayoutsRef.current[index];
       if (!layout) return null;
       return {
@@ -604,7 +509,7 @@ export function BoardView() {
     const effectiveTranslationY = translationYDelta + dragScrollCompensationRef.current;
     const currentTask = tasks.find((item) => item.id === taskId);
     const currentStatus = currentTask?.status;
-    const currentColumnIndex = COLUMNS.findIndex((column) => column.id === currentStatus);
+    const currentColumnIndex = BOARD_COLUMNS.findIndex((column) => column.status === currentStatus);
     if (currentColumnIndex < 0) return;
 
     let newColumnIndex = currentColumnIndex;
@@ -623,22 +528,24 @@ export function BoardView() {
         newColumnIndex = resolveBoardDropColumnIndex({
           translationX: effectiveTranslationY,
           currentColumnIndex,
-          columnCount: COLUMNS.length,
+          columnCount: BOARD_COLUMNS.length,
         });
       }
     } else {
       newColumnIndex = resolveBoardDropColumnIndex({
         translationX: effectiveTranslationY,
         currentColumnIndex,
-        columnCount: COLUMNS.length,
+        columnCount: BOARD_COLUMNS.length,
       });
     }
 
-    if (newColumnIndex < 0 || newColumnIndex >= COLUMNS.length) return;
+    if (newColumnIndex < 0 || newColumnIndex >= BOARD_COLUMNS.length || !currentTask) return;
 
+    // Into another column the drop has no position; inside its own column, where it lands.
+    let target: { columnIds: string[]; afterId?: string | null } = { columnIds: [] };
     if (newColumnIndex === currentColumnIndex) {
-      if (dragCenterY === null || !currentStatus) return;
-      const columnTaskLayouts = (tasksByStatus[currentStatus] || [])
+      if (dragCenterY === null) return;
+      const columnTaskLayouts = columns[currentColumnIndex].tasks
         .map((columnTask) => {
           const top = getTaskTopInContent(columnTask.id);
           const height = taskLayoutsRef.current[columnTask.id]?.height;
@@ -646,20 +553,19 @@ export function BoardView() {
           return { id: columnTask.id, top, height };
         })
         .filter((item): item is { id: string; top: number; height: number } => item !== null);
-      const orderedIds = resolveBoardColumnReorder({
+      const measured = resolveBoardColumnDropTarget({
         taskId,
         dragCenterY,
         columnTasks: columnTaskLayouts,
       });
-      if (orderedIds) {
-        void reorderBoardTasks(currentStatus, orderedIds);
-      }
-      return;
+      if (!measured) return;
+      target = measured;
     }
 
-    const newStatus = COLUMNS[newColumnIndex].id;
-    updateTask(taskId, { status: newStatus });
-  }, [getColumnBounds, getTaskTopInContent, reorderBoardTasks, tasks, tasksByStatus, updateTask]);
+    const plan = planBoardDrop({ task: currentTask, status: BOARD_COLUMNS[newColumnIndex].status, ...target });
+    if (plan?.kind === 'reorder') void reorderBoardTasks(plan.status, plan.orderedIds, plan.taskId);
+    else if (plan?.kind === 'status') updateTask(plan.taskId, { status: plan.status });
+  }, [columns, getColumnBounds, getTaskTopInContent, reorderBoardTasks, tasks, updateTask]);
 
   const handleTap = useCallback((task: Task) => {
     setEditingTask(task);
@@ -678,8 +584,8 @@ export function BoardView() {
       const result = await duplicateTask(task.id, false);
       if (!result.success || !result.id) {
         showToast({
-          title: tFallback(t, 'common.error', 'Error'),
-          message: result.error || t('task.duplicateFailed'),
+          title: cardText.errorTitle,
+          message: result.error || cardText.duplicateFailed,
           tone: 'error',
         });
         return;
@@ -687,12 +593,19 @@ export function BoardView() {
       openTaskScreen(result.id, task.projectId, 'task');
     } catch {
       showToast({
-        title: tFallback(t, 'common.error', 'Error'),
-        message: t('task.duplicateFailed'),
+        title: cardText.errorTitle,
+        message: cardText.duplicateFailed,
         tone: 'error',
       });
     }
-  }, [duplicateTask, showToast, t]);
+  }, [cardText, duplicateTask, showToast]);
+
+  const handleSwipe = useCallback((task: Task, side: SwipeSide) => {
+    for (const action of BOARD_CARD_SWIPES[side].actions) {
+      if (action === 'duplicate') void handleDuplicate(task);
+      else handleDelete(task.id);
+    }
+  }, [handleDelete, handleDuplicate]);
 
   const stopAutoScroll = useCallback(() => {
     autoScrollDirectionRef.current = 0;
@@ -811,9 +724,9 @@ export function BoardView() {
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder={t('common.search')}
+              placeholder={summary.searchPlaceholder}
               placeholderTextColor={tc.secondaryText}
-              accessibilityLabel={t('common.search')}
+              accessibilityLabel={summary.searchPlaceholder}
               returnKeyType="search"
               clearButtonMode="while-editing"
               style={[
@@ -830,7 +743,7 @@ export function BoardView() {
               <Pressable
                 onPress={clearSearch}
                 accessibilityRole="button"
-                accessibilityLabel={t('filters.clear')}
+                accessibilityLabel={summary.clearLabel}
                 hitSlop={8}
                 style={[styles.searchClearButton, { backgroundColor: tc.cardBg }]}
               >
@@ -841,7 +754,7 @@ export function BoardView() {
           <View style={styles.filterActionsRow}>
             {boardFiltersActive && (
               <Pressable onPress={clearFilters} accessibilityRole="button" hitSlop={8} style={styles.filterClearButton}>
-                <Text style={[styles.filterClearText, { color: tc.tint }]}>{t('filters.clear')}</Text>
+                <Text style={[styles.filterClearText, { color: tc.tint }]}>{summary.clearLabel}</Text>
               </Pressable>
             )}
             <Pressable
@@ -858,7 +771,7 @@ export function BoardView() {
             >
               <Filter size={14} color={boardFiltersActive ? tc.onTint : tc.secondaryText} />
               <Text style={[styles.filterToggleText, { color: boardFiltersActive ? tc.onTint : tc.text }]}>
-                {t('filters.label')}{boardActiveFilterCount > 0 ? ` (${boardActiveFilterCount})` : ''}
+                {summary.filterLabel}
               </Text>
             </Pressable>
           </View>
@@ -886,13 +799,13 @@ export function BoardView() {
         }}
         scrollEventThrottle={16}
       >
-        {COLUMNS.map((col, index) => (
+        {columns.map((column, index) => (
           <Column
-            key={col.id}
+            key={column.status}
             columnIndex={index}
-            label={tFallback(t, col.labelKey, col.label)}
-            color={resolveColumnColor(col.id, tc)}
-            tasks={tasksByStatus[col.id] || []}
+            label={column.label}
+            color={tc[column.tone]}
+            tasks={column.tasks}
             tc={tc}
             isDragSourceColumn={dragSourceColumnIndex === index}
             onDrop={handleDrop}
@@ -900,15 +813,15 @@ export function BoardView() {
             onDragMove={handleDragMove}
             onDragEnd={handleDragEnd}
             onTap={handleTap}
-            onDelete={handleDelete}
-            onDuplicate={handleDuplicate}
-            noTasksLabel={t('board.noTasks')}
-            deleteLabel={t('board.delete')}
-            duplicateLabel={t('taskEdit.duplicateTask')}
+            onSwipe={handleSwipe}
+            noTasksLabel={column.empty}
+            deleteLabel={cardText.delete}
+            duplicateLabel={cardText.duplicate}
             draggingTaskId={draggingTaskId}
             dragScrollCompensation={dragScrollCompensationSv}
-            projectById={projectById}
+            badges={badges}
             timeEstimatesEnabled={timeEstimatesEnabled}
+            t={t}
             onColumnLayout={handleColumnLayout}
             onColumnContentLayout={handleColumnContentLayout}
             onTaskLayout={handleTaskLayout}
@@ -921,8 +834,8 @@ export function BoardView() {
         onClose={closeFilters}
         selections={selections}
         options={{
-          tokens: allTokens,
-          projects: projectFilterOptions,
+          tokens: filterOptions.tokens,
+          projects: filterOptions.projects,
           timeEstimates: [],
           visibility: BOARD_FILTER_VISIBILITY,
         }}
@@ -935,18 +848,16 @@ export function BoardView() {
             <Pressable
               accessibilityRole="button"
               accessibilityState={{ expanded: dueFilterExpanded }}
-              accessibilityLabel={`${tFallback(t, 'search.due.label', 'Due date')}: ${
-                activeDuePreset ? t(`filters.datePreset.${activeDuePreset}`) : tFallback(t, 'common.all', 'All')
-              }`}
+              accessibilityLabel={summary.due.accessibilityLabel}
               onPress={() => setDueFilterExpanded((expanded) => !expanded)}
               style={[styles.dueFilterDisclosure, { backgroundColor: tc.bg, borderColor: tc.border }]}
             >
               <View style={styles.dueFilterDisclosureText}>
                 <Text style={[styles.dueFilterLabel, { color: tc.text }]}>
-                  {tFallback(t, 'search.due.label', 'Due date')}
+                  {summary.due.label}
                 </Text>
                 <Text style={[styles.dueFilterSummary, { color: activeDuePreset ? tc.tint : tc.secondaryText }]}>
-                  {activeDuePreset ? t(`filters.datePreset.${activeDuePreset}`) : tFallback(t, 'common.all', 'All')}
+                  {summary.due.summary}
                 </Text>
               </View>
               <Text style={[styles.dueFilterDisclosureMark, { color: tc.secondaryText }]}>
@@ -955,11 +866,11 @@ export function BoardView() {
             </Pressable>
             {dueFilterExpanded ? (
               <View style={styles.filterChipRow}>
-                {BOARD_DUE_DATE_PRESETS.map((preset) => (
+                {summary.due.presets.map(({ preset, label, selected }) => (
                   <FilterChip
                     key={`due:${preset}`}
-                    label={t(`filters.datePreset.${preset}`)}
-                    selected={activeDuePreset === preset}
+                    label={label}
+                    selected={selected}
                     themeColors={tc}
                     onPress={() => handleToggleDuePreset(preset)}
                   />

@@ -178,6 +178,12 @@ const roundColor = (node: ReactTestInstance) => {
 };
 
 function observe(root: ReactTestInstance, seen: { alerts: number; toasts: number; writes: number; pushes: number; shares: number }): Observation {
+  const allTexts = textsIn(root);
+  const scopeTexts = [
+    harness.strings['review.scopeDue'], harness.strings['review.scopeAll'],
+    harness.strings['review.overviewHelp'], harness.strings['nav.done'],
+  ];
+  expect(allTexts.slice(0, scopeTexts.length)).toEqual(scopeTexts);
   const headers = hostsOf(root, 'Pressable')
     .filter((node) => node.props.accessibilityState && 'expanded' in node.props.accessibilityState)
     .map((node) => [
@@ -191,7 +197,8 @@ function observe(root: ReactTestInstance, seen: { alerts: number; toasts: number
   const picker = hostsOf(root, 'TokenPickerModal')[0]?.props;
   const organize = hostsOf(root, 'TaskListBulkOrganizeModal')[0]?.props;
   const observation: Observation = {
-    texts: textsIn(root),
+    // Legacy parity excludes the asserted scope bar and due-only controls.
+    texts: allTexts.slice(scopeTexts.length).filter((value) => value !== harness.strings['review.markReviewed'] && value !== harness.strings['review.advanceWeek']),
     headers,
     expansion: expansion ? [
       expansion.props.accessibilityLabel,
@@ -199,7 +206,9 @@ function observe(root: ReactTestInstance, seen: { alerts: number; toasts: number
       visibleNodes(expansion).map((node) => String(node.type)).find((type) => type.startsWith('Icon:')) ?? null,
     ] : null,
     rows: hostsOf(root, 'SwipeableTaskItem').map((row) => [row.props.task.id, row.props.selectionMode === true, row.props.isMultiSelected === true]),
-    disabled: hostsOf(root, 'TouchableOpacity').filter((node) => node.props.disabled !== undefined)
+    disabled: hostsOf(root, 'TouchableOpacity').filter((node) => node.props.disabled !== undefined
+      && !String(node.props.accessibilityLabel ?? '').startsWith(`${harness.strings['review.markReviewed']}: `)
+      && !String(node.props.accessibilityLabel ?? '').startsWith(`${harness.strings['review.advanceWeek']}: `))
       .map((node) => [node.props.accessibilityLabel ?? textsIn(node).join(''), node.props.disabled === true]),
     editor: editor?.visible ? [editor.task?.id ?? null, editor.defaultTab] : null,
     removeTags: picker?.visible ? [picker.title, picker.tokens] : null,
@@ -285,6 +294,9 @@ async function runScenario(scenario: Scenario) {
   await seedStore(settings, scenarioTasks(scenario));
   let renderer!: ReactTestRenderer;
   await act(async () => { renderer = create(<ReviewScreen />); });
+  const allScope = findPressable(renderer.root, harness.strings['review.scopeAll']);
+  if (!allScope?.props.onPress) throw new Error('Missing All open tasks scope');
+  await act(async () => { await allScope.props.onPress(); });
   const seen = { alerts: 0, toasts: 0, writes: 0, pushes: 0, shares: 0 };
   const observations = [observe(renderer.root, seen)];
   for (const action of scenario.actions) {

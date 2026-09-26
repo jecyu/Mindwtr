@@ -28,7 +28,11 @@ import {
     cloudHeadJson,
     cloudPutJson,
     parseQuickAdd,
+    flushPendingSave,
+    resetForTests,
+    setStorageAdapter,
     TASK_SORT_BY_VALUES,
+    useTaskStore,
     type AppData,
     type Task,
 } from '@mindwtr/core';
@@ -4628,6 +4632,62 @@ describe('cloud server api', () => {
         expect(Number.isFinite(followUp?.order)).toBe(true);
         expect(followUp?.orderNum).toBe(followUp?.order);
         expect(followUp?.pushCount).toBe(0);
+    });
+
+    test('saves the store stamp shape through both recurring completion routes', async () => {
+        for (const route of ['complete', 'patch'] as const) {
+            const createResponse = await fetch(`${baseUrl}/v1/tasks`, {
+                method: 'POST',
+                headers: { ...authHeaders, 'content-type': 'application/json' },
+                body: JSON.stringify({
+                    title: `Canonical ${route}`,
+                    props: {
+                        status: 'next',
+                        dueDate: '2026-09-20',
+                        recurrence: { rule: 'daily', strategy: 'strict', seriesId: `series-${route}` },
+                    },
+                }),
+            });
+            expect(createResponse.status).toBe(201);
+            const source = (await createResponse.json()).task as Task;
+
+            let storeSnapshot: AppData | undefined;
+            resetForTests();
+            useTaskStore.setState({
+                tasks: [], projects: [], sections: [], areas: [], people: [], settings: {},
+                isLoading: false, error: null,
+                _allTasks: [], _allProjects: [], _allSections: [], _allAreas: [], _allPeople: [],
+                _tasksById: new Map(), _projectsById: new Map(), _sectionsById: new Map(),
+                _areasById: new Map(), _peopleById: new Map(),
+                lastDataChangeAt: 0,
+            });
+            setStorageAdapter({
+                getData: async () => ({ tasks: [source], projects: [], sections: [], areas: [], settings: {} }),
+                saveData: async (data) => { storeSnapshot = structuredClone(data); },
+            });
+            await useTaskStore.getState().fetchData({ silent: true });
+            await useTaskStore.getState().updateTask(source.id, { status: 'done' });
+            await flushPendingSave();
+            const storeFollowUp = storeSnapshot?.tasks.find((task) => task.id !== source.id);
+            expect(storeFollowUp).toBeTruthy();
+
+            const completionResponse = route === 'complete'
+                ? await fetch(`${baseUrl}/v1/tasks/${source.id}/complete`, { method: 'POST', headers: authHeaders })
+                : await fetch(`${baseUrl}/v1/tasks/${source.id}`, {
+                    method: 'PATCH',
+                    headers: { ...authHeaders, 'content-type': 'application/json' },
+                    body: JSON.stringify({ status: 'done' }),
+                });
+            expect(completionResponse.status).toBe(200);
+            const stored = await (await fetch(`${baseUrl}/v1/data`, { headers: authHeaders })).json() as AppData;
+            const cloudFollowUp = stored.tasks.find((task) => task.id !== source.id && task.title === source.title);
+            expect(cloudFollowUp).toBeTruthy();
+            const cloudRule = typeof cloudFollowUp?.recurrence === 'object' ? cloudFollowUp.recurrence.rrule : undefined;
+            const storeRule = typeof storeFollowUp?.recurrence === 'object' ? storeFollowUp.recurrence.rrule : undefined;
+            expect(cloudRule).toBe(storeRule);
+            expect(cloudFollowUp?.suppressMindwtrReminders).toBe(storeFollowUp?.suppressMindwtrReminders);
+        }
+        resetForTests();
     });
 
     test('reserves a project order for a REST-created task', async () => {

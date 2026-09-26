@@ -134,6 +134,16 @@ extension MindwtrMacWidgetPalette {
         accent: "#2563EB",
         onAccent: "#FFFFFF"
     )
+
+    static let oled = MindwtrMacWidgetPalette(
+        background: "#000000",
+        card: "#000000",
+        border: "#1F2937",
+        text: "#E5E7EB",
+        mutedText: "#9CA3AF",
+        accent: "#4F9DFF",
+        onAccent: "#000000"
+    )
 }
 
 struct MindwtrMacTasksWidgetPayload: Decodable {
@@ -304,13 +314,16 @@ private struct MindwtrMacTasksWidgetView: View {
 
     // The payload's palette is already the resolved light/dark colors (built
     // by apps/desktop/src/lib/macos-widget-data.ts); Swift's job is to decode
-    // it, not re-classify it. Only 'system' (or a blank/legacy payload) needs
-    // Swift's own colorScheme, since the TS side can't observe it ahead of render.
+    // it, not re-classify it. Adaptive modes need Swift's own colorScheme
+    // because the TS side can't observe a later system change ahead of render.
     private func resolvePalette(_ payload: MindwtrMacTasksWidgetPayload) -> MindwtrMacWidgetPalette {
         let mode = (payload.themeMode ?? "system")
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
 
+        if mode == "system-oled" {
+            return colorScheme == .dark ? .oled : .light
+        }
         if mode.isEmpty || mode == "system" {
             return colorScheme == .dark ? .dark : .light
         }

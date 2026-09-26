@@ -18,13 +18,13 @@ describe('KeybindingHelpModal', () => {
 
     it('shows complete vim keybinding help entries', () => {
         const { getByText, queryByText } = renderModal('vim');
+        const primary = /mac/i.test(navigator.platform) ? 'Cmd' : 'Ctrl';
 
-        expect(getByText('Ctrl+, / Cmd+,')).toBeInTheDocument();
-        expect(getByText('Ctrl+Alt+S / Cmd+Option+S')).toBeInTheDocument();
-        expect(getByText('Ctrl-b / Cmd-b')).toBeInTheDocument();
-        expect(getByText('Ctrl+\\ / Cmd+\\')).toBeInTheDocument();
-        expect(getByText('Ctrl+Shift+D / Cmd+Shift+D')).toBeInTheDocument();
-        expect(getByText('Ctrl+Shift+C / Cmd+Shift+C')).toBeInTheDocument();
+        expect(getByText(`${primary}+,`)).toBeInTheDocument();
+        expect(getByText(primary === 'Cmd' ? 'Cmd+Option+S' : 'Ctrl+Alt+S')).toBeInTheDocument();
+        expect(getByText(`${primary}+B / ${primary}+\\`)).toBeInTheDocument();
+        expect(getByText(`${primary}+Shift+D`)).toBeInTheDocument();
+        expect(getByText(`${primary}+Shift+C`)).toBeInTheDocument();
         expect(getByText('F11')).toBeInTheDocument();
         expect(getByText('a')).toBeInTheDocument();
         expect(getByText('Global quick add')).toBeInTheDocument();
@@ -39,17 +39,18 @@ describe('KeybindingHelpModal', () => {
 
     it('shows complete emacs keybinding help entries', () => {
         const { getByText, queryByText } = renderModal('emacs');
+        const primary = /mac/i.test(navigator.platform) ? 'Cmd' : 'Ctrl';
 
-        expect(getByText('Ctrl+, / Cmd+,')).toBeInTheDocument();
-        expect(getByText('Ctrl+Alt+S / Cmd+Option+S')).toBeInTheDocument();
-        expect(getByText('Ctrl-h / Ctrl-?')).toBeInTheDocument();
+        expect(getByText(`${primary}+,`)).toBeInTheDocument();
+        expect(getByText(primary === 'Cmd' ? 'Cmd+Option+S' : 'Ctrl+Alt+S')).toBeInTheDocument();
+        expect(getByText('Ctrl+H / Ctrl+?')).toBeInTheDocument();
         expect(getByText('a')).toBeInTheDocument();
         expect(getByText('Global quick add')).toBeInTheDocument();
         expect(getByText('In-app quick add')).toBeInTheDocument();
-        expect(getByText('Alt-i')).toBeInTheDocument();
-        expect(getByText('Alt-A')).toBeInTheDocument();
-        expect(getByText('Alt-T')).toBeInTheDocument();
-        expect(getByText('Ctrl-n / Ctrl-p / ↑ / ↓')).toBeInTheDocument();
+        expect(getByText('Alt+I')).toBeInTheDocument();
+        expect(getByText('Alt+Shift+A')).toBeInTheDocument();
+        expect(getByText('Alt+Shift+T')).toBeInTheDocument();
+        expect(getByText('Ctrl+N / Ctrl+P / ↑ / ↓')).toBeInTheDocument();
         expect(getByText('F11')).toBeInTheDocument();
         expect(queryByText('gi')).not.toBeInTheDocument();
     });

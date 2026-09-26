@@ -105,7 +105,7 @@ class QuickCaptureActivity : AppCompatActivity() {
         false
       }
     }
-    payload.palette?.takeUnless { payload.usesSystemColors }?.let { applyPalette(it, title, cancel) }
+    payload.resolvedPalette(this)?.let { applyPalette(it, title, cancel) }
     onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
       override fun handleOnBackPressed() {
         audioSession.cancelAudioOrClose()

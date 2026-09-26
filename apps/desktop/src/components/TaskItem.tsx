@@ -71,6 +71,8 @@ import { useTaskItemStoreState, useTaskItemUiState } from './Task/useTaskItemSto
 import type { TaskInputAcceptedSuggestion } from './Task/TaskInput';
 import { TASK_ROW_ACTION_EVENT, type TaskRowAction } from '../lib/task-row-actions';
 
+const IS_MAC_PLATFORM = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform);
+
 interface TaskItemProps {
     task: Task;
     project?: Project;
@@ -1653,10 +1655,22 @@ export const TaskItem = memo(function TaskItem({
                 onDragStart={handleCalendarDragStart}
                 onClickCapture={onSelect ? (event) => {
                     if (!event.currentTarget.contains(event.target as Node)) return;
+                    if (onToggleSelect && !interactionDisabled && !event.altKey
+                        && (event.shiftKey || (IS_MAC_PLATFORM ? event.metaKey : event.ctrlKey))) return;
                     onSelect?.();
                 } : undefined}
+                onClick={(event) => {
+                    if (!onToggleSelect || interactionDisabled || event.detail === 0 || event.detail >= 2
+                        || event.altKey || !(event.shiftKey || (IS_MAC_PLATFORM ? event.metaKey : event.ctrlKey))) return;
+                    if (event.target instanceof Element && event.target.closest('button, a, input, select, textarea, [role="button"], [contenteditable], [data-task-row-ignore-double-click]')) return;
+                    event.preventDefault();
+                    onToggleSelect({ range: event.shiftKey });
+                }}
                 onDoubleClick={(event) => {
-                    if (!enableDoubleClickEdit || selectionMode || effectiveReadOnly || isEditing) return;
+                    if (!enableDoubleClickEdit || selectionMode || effectiveReadOnly || isEditing
+                        || (onToggleSelect && !event.altKey
+                            && (event.shiftKey || (IS_MAC_PLATFORM ? event.metaKey : event.ctrlKey)))) return;
+                    if (event.target instanceof Element && event.target.closest('button, a, input, select, textarea, [role="button"], [contenteditable], [data-task-row-ignore-double-click]')) return;
                     event.stopPropagation();
                     startEditing();
                 }}

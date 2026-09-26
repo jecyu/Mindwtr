@@ -40,6 +40,7 @@ export interface TaskListScope {
     renameSelected?: () => void;
     deleteSelected: () => void;
     setStatusSelected?: (status: TaskStatus) => void;
+    copySelected?: (includeDescription: boolean) => void;
     focusAddInput?: () => boolean;
     // Move DOM focus onto the currently selected task's title and render its
     // highlight, so entering the list from the sidebar (ArrowRight / `l`)
@@ -95,6 +96,12 @@ function isEditableTarget(target: EventTarget | null): boolean {
 // background Focus list from inside search (same class as the #848 menu fix).
 function hasModalDialogOpen(): boolean {
     return document.querySelector('[role="dialog"][aria-modal="true"]') !== null;
+}
+
+// Dropdown panels are mounted only while open. Their trigger can retain focus,
+// so target.closest() alone cannot protect the copy chord.
+function hasOpenPopup(): boolean {
+    return document.querySelector('[role="menu"], [role="listbox"]') !== null;
 }
 
 // Enter must keep activating whatever control actually has focus (buttons,
@@ -352,12 +359,32 @@ export function KeybindingProvider({
     }, [updateSettings]);
 
     const registerTaskListScope = useCallback((scope: TaskListScope | null) => {
+        if (pendingRef.current.key === 'y') pendingRef.current.key = null;
         scopeRef.current = scope;
     }, []);
 
     const registerProjectListScope = useCallback((scope: ProjectListScope | null) => {
+        if (pendingRef.current.key === 'y') pendingRef.current.key = null;
         projectScopeRef.current = scope;
     }, []);
+
+    useEffect(() => {
+        const clearCopyChord = () => {
+            if (pendingRef.current.key === 'y') pendingRef.current.key = null;
+        };
+        window.addEventListener('pointerdown', clearCopyChord);
+        window.addEventListener('focusin', clearCopyChord);
+        window.addEventListener('blur', clearCopyChord);
+        return () => {
+            window.removeEventListener('pointerdown', clearCopyChord);
+            window.removeEventListener('focusin', clearCopyChord);
+            window.removeEventListener('blur', clearCopyChord);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (pendingRef.current.key === 'y') pendingRef.current.key = null;
+    }, [currentView, style]);
 
     // Every task list decision — which task is selected, what a key does to it —
     // belongs to a registered TaskListScope built from the view's own ordered
@@ -529,6 +556,10 @@ export function KeybindingProvider({
                     if (!projectListOwnsFocus && e.key === 'd') {
                         scope?.deleteSelected();
                     }
+                } else if (pending === 'y') {
+                    if (!projectListOwnsFocus && !e.repeat && (e.key === 'y' || e.key === 'i')) {
+                        scope?.copySelected?.(e.key === 'i');
+                    }
                 }
                 pendingRef.current.key = null;
                 return;
@@ -595,6 +626,12 @@ export function KeybindingProvider({
                     e.preventDefault();
                     if (e.key !== 'd' || !projectListOwnsFocus) {
                         pendingRef.current = { key: e.key, timestamp: now };
+                    }
+                    break;
+                case 'y':
+                    if (!projectListOwnsFocus && scope && !hasOpenPopup()) {
+                        e.preventDefault();
+                        if (!e.repeat) pendingRef.current = { key: 'y', timestamp: now };
                     }
                     break;
                 default:
@@ -816,6 +853,12 @@ export function KeybindingProvider({
         };
 
         const handleKeyDown = (e: KeyboardEvent) => {
+            if (pendingRef.current.key === 'y' && (style !== 'vim' || e.key === 'F11' || e.metaKey || e.ctrlKey || e.altKey
+                || CHORD_MODIFIER_KEYS.has(e.key) || editingTaskIdRef.current || isEditableTarget(e.target)
+                || hasModalDialogOpen()
+                || hasOpenPopup()
+                || hasProjectNestedControlFocus(e.target)
+            )) pendingRef.current.key = null;
             const isHelpToggleShortcut = style === 'emacs'
                 ? e.ctrlKey && !e.metaKey && !e.altKey && (e.key === 'h' || e.key === '?')
                 : !e.metaKey && !e.ctrlKey && !e.altKey && e.key === '?';
@@ -856,6 +899,10 @@ export function KeybindingProvider({
             // keystrokes. In particular, dnd-kit uses Space/Arrow keys and
             // must not also move or mutate a stale task selection.
             if (hasProjectNestedControlFocus(e.target)) return;
+            if (pendingRef.current.key === 'y') {
+                handleVim(e);
+                return;
+            }
             if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'Comma') {
                 e.preventDefault();
                 onNavigate('settings');

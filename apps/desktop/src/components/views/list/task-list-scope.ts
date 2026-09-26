@@ -7,6 +7,7 @@ import { reportError } from '../../../lib/report-error';
 import { showUndoToast } from '../../../lib/undo-registry';
 import { undoTaskCompletion } from '../../../lib/undo-task-completion';
 import { requestTaskRowAction, type TaskRowAction } from '../../../lib/task-row-actions';
+import { useUiStore } from '../../../store/ui-store';
 
 type TranslateFn = (key: string) => string;
 
@@ -208,6 +209,17 @@ export function createTaskListScope(deps: TaskListScopeDeps): TaskListScope {
             const task = selectedTask();
             if (!task) return;
             deps.toggleSelect?.(task);
+        },
+        copySelected: async (includeDescription) => {
+            const task = selectedTask();
+            if (!task) return;
+            try {
+                const description = includeDescription && task.description?.trim() ? `\n\n${task.description}` : '';
+                await navigator.clipboard.writeText(task.title + description);
+                useUiStore.getState().showToast(translate('list.taskCopied', 'Task copied to clipboard'), 'success');
+            } catch {
+                useUiStore.getState().showToast(translate('list.taskCopyFailed', 'Could not copy task'), 'error');
+            }
         },
         toggleFocusSelected: () => requestRowAction('toggle-focus'),
         renameSelected: () => requestRowAction('rename-title'),

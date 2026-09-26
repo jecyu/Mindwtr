@@ -415,8 +415,9 @@ const resolveWidgetPalette = (
     systemColorScheme: WidgetSystemColorScheme,
 ): WidgetPalette => {
     const normalizedMode = (themeMode || '').toLowerCase();
-    if (Object.prototype.hasOwnProperty.call(THEME_PRESETS, normalizedMode)) {
-        const preset = THEME_PRESETS[normalizedMode as ConcreteThemePresetName];
+    const presetMode = normalizedMode === 'system-oled' && systemColorScheme === 'dark' ? 'oled' : normalizedMode;
+    if (Object.prototype.hasOwnProperty.call(THEME_PRESETS, presetMode)) {
+        const preset = THEME_PRESETS[presetMode as ConcreteThemePresetName];
         return {
             background: preset.cardBg,
             card: preset.taskItemBg,

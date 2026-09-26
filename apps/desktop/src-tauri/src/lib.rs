@@ -117,7 +117,7 @@ use platform::{
 use storage::{
     create_data_snapshot, delete_calendar_sync_entry, get_all_calendar_sync_entries,
     get_calendar_sync_entry, get_config_path_for_startup, get_data, get_data_path_cmd,
-    get_db_path_cmd, list_data_snapshots, query_tasks, read_data_json, restore_data_snapshot,
+    get_db_path_cmd, list_data_snapshots, query_tasks, read_data_json, read_data_snapshot,
     save_data, save_task, search_fts, upsert_calendar_sync_entry,
 };
 use sync::{
@@ -1763,7 +1763,7 @@ pub fn run() {
             save_task,
             create_data_snapshot,
             list_data_snapshots,
-            restore_data_snapshot,
+            read_data_snapshot,
             query_tasks,
             search_fts,
             get_data_path_cmd,

@@ -72,23 +72,30 @@ static char *ck_copy_json(id object) {
 // rather than guess one. A partial failure carries the real reason, including
 // that interval, on its per-item errors instead of the top-level one, so look
 // there too. Read whenever CloudKit supplies the key, not for one error code.
-static NSNumber *ck_retry_after_seconds(NSError *error) {
-    if (!error) return nil;
+static NSNumber *ck_retry_after_seconds_at_depth(NSError *error, NSUInteger depth) {
+    if (!error || depth >= 8) return nil;
     id retryAfter = [error userInfo][CKErrorRetryAfterKey];
-    if ([retryAfter isKindOfClass:[NSNumber class]]) return (NSNumber *)retryAfter;
+    NSNumber *longest = [retryAfter isKindOfClass:[NSNumber class]] ? (NSNumber *)retryAfter : nil;
+    id underlying = [error userInfo][NSUnderlyingErrorKey];
+    if ([underlying isKindOfClass:[NSError class]]) {
+        NSNumber *nested = ck_retry_after_seconds_at_depth((NSError *)underlying, depth + 1);
+        if (nested && (!longest || nested.doubleValue > longest.doubleValue)) longest = nested;
+    }
     id partial = [error userInfo][CKPartialErrorsByItemIDKey];
     if ([partial isKindOfClass:[NSDictionary class]]) {
-        NSNumber *longest = nil;
         for (id value in [(NSDictionary *)partial allValues]) {
             if (![value isKindOfClass:[NSError class]]) continue;
-            NSNumber *nested = ck_retry_after_seconds((NSError *)value);
+            NSNumber *nested = ck_retry_after_seconds_at_depth((NSError *)value, depth + 1);
             if (nested && (!longest || [nested doubleValue] > [longest doubleValue])) {
                 longest = nested;
             }
         }
-        return longest;
     }
-    return nil;
+    return longest;
+}
+
+static NSNumber *ck_retry_after_seconds(NSError *error) {
+    return ck_retry_after_seconds_at_depth(error, 0);
 }
 
 static char *ck_error_json(NSError *error) {
@@ -793,7 +800,18 @@ ck_fetch_records_by_id(NSArray<CKRecordID *> *ids, NSError **outError) {
         return nil;
     }
     if (perRecordErrors.count > 0) {
-        if (outError) *outError = perRecordErrors.firstObject;
+        if (outError) {
+            NSError *primary = perRecordErrors.firstObject;
+            NSMutableDictionary *details = [primary.userInfo mutableCopy] ?: [NSMutableDictionary dictionary];
+            for (NSError *candidate in perRecordErrors) {
+                NSNumber *delay = ck_retry_after_seconds(candidate);
+                NSNumber *longest = details[CKErrorRetryAfterKey];
+                if (delay && (!longest || delay.doubleValue > longest.doubleValue)) {
+                    details[CKErrorRetryAfterKey] = delay;
+                }
+            }
+            *outError = [NSError errorWithDomain:primary.domain code:primary.code userInfo:details];
+        }
         return nil;
     }
     return results;
@@ -895,7 +913,7 @@ char *mindwtr_cloudkit_save_attachment_asset(const char *record_name_cstr,
         NSError *fetchError = nil;
         NSDictionary *fetched = ck_fetch_records_by_id(@[recordID], &fetchError);
         if (!fetched && fetchError) {
-            return ck_copy_json(@{@"error": fetchError.localizedDescription ?: @"fetch-existing-attachment-failed"});
+            return ck_error_json(fetchError);
         }
         CKRecord *record = fetched[recordID] ?: [[CKRecord alloc] initWithRecordType:kMindwtrAttachmentRecordType recordID:recordID];
         ck_apply_attachment_metadata(metadata, record);
@@ -926,7 +944,7 @@ char *mindwtr_cloudkit_fetch_attachment_asset(const char *record_name_cstr,
                     @"errorCode": kAttachmentNotFoundErrorCode
                 });
             }
-            return ck_copy_json(@{@"error": fetchError.localizedDescription ?: @"fetch-attachment-failed"});
+            return ck_error_json(fetchError);
         }
         CKRecord *record = fetched[recordID];
         if (!record) {
@@ -1001,7 +1019,7 @@ char *mindwtr_cloudkit_save_records(const char *record_type_cstr, const char *re
             NSError *fetchError = nil;
             NSDictionary *fetched = ck_fetch_records_by_id(batch, &fetchError);
             if (!fetched) {
-                return ck_copy_json(@{@"error": fetchError.localizedDescription ?: @"fetch-existing-failed"});
+                return ck_error_json(fetchError);
             }
             [existingByID addEntriesFromDictionary:fetched];
         }

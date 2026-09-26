@@ -1843,8 +1843,8 @@ describe('native host contract', () => {
         expect(result.value.sections.map(({ key, title }) => ({ key, title }))).toEqual([
             { key: 'focus', title: "Today's Focus" },
             { key: 'schedule', title: 'Today' },
-            { key: 'reviewDue', title: 'Review Due' },
             { key: 'next', title: 'Next Actions' },
+            { key: 'reviewDue', title: 'Review Due' },
             { key: 'upcoming', title: 'Upcoming' },
         ]);
         const visibleIds = result.value.sections.flatMap(({ rows }) => rows.map(({ id }) => id));
@@ -1881,8 +1881,8 @@ describe('native host contract', () => {
         expect(chinese.value.sections.map(({ key, title }) => ({ key, title }))).toEqual([
             { key: 'focus', title: zhHans['agenda.todaysFocus'] },
             { key: 'schedule', title: zhHans['focus.schedule'] },
-            { key: 'reviewDue', title: zhHans['agenda.reviewDue'] },
             { key: 'next', title: zhHans['focus.nextActions'] },
+            { key: 'reviewDue', title: zhHans['agenda.reviewDue'] },
             { key: 'upcoming', title: zhHans['agenda.upcoming'] },
         ]);
         expect(chinese.value.revision).not.toBe(english.value.revision);

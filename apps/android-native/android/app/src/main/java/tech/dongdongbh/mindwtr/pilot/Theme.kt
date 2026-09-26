@@ -8,7 +8,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -74,7 +76,7 @@ private val PRESETS = mapOf(
 
 /** Core's theme reply (host-entry.ts `theme`): the preset, Material 3 or not, a fixed scheme or the system's, and core's hues. */
 object ThemeChoice {
-    class Reply(val preset: String, val material: Boolean, val scheme: String?,
+    class Reply(val mode: String, val preset: String, val material: Boolean, val scheme: String?,
                 val statusLight: Map<String, StatusColors>, val statusDark: Map<String, StatusColors>, val priority: Map<String, Color>)
 
     /** Set once at boot, before any list shows. Null until then, or when the read failed: RN's default look. */
@@ -89,7 +91,7 @@ object ThemeChoice {
         val status = json.getJSONObject("status")
         val priority = json.getJSONObject("priority")
         current = Reply(
-            json.getString("preset"), json.getBoolean("material"), if (json.isNull("scheme")) null else json.getString("scheme"),
+            json.getString("mode"), json.getString("preset"), json.getBoolean("material"), if (json.isNull("scheme")) null else json.getString("scheme"),
             palette(status.getJSONObject("light")), palette(status.getJSONObject("dark")),
             priority.keys().asSequence().associateWith { rgb(priority.getString(it)) },
         )
@@ -156,10 +158,20 @@ class MindwtrTheme(val colors: ThemeColors, val isDark: Boolean, val isMaterial:
     val filledText = if (!isMaterial) colors.onTint else if (isDark) rgb("#D7E2FF") else rgb("#001B3E")
     /** RN's Process Inbox button wash, `${tc.tint}29`: the tint at 0x29 alpha. */
     val processWash = colors.tint.copy(alpha = 0x29 / 255f)
+    /** RN's capture popup: the focus chip when on (`${FOCUS_STAR_COLOR}22`), a warning preview chip (`${tc.danger}1A`), and the Add another track (`${tc.tint}55`). */
+    val starWash = star.copy(alpha = 0x22 / 255f)
+    val dangerWash = colors.danger.copy(alpha = 0x1A / 255f)
+    val tintTrack = colors.tint.copy(alpha = 0x55 / 255f)
     /** RN's highlight of a project's available next action. */
     val availableBg = if (isDark) rgba(59, 130, 246, 0.08f) else rgba(59, 130, 246, 0.05f)
     val availableBorder = if (isDark) rgba(59, 130, 246, 0.34f) else rgba(59, 130, 246, 0.24f)
 }
+
+/**
+ * A disabled control's fade. Always a layer, even at full opacity: Modifier.alpha(1f) drops its layer, and on the
+ * test phone (runs 31-32) dropping it when Save became enabled left the pills' background and border undrawn.
+ */
+fun Modifier.fade(alpha: Float): Modifier = graphicsLayer { this.alpha = alpha }
 
 /** Icons.kt draws each glyph once in this color; Icon replaces it with its tint. */
 internal val ICON_MASK = rgb("#000000")
@@ -168,7 +180,8 @@ internal val ICON_MASK = rgb("#000000")
 fun mindwtrTheme(reply: ThemeChoice.Reply?, systemDark: Boolean): MindwtrTheme {
     val dark = reply?.scheme?.let { it == "dark" } ?: systemDark
     val material = reply?.material == true
-    val colors = PRESETS[reply?.preset] ?: when {
+    val preset = if (reply?.mode == "system-oled" && dark) "oled" else reply?.preset
+    val colors = PRESETS[preset] ?: when {
         material -> if (dark) M3_DARK else M3_LIGHT
         else -> if (dark) DARK else LIGHT
     }

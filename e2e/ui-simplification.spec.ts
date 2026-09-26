@@ -111,13 +111,13 @@ test('Focus keeps Sort and Group directly accessible, global density unchanged, 
     await page.getByRole('button', { name: 'Filters', exact: true }).click();
     await expect(page.locator('#agenda-filters-panel').getByRole('combobox', { name: 'Sort', exact: true })).toHaveCount(0);
     await expect(page.getByRole('combobox', { name: 'Sort', exact: true })).toBeVisible();
-    await expect(page.getByRole('combobox', { name: 'Group', exact: true })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: 'Group next actions by', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'View options', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Density/ })).toHaveCount(0);
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('mindwtr-data') ?? '{}').settings.appearance.density)).toBe('comfortable');
     await page.reload();
     await expect(page.getByRole('combobox', { name: 'Sort', exact: true })).toBeVisible();
-    await expect(page.getByRole('combobox', { name: 'Group', exact: true })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: 'Group next actions by', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /Density/ })).toHaveCount(0);
 });
 
@@ -174,6 +174,7 @@ test('Review toolbar stays compact and its status picker preserves filtering', a
     ] });
     await page.goto('/?view=review');
     await expect(page.getByRole('heading', { name: 'Review', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'All open tasks', exact: true }).click();
     const toolbar = page.locator('.review-toolbar');
     const status = toolbar.getByRole('combobox', { name: 'Status', exact: true });
     await expect(status).toContainText('Open tasks (2)');

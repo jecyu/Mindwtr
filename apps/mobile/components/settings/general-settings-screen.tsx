@@ -66,6 +66,7 @@ export function GeneralSettingsScreen() {
     const appLockEnabled = settings.security?.mobileAppLockEnabled === true;
     const baseThemeOptions: { value: typeof themeMode; label: string; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = [
         { value: 'system', label: t('settings.system'), icon: 'phone-portrait-outline' },
+        { value: 'system-oled', label: `${t('settings.system')} (${t('settings.light')} / OLED ${t('settings.dark')})`, icon: 'contrast-outline' },
         { value: 'light', label: t('settings.light'), icon: 'sunny-outline' },
         { value: 'dark', label: t('settings.dark'), icon: 'moon-outline' },
     ];

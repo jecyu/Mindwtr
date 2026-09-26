@@ -1,11 +1,7 @@
-import { countActiveFilterCriteria, type FilterCriteria } from '@mindwtr/core';
+import type { FilterCriteria } from '@mindwtr/core';
 
 export const STATUS_DRAG_STEP_PX = 72;
 export const STATUS_DRAG_TRIGGER_PX = 28;
-
-export type BoardDuePreset = 'today' | 'this_week' | 'this_month' | 'overdue' | 'no_date';
-
-export const BOARD_DUE_DATE_PRESETS: BoardDuePreset[] = ['today', 'this_week', 'this_month', 'overdue', 'no_date'];
 
 const withTokenList = (
     criteria: FilterCriteria,
@@ -30,25 +26,6 @@ export const toggleCriteriaToken = (criteria: FilterCriteria, token: string): Fi
         : [...current, token];
     return withTokenList(criteria, key, next);
 };
-
-/** Toggle a due-date preset; selecting the active preset again clears it. */
-export const toggleCriteriaDuePreset = (criteria: FilterCriteria, preset: BoardDuePreset): FilterCriteria => {
-    const isActive = criteria.dueDateRange
-        && 'preset' in criteria.dueDateRange
-        && criteria.dueDateRange.preset === preset;
-    const next = { ...criteria };
-    if (isActive) {
-        delete next.dueDateRange;
-    } else {
-        next.dueDateRange = { preset };
-    }
-    return next;
-};
-
-/** Number of active Board criteria, including exclusions and advanced criteria. */
-export const countActiveBoardFilters = (criteria: FilterCriteria): number => (
-    countActiveFilterCriteria(criteria)
-);
 
 type ResolveBoardDropColumnIndexArgs = {
     translationX: number;
@@ -140,21 +117,22 @@ type ColumnTaskLayout = {
     height: number;
 };
 
-type ResolveBoardColumnReorderArgs = {
+type ResolveBoardColumnDropTargetArgs = {
     taskId: string;
     dragCenterY: number;
     columnTasks: ColumnTaskLayout[];
 };
 
 /**
- * Resolve a same-column drop into the new top-to-bottom id order.
- * Returns null when the dragged task keeps its position or inputs are invalid.
+ * Where a same-column drop lands: the column's measured cards top to bottom and
+ * the card the dragged one lands after (null: first). Core's planBoardDrop turns
+ * it into the write. Null when inputs are invalid.
  */
-export const resolveBoardColumnReorder = ({
+export const resolveBoardColumnDropTarget = ({
     taskId,
     dragCenterY,
     columnTasks,
-}: ResolveBoardColumnReorderArgs): string[] | null => {
+}: ResolveBoardColumnDropTargetArgs): { columnIds: string[]; afterId: string | null } | null => {
     if (!Number.isFinite(dragCenterY)) return null;
 
     const sortedTasks = [...columnTasks]
@@ -170,10 +148,8 @@ export const resolveBoardColumnReorder = ({
         }
     }
 
-    const orderedIds = others.map((item) => item.id);
-    orderedIds.splice(insertIndex, 0, taskId);
-
-    const currentIds = sortedTasks.map((item) => item.id);
-    const unchanged = orderedIds.every((id, index) => id === currentIds[index]);
-    return unchanged ? null : orderedIds;
+    return {
+        columnIds: sortedTasks.map((item) => item.id),
+        afterId: insertIndex > 0 ? others[insertIndex - 1].id : null,
+    };
 };

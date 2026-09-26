@@ -16,7 +16,7 @@ import { createHash, randomInt } from 'node:crypto';
 import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { bootFailure, box, button, check, connect, draftText, evidenced, fail, field, hasText, owedRetry, readRetry, Stopped, taskRows, inboxCount } from './device.mjs';
+import { bootFailure, box, button, check, connect, draftText, evidenced, fail, field, hasText, owedRetry, readRetry, Stopped, tagged, taskRows, inboxCount } from './device.mjs';
 
 const [serial, apkArg] = process.argv.slice(2);
 if (!serial) {
@@ -71,6 +71,27 @@ const loaded = () => waitFor('the Inbox to load', (nodes) => Number.isFinite(hea
 // The capture sheet's Save (core's common.save), as in RN's quick capture.
 const tapAdd = async () => tap(button(await screen(), 'Save'));
 const busyField = (nodes) => field(nodes)?.enabled === 'false';
+/**
+ * In landscape the popup's body scrolls (test tag `capture-scroll`) with RN's footer at its end: scroll it until
+ * Save lies fully inside. In portrait the footer is fixed, and nothing scrolls.
+ */
+const scrollToSave = async (nodes) => {
+    const inside = (current) => {
+        const area = tagged(current, 'capture-scroll');
+        const save = current.find((node) => node.text === 'Save' || node['content-desc'] === 'Save');
+        if (!area) return Boolean(save);
+        const [, top, , bottom] = box(area);
+        return Boolean(save) && box(save)[1] >= top && box(save)[3] <= bottom;
+    };
+    for (let step = 0; step < 8 && !inside(nodes); step += 1) {
+        const [l, t, r, b] = box(tagged(nodes, 'capture-scroll'));
+        requireAppFront();
+        sh(`input swipe ${Math.round((l + r) / 2)} ${b - 20} ${Math.round((l + r) / 2)} ${t + 20} 400`);
+        await sleep(600);
+        nodes = await screen();
+    }
+    return inside(nodes) ? nodes : fail('Save never came into the popup\'s view');
+};
 
 // ---- database ----
 const pullDatabase = () => {
@@ -87,6 +108,14 @@ const pullDatabase = () => {
 const rowsTitled = (...names) => Number(execFileSync('sqlite3', [pullDatabase(),
     `SELECT COUNT(*) FROM tasks WHERE title IN (${names.map((name) => `'${name}'`).join(', ')}) AND deletedAt IS NULL`],
 { encoding: 'utf8' }).trim());
+/** The capture ID of the request the popup owes, from its no-backup file (the ID core gives the created task). */
+const owedCaptureId = () => {
+    const pending = JSON.parse(sh(`run-as ${PKG} cat no_backup/capture/capture`)).pending;
+    if (pending?.kind !== 'capture') fail(`no owed capture on disk: ${JSON.stringify(pending)}`);
+    return pending.id.toLowerCase();
+};
+const rowsWithId = (id) => Number(execFileSync('sqlite3', [pullDatabase(),
+    `SELECT COUNT(*) FROM tasks WHERE id = '${id}' AND deletedAt IS NULL`], { encoding: 'utf8' }).trim());
 
 const originalAccelerometer = sh('settings get system accelerometer_rotation');
 const originalRotation = sh('settings get system user_rotation');
@@ -156,7 +185,8 @@ try {
     await loaded();
     check(hasText(await reveal(titles.b), titles.b), '(b) the recreated Activity shows the saved task');
 
-    // (c1) Process death before the commit: the restored draft retries once.
+    // (c1) Process death before the commit: the capture's exact request was on disk before the call, so the
+    // relaunch sends it again by itself (the same capture ID): one row, and the popup closes.
     setProp('delay_before_ms', '8000');
     await type(titles.c1);
     await tapAdd();
@@ -169,22 +199,24 @@ try {
     await waitFor('process death', () => pid() !== processId, 10_000);
     setProp('delay_before_ms', '');
     check(rowsTitled(titles.c1) === 0, '(c1) no row before the retry (killed before commit)');
+    const c1Id = owedCaptureId();
     launch();
     nodes = await loaded();
     processId = pid();
     check(boots(processId) === 1, '(c1) one host boot after process death');
-    check(field(nodes)?.text === titles.c1, '(c1) unacknowledged draft restored');
-    await tapAdd();
-    nodes = await waitFor('retry c1', (current) => header(current) === total + 1 && draftText(current) === '');
+    nodes = await waitFor('the relaunch to send the owed capture', (current) => header(current) === total + 1 && draftText(current) === '', 30_000);
     total += 1;
-    check(rowsTitled(titles.c1) === 1, '(c1) retry stored exactly one row');
+    check(rowsTitled(titles.c1) === 1 && rowsWithId(c1Id) === 1, `(c1) the relaunch sent the owed capture once: one row, and it is the task with the capture's ID ${c1Id}`);
 
     // (c2) Process death after the commit, before the acknowledgment.
-    setProp('delay_after_ms', '8000');
+    // 20 s: the database pulls, Home and the wait below took longer than the old 8 s (run 31), so the
+    // acknowledgment arrived and freed the request before the kill.
+    setProp('delay_after_ms', '20000');
     await type(titles.c2);
     await tapAdd();
     await waitFor('commit c2', () => rowsTitled(titles.c2) === 1, 6000);
     check(busyField(await screen()), '(c2) row committed while the acknowledgment is still pending');
+    const c2Id = owedCaptureId();
     requireAppFront();
     sh('input keyevent KEYCODE_HOME');
     await waitFor('home screen', () => front().includes(`${home}/`), 10_000);
@@ -197,16 +229,16 @@ try {
     processId = pid();
     total += 1;
     check(boots(processId) === 1 && header(nodes) === total, '(c2) relaunch loads the committed row');
-    check(field(nodes)?.text === titles.c2, '(c2) unacknowledged draft restored');
-    await tapAdd();
-    nodes = await waitFor('retry c2', (current) => draftText(current) === '' && !busyField(current));
-    check(header(nodes) === total && rowsTitled(titles.c2) === 1, '(c2) same-captureId retry added no duplicate');
+    // The owed capture is sent again with its capture ID; core answers from the task it already wrote.
+    nodes = await waitFor('the relaunch to settle the owed capture', (current) => draftText(current) === '' && !busyField(current), 30_000);
+    check(header(nodes) === total && rowsTitled(titles.c2) === 1 && rowsWithId(c2Id) === 1, `(c2) the same-captureId re-send added no duplicate: one row, the task with ID ${c2Id}`);
 
     // (c3) Force-stop after the commit, before the acknowledgment.
-    setProp('delay_after_ms', '8000');
+    setProp('delay_after_ms', '20000');
     await type(titles.c3);
     await tapAdd();
     await waitFor('commit c3', () => rowsTitled(titles.c3) === 1, 6000);
+    const c3Id = owedCaptureId();
     sh(`am force-stop ${PKG}`);
     setProp('delay_after_ms', '');
     await waitFor('home screen', () => front().includes(`${home}/`), 10_000);
@@ -215,30 +247,42 @@ try {
     processId = pid();
     total += 1;
     check(boots(processId) === 1 && header(nodes) === total && hasText(await reveal(titles.c3), titles.c3), '(c3) committed row survives force-stop');
-    // Force-stop finishes the task, so Android keeps no saved state to restore.
-    check(draftText(nodes) === '' && rowsTitled(titles.c3) === 1, '(c3) exactly one row, no stale draft');
+    // Force-stop keeps no saved state, but the owed request on disk comes back and goes again; core answers from its task.
+    nodes = await waitFor('the relaunch to settle the owed capture', (current) => draftText(current) === '' && !busyField(current), 30_000);
+    // reveal() above scrolled the Process Inbox button (the count) away: back to the top before reading it.
+    nodes = await toTop();
+    check(header(nodes) === total, `(c3) the Inbox count is ${total} (it shows ${header(nodes)})`);
+    check(rowsTitled(titles.c3) === 1, `(c3) exactly one row titled ${titles.c3} (${rowsTitled(titles.c3)})`);
+    check(rowsWithId(c3Id) === 1, `(c3) the row is the task with the capture's ID ${c3Id}`);
+    check(draftText(nodes) === '', '(c3) no stale draft');
 
     // (d) Failed write stays visible and retryable across recreation.
     setProp('fail_commit', '1');
     await type(titles.d);
     await tapAdd();
     nodes = await waitFor('save failure', hasError);
-    const failedState = (current, label) => {
+    const failedState = async (current, label) => {
         check(field(current)?.text === titles.d && field(current)?.enabled === 'false', `(d${label}) draft kept and locked`);
+        current = await scrollToSave(current);
         check(button(current, 'Save')?.enabled === 'true', `(d${label}) exact retry allowed`);
         // The failure offers Try again for the owed capture only, never a plain read refresh.
         check(owedRetry(current)?.enabled === 'true' && !readRetry(current), `(d${label}) Try again is the capture's exact retry; no read refresh is offered`);
         // Rows lock with the owed retry (the same rule gates their swipe and TalkBack Done; check-boot-gates.mjs).
         const rows = taskRows(current);
-        check(rows.length > 0 && rows.every((node) => node.enabled === 'false'), `(d${label}) rows locked`);
+        // In landscape the popup fills the screen under the banner (run 33), so no row is on screen or reachable.
+        if (rows.length === 0 && label === ' after rotation') {
+            check(Boolean(tagged(current, 'capture-scroll')), `(d${label}) the popup covers the list; no row is reachable`);
+        } else {
+            check(rows.length > 0 && rows.every((node) => node.enabled === 'false'), `(d${label}) rows locked`);
+        }
     };
-    failedState(nodes, '');
+    await failedState(nodes, '');
     check(rowsTitled(titles.d) === 0, '(d) failed commit stored nothing');
     const recreatedBeforeFailure = recreations(processId).length;
     rotate(1);
     await waitFor('rotation recreation', () => recreations(processId).length > recreatedBeforeFailure, 15_000);
     nodes = await waitFor('failed state after rotation', hasError);
-    failedState(nodes, ' after rotation');
+    await failedState(nodes, ' after rotation');
     rotate(0);
     await waitFor('rotation back', () => recreations(processId).length > recreatedBeforeFailure + 1, 15_000);
 
@@ -250,7 +294,7 @@ try {
     await waitFor('home screen', () => front().includes(`${home}/`), 10_000);
     launch();
     nodes = await waitFor('failed state after Back and reopen', hasError);
-    failedState(nodes, ' after Back and reopen');
+    await failedState(nodes, ' after Back and reopen');
     // Android 12+ keeps a root Activity on Back, so also finish it: the new
     // screen gets a new ViewModel and must restore the retry from the process.
     const newScreensBefore = newScreens(processId);
@@ -258,7 +302,7 @@ try {
     sh(`am start -W -f 0x10008000 -n ${ACTIVITY}`); // NEW_TASK | CLEAR_TASK
     await waitFor('a new screen on the running host', () => newScreens(processId) > newScreensBefore, 15_000);
     nodes = await waitFor('failed state on the new screen', hasError);
-    failedState(nodes, ' on a new screen');
+    await failedState(nodes, ' on a new screen');
     check(pid() === processId && boots(processId) === 1 && rowsTitled(titles.d) === 0, '(d) same process and host, still no row');
     setProp('fail_commit', '');
     // The failure's Try again re-sends the exact owed capture (same capture UUID): one row.

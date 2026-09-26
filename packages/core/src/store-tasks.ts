@@ -19,6 +19,7 @@ import {
     getNextProjectOrder,
     getTaskOrder,
     getReferenceTaskFieldClears,
+    matchesDuplicateSource,
     isRestorableProjectArchiveSection,
     nextRevision,
     normalizeTaskUpdate,
@@ -38,10 +39,10 @@ import {
 } from './task-status';
 import { beginNotifyProfile, endNotifyProfile, type NotifyProfile } from './store-notify-profiler';
 import { generateUUID as uuidv4 } from './uuid';
-import { canSkipRecurringTaskOccurrence, createNextRecurringTask, normalizeRecurrenceForLoad } from './recurrence';
+import { canSkipRecurringTaskOccurrence, canonicalRecurringFollowUp, createNextRecurringTask, normalizeRecurrenceForLoad } from './recurrence';
 import { normalizeRepeatReminderMinutes } from './schedule-utils';
 import { normalizeFocusTaskLimit } from './focus-utils';
-import { isTaskFutureFocusCandidate } from './task-utils';
+import { boardOrderForDuplicate, isTaskFutureFocusCandidate } from './task-utils';
 import {
     buildTaskContainerMovePatch,
     normalizeOptionalContainerId,
@@ -163,16 +164,9 @@ const stampNewRecurringFollowUp = (
     if (!task) return null;
     const order = sourceOrder ?? reserveProjectOrder(task.projectId);
     return {
-        ...task,
-        // Persist the shape the sync pass writes (sync-canonical-reads contract),
-        // like the addTask creation literal: the rrule carries the series stamp
-        // and the boolean is explicit. createNextRecurringTask keeps its own
-        // shape because the Rust local API parity fixture pins it.
-        recurrence: normalizeRecurrenceForLoad(task.recurrence),
-        suppressMindwtrReminders: task.suppressMindwtrReminders ?? false,
+        ...canonicalRecurringFollowUp(task),
         rev: nextRevision(undefined),
         revBy: deviceId,
-        pushCount: 0,
         ...(order !== undefined ? { order, orderNum: order } : {}),
     };
 };
@@ -1150,15 +1144,25 @@ export const createTaskActions = ({ set, get, getStorage, debouncedSave, flushPe
      * on the actionable list: work finished once is not automatically still worth
      * doing, so it gets clarified again like any other capture (#950).
      */
-    duplicateTask: async (id: string, asNextAction?: boolean) => {
+    duplicateTask: async (id: string, asNextAction?: boolean, copyId?: string) => {
         const changeAt = Date.now();
         const now = new Date().toISOString();
         let missingTask = false;
+        let refusedCopyId = false;
         let duplicatedTaskId: string | undefined;
         set((state) => {
             const sourceTask = state._tasksById.get(id);
             if (!sourceTask || sourceTask.deletedAt) {
                 missingTask = true;
+                return state;
+            }
+            const existing = copyId ? state._tasksById.get(copyId) : undefined;
+            if (existing) {
+                if (!matchesDuplicateSource(sourceTask, existing, asNextAction)) {
+                    refusedCopyId = true;
+                } else {
+                    duplicatedTaskId = copyId;
+                }
                 return state;
             }
             const deviceState = ensureDeviceId(state.settings);
@@ -1187,7 +1191,7 @@ export const createTaskActions = ({ set, get, getStorage, debouncedSave, flushPe
             const duplicatedOrder = sourceTask.projectId
                 ? projectOrderReserver(sourceTask.projectId)
                 : undefined;
-            const newTaskId = uuidv4();
+            const newTaskId = copyId ?? uuidv4();
             duplicatedTaskId = newTaskId;
 
             const newTask: Task = {
@@ -1212,6 +1216,7 @@ export const createTaskActions = ({ set, get, getStorage, debouncedSave, flushPe
                 // project, so neither the focus position nor the restore
                 // metadata of the source belongs to it.
                 focusOrder: undefined,
+                boardOrder: undefined,
                 statusBeforeProjectArchive: undefined,
                 completedAtBeforeProjectArchive: undefined,
                 isFocusedTodayBeforeProjectArchive: undefined,
@@ -1225,7 +1230,10 @@ export const createTaskActions = ({ set, get, getStorage, debouncedSave, flushPe
                 order: duplicatedOrder,
                 orderNum: duplicatedOrder,
             };
-
+            if (newTask.status === sourceTask.status) {
+                newTask.boardOrder = boardOrderForDuplicate(sourceTask.boardOrder,
+                    state._allTasks.filter((task) => task.status === sourceTask.status && !task.deletedAt));
+            }
             const newAllTasks = [...state._allTasks, newTask];
             persist(set, debouncedSave, state, {
                 tasks: newAllTasks,
@@ -1237,7 +1245,7 @@ export const createTaskActions = ({ set, get, getStorage, debouncedSave, flushPe
                 ...(deviceState.updated ? { settings: deviceState.settings } : {}),
             };
         });
-        return missingTask ? actionFail('Task not found') : actionOk({ id: duplicatedTaskId });
+        return missingTask ? actionFail('Task not found') : refusedCopyId ? actionFail('Duplicate id does not match source') : actionOk({ id: duplicatedTaskId });
     },
 
     /**

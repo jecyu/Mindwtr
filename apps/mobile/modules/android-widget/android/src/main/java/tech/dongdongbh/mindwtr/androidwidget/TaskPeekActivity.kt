@@ -31,7 +31,7 @@ class TaskPeekActivity : AppCompatActivity() {
       return
     }
     setContentView(R.layout.mindwtr_task_peek)
-    val palette = payload.palette?.takeUnless { payload.usesSystemColors }
+    val palette = payload.resolvedPalette(this)
     val mutedColor = palette?.mutedText ?: getColor(R.color.mindwtr_widget_muted_text)
     val textColor = palette?.text ?: getColor(R.color.mindwtr_widget_text)
 

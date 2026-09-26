@@ -8,8 +8,9 @@
 // starred task, and RN's quick-access tab set to Projects so both tab bars show the same
 // tabs. The script installs the harness RN build (154), puts the fixture in as its
 // database, and shoots Inbox, Focus, Projects, the task editor (Form tab) for one
-// task opened from Focus, global search for "kitchen", and Process Inbox's first step,
-// in light and dark mode. Then it installs
+// task opened from Focus, global search for "kitchen", Process Inbox's first step, and the
+// capture popup (empty, with text and core's preview, and with the contexts picker open), in
+// light and dark mode. Then it installs
 // the native upgradetest build (153) over it, on the same database, and shoots the same
 // screens. It writes rn-*.png, native-*.png, and side-by-side pair-*.png (RN left) to
 // /home/dd/.mindwtr-harness/parity/<timestamp>/.
@@ -188,6 +189,28 @@ const shootProcess = async (name) => {
     sh('input keyevent KEYCODE_BACK');
     await waitFor('Process Inbox to close', (current) => !shown(current), 15_000);
 };
+/**
+ * The capture popup from the tab bar's + (both apps label it core's nav.addTask): empty, then with a typed draft
+ * and its preview, then with the contexts picker open. Back closes it (the first Back may only close the keyboard).
+ */
+const CAPTURE_TEXT = 'Call Sam @phone #home';
+const shootPopup = async (prefix, suffix) => {
+    const nodes = await waitFor('the + button', (current) => current.some((node) => node['content-desc'] === 'Add Task'), 30_000);
+    await tap(nodes.find((node) => node['content-desc'] === 'Add Task'));
+    const field = (current) => current.find((node) => node.class === 'android.widget.EditText');
+    await shoot(`${prefix}-popup-empty-${suffix}`, (current) => Boolean(field(current)));
+    requireAppFront();
+    sh(`input text '${CAPTURE_TEXT.replace(/ /g, '%s')}'`);
+    await shoot(`${prefix}-popup-text-${suffix}`, (current) => field(current)?.text === CAPTURE_TEXT && hasText(current, '@phone'));
+    const chip = await waitFor('the contexts chip', (current) => current.some((node) => node['content-desc']?.startsWith('Contexts: ')), 15_000);
+    await tap(chip.find((node) => node['content-desc']?.startsWith('Contexts: ')));
+    await shoot(`${prefix}-popup-picker-${suffix}`, (current) => current.some((node) => node.text === 'Clear'));
+    for (let attempt = 0; attempt < 3 && (await device.screen()).some((node) => node.class === 'android.widget.EditText'); attempt += 1) {
+        requireAppFront();
+        sh('input keyevent KEYCODE_BACK');
+        await sleep(800);
+    }
+};
 const SCREENS = [
     { name: 'inbox', link: 'inbox', tab: 'Inbox', text: T.call },
     { name: 'focus', link: 'focus', tab: 'Focus', text: T.outline },
@@ -224,6 +247,8 @@ try {
         await sleep(1000);
         openLink('inbox');
         await shootProcess(`rn-process-${mode === 'yes' ? 'dark' : 'light'}`);
+        openLink('inbox');
+        await shootPopup('rn', mode === 'yes' ? 'dark' : 'light');
     }
     await stopApp();
 
@@ -264,6 +289,7 @@ try {
         const inboxTab = await waitFor('the native tabs', (current) => Boolean(tab(current, 'Inbox')), 30_000);
         if (!tabSelected(inboxTab, 'Inbox')) await tap(tab(inboxTab, 'Inbox'));
         await shootProcess(`native-process-${mode === 'yes' ? 'dark' : 'light'}`);
+        await shootPopup('native', mode === 'yes' ? 'dark' : 'light');
     }
     await stopApp();
 

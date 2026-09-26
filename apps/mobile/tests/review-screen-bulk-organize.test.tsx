@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity } from 'react-native';
+import { Pressable, TouchableOpacity } from 'react-native';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Area, Project, Task } from '@mindwtr/core';
@@ -8,10 +8,12 @@ const mocks = vi.hoisted(() => {
   const batchUpdateTasks = vi.fn(async () => undefined);
   const batchMoveTasks = vi.fn(async () => undefined);
   const batchDeleteTasks = vi.fn(async () => undefined);
-  const updateTask = vi.fn(async () => undefined);
+  const updateTask = vi.fn(async (_id: string, _updates: Partial<Task>): Promise<{ success: boolean } | undefined> => undefined);
   const deleteTask = vi.fn(async () => undefined);
   const restoreTask = vi.fn(async () => undefined);
   const modalPropsSpy = vi.fn();
+  const showToast = vi.fn();
+  const flushPendingSave = vi.fn(async () => undefined);
 
   return {
     batchDeleteTasks,
@@ -19,6 +21,9 @@ const mocks = vi.hoisted(() => {
     batchUpdateTasks,
     deleteTask,
     modalPropsSpy,
+    showToast,
+    flushPendingSave,
+    areaFilter: { included: [] as string[], excluded: [] as string[] },
     restoreTask,
     updateTask,
     storeState: {
@@ -43,8 +48,12 @@ vi.mock('@mindwtr/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@mindwtr/core')>();
   return {
     ...actual,
+    flushPendingSave: mocks.flushPendingSave,
     shallow: Object.is,
-    useTaskStore: (selector: (state: typeof mocks.storeState) => unknown) => selector(mocks.storeState),
+    useTaskStore: Object.assign(
+      (selector: (state: typeof mocks.storeState) => unknown) => selector(mocks.storeState),
+      { getState: () => mocks.storeState },
+    ),
   };
 });
 
@@ -63,7 +72,7 @@ vi.mock('react-native-safe-area-context', () => ({
 }));
 
 vi.mock('../contexts/toast-context', () => ({
-  useToast: () => ({ showToast: vi.fn(), dismissToast: vi.fn() }),
+  useToast: () => ({ showToast: mocks.showToast, dismissToast: vi.fn() }),
 }));
 
 vi.mock('../contexts/theme-context', () => ({
@@ -81,6 +90,7 @@ vi.mock('../contexts/language-context', () => ({
       'common.cancel': 'Cancel',
       'common.share': 'Share',
       'common.tasks': 'tasks',
+      'persistence.saved': 'Changes saved',
       'dailyReview.title': 'Daily Review',
       'review.activeTasks': 'active tasks',
       'review.expandAreas': 'Expand areas',
@@ -94,6 +104,15 @@ vi.mock('../contexts/language-context', () => ({
       'review.projectsLabel': 'projects',
       'review.singleActions': 'Single actions',
       'review.startReview': 'Start Review',
+      'review.scopeDue': 'Due for review',
+      'review.scopeAll': 'All open tasks',
+      'review.dueHelp': 'Due reminders',
+      'review.overviewHelp': 'All open tasks',
+      'review.dueEmpty': 'No reminders due',
+      'review.overviewEmpty': 'No open tasks',
+      'review.markReviewed': 'Mark reviewed',
+      'review.markReviewedDone': 'Marked reviewed',
+      'review.advanceWeek': 'Review in 1 week',
       'review.unassigned': 'Unassigned',
       'review.withoutArea': 'without an area',
       'status.done': 'Done',
@@ -127,7 +146,7 @@ vi.mock('@/hooks/use-theme-colors', () => {
 vi.mock('@/hooks/use-mobile-area-filter', () => ({
   useMobileAreaFilter: () => ({
     areaById: new Map(mocks.storeState.areas.map((area) => [area.id, area])),
-    resolvedAreaFilter: { included: [], excluded: [] },
+    resolvedAreaFilter: mocks.areaFilter,
     sortedAreas: mocks.storeState.areas,
   }),
 }));
@@ -167,6 +186,7 @@ vi.mock('react-native', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-native')>();
   return {
     ...actual,
+    AppState: { addEventListener: vi.fn(() => ({ remove: vi.fn() })) },
     BackHandler: {
       addEventListener: vi.fn(() => ({ remove: vi.fn() })),
     },
@@ -242,6 +262,10 @@ const pressButtonWithLabel = (tree: ReactTestRenderer, label: string) => {
 describe('ReviewScreen bulk organize', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.batchUpdateTasks.mockResolvedValue(undefined);
+    mocks.updateTask.mockResolvedValue(undefined);
+    mocks.flushPendingSave.mockResolvedValue(undefined);
+    mocks.areaFilter = { included: [], excluded: [] };
     mocks.storeState.areas = [makeArea('area-work', 'Work')];
     mocks.storeState.projects = [];
     mocks.storeState.tasks = [makeTask('task-1', 'Loose next action')];
@@ -252,6 +276,8 @@ describe('ReviewScreen bulk organize', () => {
     await act(async () => {
       tree = create(<ReviewScreen />);
     });
+
+    pressButtonWithText(tree, 'All open tasks');
 
     pressButtonWithLabel(tree, 'Expand areas');
     pressButtonWithLabel(tree, 'Expand projects');
@@ -294,6 +320,7 @@ describe('ReviewScreen bulk organize', () => {
     await act(async () => {
       tree = create(<ReviewScreen />);
     });
+    pressButtonWithText(tree, 'All open tasks');
     pressButtonWithLabel(tree, 'Expand areas');
     pressButtonWithLabel(tree, 'Expand projects');
 
@@ -314,5 +341,79 @@ describe('ReviewScreen bulk organize', () => {
     expect(after[1].actions).toBe(before[1].actions);
     expect(after[1].tc).toBe(before[1].tc);
     expect(after[1].onLongPressAction).toBe(before[1].onLongPressAction);
+  });
+
+  it('shows only due reminders by default, then preserves the whole-system overview', async () => {
+    mocks.storeState.tasks = [
+      makeTask('due', 'Review me', { reviewAt: '2026-01-01' }),
+      makeTask('future', 'Later', { reviewAt: '2099-01-01' }),
+      makeTask('undated', 'No reminder'),
+    ];
+    let tree!: ReactTestRenderer;
+    await act(async () => { tree = create(<ReviewScreen />); });
+    pressButtonWithLabel(tree, 'Expand areas');
+    pressButtonWithLabel(tree, 'Expand projects');
+    const rows = () => tree.root.findAll((node) => (node.type as unknown) === 'SwipeableTaskItem');
+    expect(rows().map((row) => row.props.task.id)).toEqual(['due']);
+
+    pressButtonWithText(tree, 'All open tasks');
+    expect(rows().map((row) => row.props.task.id)).toEqual(['due', 'future', 'undated']);
+  });
+
+  it('waits for a saved mark-reviewed write and leaves a retry on save failure', async () => {
+    mocks.storeState.tasks = [makeTask('due', 'Review me', { reviewAt: '2026-01-01' })];
+    mocks.updateTask.mockImplementation(async (id: string, updates: Partial<Task>) => {
+      mocks.storeState.tasks = mocks.storeState.tasks.map((task) => task.id === id ? { ...task, ...updates } : task);
+      return { success: true };
+    });
+    mocks.flushPendingSave.mockRejectedValueOnce(new Error('disk full'));
+    let tree!: ReactTestRenderer;
+    await act(async () => { tree = create(<ReviewScreen />); });
+    pressButtonWithLabel(tree, 'Expand areas');
+    pressButtonWithLabel(tree, 'Expand projects');
+    await act(async () => { tree.root.findByProps({ accessibilityLabel: 'Mark reviewed: Review me' }).props.onPress(); });
+    expect(mocks.updateTask).toHaveBeenCalledWith('due', { reviewAt: undefined });
+    expect(mocks.showToast).not.toHaveBeenCalledWith(expect.objectContaining({ tone: 'success' }));
+    mocks.storeState.tasks = [makeTask('due', 'Review me', { reviewAt: '2026-01-01' })];
+    await act(async () => { tree.update(<ReviewScreen />); });
+    await act(async () => { tree.root.findByProps({ accessibilityLabel: 'common.retry' }).props.onPress(); });
+    expect(mocks.showToast).toHaveBeenCalledWith(expect.objectContaining({ message: 'Changes saved', tone: 'success' }));
+    expect(mocks.showToast).not.toHaveBeenCalledWith(expect.objectContaining({ message: 'Marked reviewed', tone: 'success' }));
+  });
+
+  it('clears hidden selection after the area filter changes or its project folds', async () => {
+    mocks.storeState.areas = [makeArea('area-a', 'A'), makeArea('area-b', 'B')];
+    mocks.storeState.tasks = [
+      makeTask('a', 'A task', { areaId: 'area-a', reviewAt: '2026-01-01' }),
+      makeTask('b', 'B task', { areaId: 'area-b', reviewAt: '2026-01-01' }),
+    ];
+    mocks.areaFilter = { included: ['area-a'], excluded: [] };
+    let tree!: ReactTestRenderer;
+    await act(async () => { tree = create(<ReviewScreen />); });
+    pressButtonWithLabel(tree, 'Expand areas');
+    pressButtonWithLabel(tree, 'Expand projects');
+    const selectedAction = () => tree.root.findAllByType(TouchableOpacity).find((node) => (
+      flattenText(node.props.children) === 'Mark reviewed' && !node.props.accessibilityLabel
+    ));
+    const row = tree.root.findByType('SwipeableTaskItem' as unknown as React.ElementType);
+    act(() => { row.props.onLongPressAction(row.props.task); });
+    expect(selectedAction()).toBeTruthy();
+
+    mocks.areaFilter = { included: ['area-b'], excluded: [] };
+    await act(async () => { tree.update(<ReviewScreen />); });
+    expect(selectedAction()).toBeUndefined();
+    expect(mocks.batchUpdateTasks).not.toHaveBeenCalled();
+
+    pressButtonWithLabel(tree, 'Expand areas');
+    pressButtonWithLabel(tree, 'Expand projects');
+    const visible = tree.root.findByType('SwipeableTaskItem' as unknown as React.ElementType);
+    act(() => { visible.props.onLongPressAction(visible.props.task); });
+    expect(selectedAction()).toBeTruthy();
+    const areaHeader = tree.root.findAllByType(Pressable).find((node) => (
+      node.props.accessibilityState?.expanded && String(node.props.accessibilityLabel).startsWith('B,')
+    ));
+    expect(areaHeader).toBeTruthy();
+    act(() => { areaHeader?.props.onPress(); });
+    expect(selectedAction()).toBeUndefined();
   });
 });

@@ -2,7 +2,7 @@ import React from 'react';
 import { Modal, TextInput } from 'react-native';
 import { act, create } from 'react-test-renderer';
 import { describe, expect, it, vi } from 'vitest';
-import type { Task } from '@mindwtr/core';
+import { createDateFormatter, type DateFormatter, type Task } from '@mindwtr/core';
 
 import {
   CalendarTaskComposerModal,
@@ -72,6 +72,10 @@ const baseProps = {
   composer: composer(),
   endTimePlaceholder: '09:30',
   error: 'The selected time overlaps another item.',
+  formatDate: ((value) => {
+    const date = value instanceof Date ? value : new Date(String(value));
+    return `${date.getHours() % 12 || 12}:${String(date.getMinutes()).padStart(2, '0')} ${date.getHours() < 12 ? 'AM' : 'PM'}`;
+  }) satisfies DateFormatter,
   formatDurationLabel: (minutes: number) => `${minutes} min`,
   isDark: true,
   keyboardInset: 0,
@@ -89,10 +93,38 @@ const baseProps = {
   t,
   tc,
   toRgba: (color: string, alpha: number) => `${color}:${alpha}`,
-  tr: t,
 };
 
 describe('CalendarTaskComposerModal', () => {
+  it('shows the user clock while keeping composer times unchanged', () => {
+    const rendered = composer({ startAt: new Date(2026, 7, 26, 9) });
+    let tree!: ReturnType<typeof create>;
+    act(() => { tree = create(<CalendarTaskComposerModal {...baseProps} composer={rendered} />); });
+    const inputs = tree.root.findAllByType(TextInput);
+    expect(inputs.slice(1).map((input) => input.props.value)).toEqual(['9:00 AM', '9:30 AM']);
+    expect(rendered.startTimeValue).toBe('09:00');
+    expect(rendered.endTimeValue).toBe('09:30');
+  });
+  it('shows raw editable time while focused in Chinese and accepts the edit', () => {
+    const setStartTime = vi.fn();
+    let tree!: ReturnType<typeof create>;
+    act(() => { tree = create(<CalendarTaskComposerModal {...baseProps} composer={composer({ startAt: new Date(2026, 7, 26, 8), startTimeValue: '08:00' })} formatDate={createDateFormatter({ language: 'zh-Hans', timeFormat: '12h' })} setStartTime={setStartTime} />); });
+    const start = tree.root.findAllByType(TextInput)[1];
+    expect(start.props.value).toContain('8:00');
+    act(() => start.props.onFocus());
+    expect(tree.root.findAllByType(TextInput)[1].props.value).toBe('08:00');
+    act(() => tree.root.findAllByType(TextInput)[1].props.onChangeText('09:00'));
+    expect(setStartTime).toHaveBeenCalledWith('09:00');
+  });
+  it('shows the user clock again after a focused composer closes and reopens', () => {
+    const rendered = composer({ startAt: new Date(2026, 7, 26, 9) });
+    let tree!: ReturnType<typeof create>;
+    act(() => { tree = create(<CalendarTaskComposerModal {...baseProps} composer={rendered} />); });
+    act(() => tree.root.findAllByType(TextInput)[1].props.onFocus());
+    act(() => tree.update(<CalendarTaskComposerModal {...baseProps} composer={null} />));
+    act(() => tree.update(<CalendarTaskComposerModal {...baseProps} composer={rendered} />));
+    expect(tree.root.findAllByType(TextInput)[1].props.value).toBe('9:00 AM');
+  });
   it('isolates the modal and labels its close control, title, and time inputs', () => {
     let tree!: ReturnType<typeof create>;
     act(() => {

@@ -1,5 +1,7 @@
 // Split from i18n-translations.ts to make community translation contributions easier.
 export const nlOverrides: Record<string, string> = {
+    'calendar.eventSingular': 'gebeurtenis',
+    'calendar.eventPlural': 'gebeurtenissen',
     'filters.searchTasks': "Taaktitels zoeken",
     'filters.searchOptions': "Opties zoeken",
     'filters.tokenCycleHint': "Klik om op te nemen, nogmaals om uit te sluiten en nog een keer om de selectie te wissen.",

@@ -20,6 +20,17 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const DEFAULT_REVIEW_ADVANCE_DAYS = 7;
 
+export type ReviewOverviewScope = 'due' | 'all';
+
+/** Only an explicit, reached review date creates an outstanding reminder. */
+export function isTaskDueForReview(task: Pick<Task, 'status' | 'reviewAt' | 'deletedAt' | 'purgedAt'>, now: Date = new Date()): boolean {
+    return !task.deletedAt && !task.purgedAt && isTaskActionable(task) && isDueForReview(task.reviewAt, now);
+}
+
+export function getReviewOverviewTasks(tasks: readonly Task[], scope: ReviewOverviewScope, now: Date = new Date()): Task[] {
+    return tasks.filter((task) => scope === 'due' ? isTaskDueForReview(task, now) : !task.deletedAt && !task.purgedAt && isTaskActionable(task));
+}
+
 /**
  * Next review date after marking an item reviewed: `days` from now, preserving
  * the original value's date-only vs datetime shape (time-of-day carries over).
@@ -526,6 +537,8 @@ export type GetReviewOverviewGroupsParams = {
     orderedAreas: Area[];
     areaFilter: AreaFilterSelection;
     sortBy: TaskSortBy;
+    scope?: ReviewOverviewScope;
+    now?: Date;
 };
 
 /**
@@ -539,12 +552,14 @@ export function getReviewOverviewGroups({
     orderedAreas,
     areaFilter,
     sortBy,
+    scope = 'all',
+    now = new Date(),
 }: GetReviewOverviewGroupsParams): ReviewOverviewAreaGroup[] {
     const projectById = new Map(projects.map((project) => [project.id, project]));
     const areaById = new Map(orderedAreas.map((area) => [area.id, area]));
     const areaOrderById = new Map(orderedAreas.map((area, index) => [area.id, index]));
     const visibleTasks = sortTasksBy(
-        tasks.filter((task) => (
+        getReviewOverviewTasks(tasks, scope, now).filter((task) => (
             (task.status === 'inbox'
                 ? isTaskVisibleInInbox(task, { projectById })
                 : isTaskVisibleInArea(task, {
@@ -552,7 +567,6 @@ export function getReviewOverviewGroups({
                     projectById,
                     resolvedAreaFilter: areaFilter,
                 }))
-            && isTaskActionable(task)
         )),
         sortBy,
     );

@@ -12,7 +12,7 @@ import { TaskBulkOrganizeModal } from './list/TaskBulkOrganizeModal';
 import { DailyReviewGuideModal } from './review/DailyReviewModal';
 import { WeeklyReviewGuideModal } from './review/WeeklyReviewModal';
 
-import { collectBulkTaskTokens, shallow, sortTasksBy, useTaskStore, type BulkOrganizeTaskUpdateInput, type Task, type TaskStatus } from '@mindwtr/core';
+import { collectBulkTaskTokens, flushPendingSave, getReviewOverviewTasks, isTaskDueForReview, shallow, sortTasksBy, useTaskStore, type BulkOrganizeTaskUpdateInput, type ReviewOverviewScope, type Task, type TaskStatus } from '@mindwtr/core';
 
 import { PromptModal } from '../PromptModal';
 import { TokenPickerModal } from '../TokenPickerModal';
@@ -94,6 +94,10 @@ export function ReviewView() {
         }));
     }, [setPersistedViewState]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [scope, setScope] = useState<ReviewOverviewScope>('due');
+    const [nowTick, setNowTick] = useState(() => Date.now());
+    const [reviewSavePending, setReviewSavePending] = useState(false);
+    const [reviewWriteBusy, setReviewWriteBusy] = useState(false);
     const [tagPromptOpen, setTagPromptOpen] = useState(false);
     const [removeTagPickerOpen, setRemoveTagPickerOpen] = useState(false);
     const [showGuide, setShowGuide] = useState(false);
@@ -110,6 +114,13 @@ export function ReviewView() {
     const statusOptions = STATUS_OPTIONS;
     const visibility = useAreaVisibility();
     const projectMapById = visibility.projectById;
+
+    useEffect(() => {
+        const refresh = () => setNowTick(Date.now());
+        const interval = window.setInterval(refresh, 60_000);
+        window.addEventListener('focus', refresh);
+        return () => { window.clearInterval(interval); window.removeEventListener('focus', refresh); };
+    }, []);
 
     useEffect(() => {
         if (!perf.enabled) return;
@@ -129,7 +140,6 @@ export function ReviewView() {
             });
 
             const nextVisibleTasks: Task[] = [];
-            const nextOpenTasks: Task[] = [];
             tasks.forEach((task) => {
                 nextTasksById[task.id] = task;
                 if (task.status === 'reference') return;
@@ -137,18 +147,18 @@ export function ReviewView() {
                     if (!isTaskVisibleInInbox(task, visibility)) return;
                 } else if (!isTaskVisibleInArea(task, visibility)) return;
                 nextVisibleTasks.push(task);
-                if (task.status !== 'done') {
-                    nextOpenTasks.push(task);
-                    nextStatusCounts.all += 1;
-                }
                 if (nextStatusCounts[task.status] !== undefined) {
                     nextStatusCounts[task.status] += 1;
                 }
             });
+            const nextOpenTasks = getReviewOverviewTasks(nextVisibleTasks, 'all', new Date(nowTick));
+            nextStatusCounts.all = nextOpenTasks.length;
 
-            const list = filterStatus === 'all'
-                ? nextOpenTasks
-                : nextVisibleTasks.filter((task) => task.status === filterStatus);
+            const list = scope === 'due'
+                ? getReviewOverviewTasks(nextOpenTasks, 'due', new Date(nowTick))
+                : filterStatus === 'all'
+                    ? nextOpenTasks
+                    : nextVisibleTasks.filter((task) => task.status === filterStatus);
             const sortedTasks = sortTasksBy(list, sortBy);
             const searchFilteredTasks = normalizedSearchQuery
                 ? sortedTasks.filter((task) => task.title.toLowerCase().includes(normalizedSearchQuery))
@@ -160,7 +170,7 @@ export function ReviewView() {
                 filteredTasks: searchFilteredTasks,
             };
         });
-    }, [filterStatus, normalizedSearchQuery, sortBy, tasks, visibility]);
+    }, [filterStatus, normalizedSearchQuery, nowTick, scope, sortBy, tasks, visibility]);
     const filteredTaskIds = useMemo(() => filteredTasks.map((task) => task.id), [filteredTasks]);
     const {
         activeAction,
@@ -221,6 +231,41 @@ export function ReviewView() {
 
     const handleBatchDelete = deleteSelectedTasks;
 
+    const handleMarkReviewed = useCallback(async () => {
+        if (reviewWriteBusy || reviewSavePending || scope !== 'due' || selectedIdsArray.length === 0) return;
+        const dueIds = selectedIdsArray.filter((id) => tasksById[id] && isTaskDueForReview(tasksById[id]));
+        if (dueIds.length === 0) return;
+        setReviewWriteBusy(true);
+        try {
+            const result = await batchUpdateTasks(dueIds.map((id) => ({ id, updates: { reviewAt: undefined } })));
+            if (!result.success) throw new Error(result.error || 'Review update failed');
+            setReviewSavePending(true);
+            await flushPendingSave();
+            setReviewSavePending(false);
+            exitSelectionMode();
+            showToast(t('review.markReviewedDone'), 'success');
+        } catch {
+            showToast(t('bulk.updateFailed'), 'error');
+        } finally {
+            setReviewWriteBusy(false);
+        }
+    }, [batchUpdateTasks, exitSelectionMode, reviewSavePending, reviewWriteBusy, scope, selectedIdsArray, showToast, t, tasksById]);
+
+    const retryReviewSave = useCallback(async () => {
+        setReviewWriteBusy(true);
+        try {
+            if (useTaskStore.getState().persistenceFailure) await useTaskStore.getState().retryPersistence();
+            else await flushPendingSave();
+            setReviewSavePending(false);
+            exitSelectionMode();
+            showToast(t('persistence.saved'), 'success');
+        } catch {
+            showToast(t('bulk.updateFailed'), 'error');
+        } finally {
+            setReviewWriteBusy(false);
+        }
+    }, [exitSelectionMode, showToast, t]);
+
     const handleApplyTaskBulkOrganize = useCallback(async (input: BulkOrganizeTaskUpdateInput) => {
         await organizeSelectedTasks(input, {
             afterSuccess: () => setBulkOrganizeOpen(false),
@@ -264,6 +309,28 @@ export function ReviewView() {
                         weeklyReview: t('review.openGuide'),
                     }}
                 />
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="inline-flex rounded-lg border border-border p-1" role="group" aria-label={t('review.title')}>
+                        {(['due', 'all'] as const).map((choice) => (
+                            <button
+                                key={choice}
+                                type="button"
+                                aria-pressed={scope === choice}
+                                onClick={() => { if (choice !== scope) { exitSelectionMode(); setFilterStatus('all'); setScope(choice); } }}
+                                className={`rounded-md px-3 py-1.5 text-sm ${scope === choice ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}
+                            >
+                                {t(choice === 'due' ? 'review.scopeDue' : 'review.scopeAll')}
+                            </button>
+                        ))}
+                    </div>
+                    <span className="text-sm text-muted-foreground">{t(scope === 'due' ? 'review.dueHelp' : 'review.overviewHelp')}</span>
+                    {scope === 'all' && <button type="button" aria-label={`${t('nav.done')} ${t('common.tasks')}`} onClick={() => setFilterStatus('done')} className="text-sm text-primary hover:underline">{t('nav.done')}</button>}
+                </div>
+                {reviewSavePending && (
+                    <button type="button" onClick={() => { void retryReviewSave(); }} disabled={reviewWriteBusy} className="rounded border border-destructive px-3 py-2 text-sm text-destructive disabled:opacity-50">
+                        {t('common.retry')}
+                    </button>
+                )}
                 <div className="review-toolbar relative z-10 flex flex-col gap-2 lg:flex-row lg:items-center">
                     <input
                         type="text"
@@ -277,13 +344,13 @@ export function ReviewView() {
                         className="h-9 min-w-0 flex-1 rounded-lg border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 lg:min-w-48"
                     />
                     <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                        <ReviewFiltersBar
+                        {scope === 'all' && <ReviewFiltersBar
                             filterStatus={filterStatus}
                             statusOptions={statusOptions}
                             statusCounts={statusCounts}
                             onSelect={setFilterStatus}
                             t={t}
-                        />
+                        />}
                         <ReviewListControls
                             selectionMode={selectionMode}
                             onToggleSelection={toggleSelectionMode}
@@ -325,6 +392,8 @@ export function ReviewView() {
                             onExportCsv={() => { void exportSelectedTasks(); }}
                             isExporting={isExporting}
                             onDelete={handleBatchDelete}
+                            onMarkReviewed={scope === 'due' ? handleMarkReviewed : undefined}
+                            markReviewedBusy={reviewWriteBusy || reviewSavePending}
                             statusOptions={bulkStatuses}
                             t={t}
                         />
@@ -354,7 +423,7 @@ export function ReviewView() {
                         multiSelectedIds={multiSelectedIds}
                         highlightTaskId={highlightTaskId}
                         onToggleSelect={toggleMultiSelect}
-                        emptyMessage={normalizedSearchQuery ? t('filters.noMatch') : t('review.noTasks')}
+                        emptyMessage={normalizedSearchQuery ? t('filters.noMatch') : t(scope === 'due' ? 'review.dueEmpty' : 'review.overviewEmpty')}
                         t={t}
                     />
                 )}

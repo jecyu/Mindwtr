@@ -529,6 +529,8 @@ export const plOverrides: Record<string, string> = {
         'calendar.scheduleResults': 'Zaplanuj',
         'calendar.scheduleAction': 'Zaplanuj',
         'calendar.events': 'Wydarzenia',
+        'calendar.eventSingular': 'wydarzenie',
+        'calendar.eventPlural': 'wydarzenia',
         'calendar.allDay': 'Cały dzień',
         'calendar.deadline': 'Termin ostateczny',
         'calendar.unschedule': 'Usuń z kalendarza',

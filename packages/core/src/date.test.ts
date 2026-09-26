@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { isValid, parseISO } from 'date-fns';
+import { buildCompletionDateSections } from './completion-grouping';
+import { createTaskDraft, setTaskDraftField, taskDraftToChangedUpdatePatch, toTaskDraftDateTimeLocalValue } from './task-draft';
+import type { Task } from './types';
 import {
     canUseJalaliCalendar,
     configureDateFormatting,
@@ -245,6 +248,14 @@ describe('date utils', () => {
         });
         expect(safeFormatDate('2025-03-21', 'P')).toBe('1404/01/01');
         expect(safeFormatDate('2025-03-21', 'yyyy-MM-dd')).toBe('2025-03-21');
+        expect(safeFormatDate('2025-03-21T08:00:00', "yyyy-MM-dd'T'HH:mm")).toBe('2025-03-21T08:00');
+        expect(safeFormatDate('2025-03-21T08:00:05', 'yyyyMMdd-HHmmss')).toBe('20250321-080005');
+        expect(safeFormatDate('2025-03-21', 'LLLL yyyy')).toBe('مارس 2025');
+        expect(buildCompletionDateSections({ tasks: [{ completedAt: '2025-03-21T08:00:00' }], t: (key) => key, now: new Date('2025-05-01') })[0].title).toBe('مارس 2025');
+        const source: Task = { id: 'jalali-draft', title: 'Task', status: 'next', contexts: [], tags: [], createdAt: '', updatedAt: '', dueDate: '2025-03-21T08:00:00' };
+        expect(toTaskDraftDateTimeLocalValue(source.dueDate)).toBe('2025-03-21T08:00');
+        const draft = setTaskDraftField(createTaskDraft(source), 'dueDate', '2025-03-21T09:00');
+        expect(taskDraftToChangedUpdatePatch(draft, source)?.dueDate).toBe('2025-03-21T09:00');
         expect(formatCalendarInputDate('2025-03-21', 'jalali')).toBe('1404-01-01');
         expect(parseCalendarInputDate('1404-01-01', 'jalali')).toBe('2025-03-21');
 
@@ -288,6 +299,9 @@ describe('date utils', () => {
         configureDateFormatting(german);
         expect(safeFormatDate('2026-08-08T14:05', 'Pp')).toBe(createDateFormatter(german)('2026-08-08T14:05', 'Pp'));
         expect(createDateFormatter({ language: 'fa', calendarSystem: 'jalali' })('2026-08-08', 'P')).toBe('1405/05/17');
+        const jalali = createDateFormatter({ language: 'fa', calendarSystem: 'jalali' });
+        expect(jalali('2025-03-21', 'LLLL yyyy')).toBe('مارس 2025');
+        expect(createDateFormatter({ language: 'fa', calendarSystem: 'jalali' }, { jalaliMonthNames: true })('2025-03-21', 'LLLL yyyy')).toBe('فروردین 1404');
         expect(createDateFormatter({})(undefined, 'P', 'none')).toBe('none');
         configureDateFormatting({ language: 'en', dateFormat: 'system', timeFormat: 'system', systemLocale: 'en-US' });
     });
@@ -328,6 +342,20 @@ describe('getShortWeekdayLabels (#929)', () => {
     // rather than genuinely pass.
     it('is byte-identical to today for English', () => {
         expect(getShortWeekdayLabels('en-US')).toEqual(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
+    });
+
+    it('starts on Sunday after the time zone changes (no load-time anchor date)', () => {
+        const originalTz = process.env.TZ;
+        try {
+            // Fresh locales, so the per-locale cache cannot answer from an earlier zone.
+            for (const [zone, locale] of [['Pacific/Kiritimati', 'en-AU'], ['Pacific/Pago_Pago', 'en-NZ']]) {
+                process.env.TZ = zone;
+                expect(getShortWeekdayLabels(locale)[0]).toBe('Sun');
+            }
+        } finally {
+            if (originalTz === undefined) delete process.env.TZ;
+            else process.env.TZ = originalTz;
+        }
     });
 
     it('returns Sunday at index 0', () => {

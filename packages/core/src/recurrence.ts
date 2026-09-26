@@ -321,6 +321,19 @@ export function normalizeRecurrenceForLoad(value: unknown): Recurrence | undefin
     };
 }
 
+/**
+ * A recurring follow-up in the shape the sync pass writes (sync-canonical-reads contract):
+ * the rrule carries the series stamp, the boolean is explicit, and the push count restarts.
+ * The store and the cloud server both stamp follow-ups with it. createNextRecurringTask keeps
+ * its own shape because the Rust local API parity fixture pins it.
+ */
+export const canonicalRecurringFollowUp = (task: Task): Task => ({
+    ...task,
+    recurrence: normalizeRecurrenceForLoad(task.recurrence),
+    suppressMindwtrReminders: task.suppressMindwtrReminders ?? false,
+    pushCount: 0,
+});
+
 const normalizeWeeklyByDay = (days?: RecurrenceByDay[] | null): RecurrenceWeekday[] | undefined => {
     const normalized = normalizeWeekdays(days as string[] | null);
     if (!normalized) return undefined;

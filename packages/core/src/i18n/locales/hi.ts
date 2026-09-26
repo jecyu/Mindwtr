@@ -526,6 +526,8 @@ export const hiOverrides: Record<string, string> = {
         'calendar.scheduleResults': 'अनुसूची',
         'calendar.scheduleAction': 'अनुसूची',
         'calendar.events': 'घटनाएँ',
+        'calendar.eventSingular': 'घटना',
+        'calendar.eventPlural': 'घटनाएँ',
         'calendar.allDay': 'पूरे दिन',
         'calendar.deadline': 'अंतिम तारीख',
         'calendar.unschedule': 'कैलेंडर से हटाएँ',

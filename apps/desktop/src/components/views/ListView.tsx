@@ -1157,6 +1157,7 @@ export const ListView = memo(function ListView({ title, statusFilter }: ListView
                 showQuickDone={showQuickDone}
                 readOnly={readOnly}
                 compactMetaEnabled={showListDetails}
+                enableDoubleClickEdit
                 showProjectBadgeInActions={false}
                 interactionDisabled={isHistoricalReference}
                 onMoveToSomedaySection={statusFilter === 'someday' ? openSomedayMove : undefined}

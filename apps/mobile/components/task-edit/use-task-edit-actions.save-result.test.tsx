@@ -1,8 +1,8 @@
 import React from 'react';
 import { Text } from 'react-native';
 import renderer, { act } from 'react-test-renderer';
-import { describe, expect, it, vi } from 'vitest';
-import type { StoreActionResult, Task } from '@mindwtr/core';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { useTaskStore, type StoreActionResult, type Task } from '@mindwtr/core';
 
 import { createTaskEditDraft } from './task-edit-draft-adapter';
 import { useTaskEditActions } from './use-task-edit-actions';
@@ -29,6 +29,7 @@ const baseTask: Task = {
 };
 
 const t = (key: string) => key;
+const initialTaskState = useTaskStore.getState();
 
 type TaskEditActionsArgs = Parameters<typeof useTaskEditActions>[0];
 type ShowToast = TaskEditActionsArgs['showToast'];
@@ -149,6 +150,7 @@ async function renderActions(overrides: Partial<Harness> = {}) {
 }
 
 describe('task editor save results', () => {
+    afterEach(() => useTaskStore.setState(initialTaskState, true));
     it('shows an error when the store write resolves to a failure', async () => {
         const onSave = vi.fn(() => Promise.resolve({ success: false, error: 'Task is deleted' }));
 
@@ -218,7 +220,7 @@ describe('task editor save results', () => {
 
     it('routes cancellation through the draft lifecycle', async () => {
         const onSave = vi.fn(async () => ({ success: true }));
-        const { onClose } = await renderActions({ onSave });
+        const { onClose, showToast } = await renderActions({ onSave });
 
         await act(async () => {
             await cancelHandle();
@@ -231,6 +233,95 @@ describe('task editor save results', () => {
             completedAt: undefined,
         }));
         expect(onClose).toHaveBeenCalledOnce();
+        expect(showToast).toHaveBeenCalledWith(expect.objectContaining({
+            message: 'Task cancelled. You can restore it from Archive.',
+            tone: 'info',
+            actionLabel: 'Undo',
+        }));
+    });
+
+    it('restores cancellation fields while retaining later edits', async () => {
+        const original = { ...baseTask, isFocusedToday: true, focusOrder: 3, boardOrder: 7 };
+        useTaskStore.setState({ _allTasks: [original], _tasksById: new Map([[original.id, original]]) });
+        const onSave = vi.fn(async (_id: string, patch: Partial<Task>) => {
+            const cancelled = { ...original, ...patch, isFocusedToday: false, focusOrder: undefined, boardOrder: undefined };
+            useTaskStore.setState({ _allTasks: [cancelled], _tasksById: new Map([[original.id, cancelled]]) });
+            return { success: true };
+        });
+        const updateTask = vi.fn(async (_id: string, patch: Partial<Task>) => {
+            const current = useTaskStore.getState()._tasksById.get(original.id)!;
+            const restored = { ...current, ...patch };
+            useTaskStore.setState({ _allTasks: [restored], _tasksById: new Map([[original.id, restored]]) });
+            return { success: true };
+        });
+        useTaskStore.setState({ updateTask });
+        const { showToast } = await renderActions({ onSave });
+        await act(async () => { await cancelHandle(); });
+        const successToast = showToast.mock.calls.find(([options]) => options.tone === 'info')?.[0];
+        expect(successToast?.onAction).toBeTypeOf('function');
+        const newer = { ...useTaskStore.getState()._tasksById.get(original.id)!, description: 'Later edit' };
+        useTaskStore.setState({ _allTasks: [newer], _tasksById: new Map([[original.id, newer]]) });
+
+        await act(async () => { await successToast?.onAction?.(); });
+        expect(updateTask).toHaveBeenCalledExactlyOnceWith(original.id, {
+            status: 'next', cancelledAt: undefined, completedAt: undefined,
+            isFocusedToday: true, focusOrder: 3, boardOrder: 7,
+        });
+        expect(useTaskStore.getState()._tasksById.get(original.id)).toMatchObject({
+            status: 'next', description: 'Later edit', isFocusedToday: true,
+        });
+    });
+
+    it('shows errors when cancellation or its Undo fails', async () => {
+        const failedCancel = await renderActions({
+            onSave: vi.fn(async () => ({ success: false, error: 'disk full' })),
+        });
+        await act(async () => { await cancelHandle(); });
+        expect(failedCancel.showToast).not.toHaveBeenCalledWith(expect.objectContaining({ tone: 'info' }));
+        expect(failedCancel.showToast).toHaveBeenCalledWith(expect.objectContaining({ tone: 'error', message: 'disk full' }));
+
+        const archived = { ...baseTask, status: 'archived' as const, cancelledAt: '2026-09-24T12:00:00.000Z' };
+        const onSave = vi.fn(async () => {
+            useTaskStore.setState({ _allTasks: [archived], _tasksById: new Map([[archived.id, archived]]) });
+            return { success: true };
+        });
+        useTaskStore.setState({
+            _allTasks: [baseTask],
+            _tasksById: new Map([[baseTask.id, baseTask]]),
+            updateTask: vi.fn(async () => ({ success: false, error: 'undo save failed' })),
+        });
+        const { showToast } = await renderActions({ onSave });
+        await act(async () => { await cancelHandle(); });
+        const undo = showToast.mock.calls.find(([options]) => options.tone === 'info')?.[0].onAction;
+        await act(async () => { await undo?.(); });
+        expect(showToast).toHaveBeenLastCalledWith(expect.objectContaining({
+            tone: 'error', message: 'undo save failed', actionLabel: 'Undo',
+        }));
+    });
+
+    it('keeps the original status for Undo after an optimistic cancellation retry', async () => {
+        const archived = { ...baseTask, status: 'archived' as const, cancelledAt: '2026-09-24T12:00:00.000Z' };
+        useTaskStore.setState({ _allTasks: [baseTask], _tasksById: new Map([[baseTask.id, baseTask]]) });
+        const onSave = vi.fn()
+            .mockImplementationOnce(async () => {
+                useTaskStore.setState({ _allTasks: [archived], _tasksById: new Map([[baseTask.id, archived]]) });
+                return { success: false, error: 'disk full' };
+            })
+            .mockResolvedValueOnce({ success: true });
+        const updateTask = vi.fn(async (_id: string, patch: Partial<Task>) => {
+            const restored = { ...archived, ...patch };
+            useTaskStore.setState({ _allTasks: [restored], _tasksById: new Map([[baseTask.id, restored]]) });
+            return { success: true };
+        });
+        useTaskStore.setState({ updateTask });
+        const { showToast } = await renderActions({ onSave });
+
+        await act(async () => { await cancelHandle(); });
+        expect(showToast).not.toHaveBeenCalledWith(expect.objectContaining({ tone: 'info' }));
+        await act(async () => { await cancelHandle(); });
+        const successToast = showToast.mock.calls.find(([options]) => options.tone === 'info')?.[0];
+        await act(async () => { await successToast?.onAction?.(); });
+        expect(updateTask).toHaveBeenCalledWith(baseTask.id, expect.objectContaining({ status: 'next', cancelledAt: undefined }));
     });
 
     it('does not reset the draft when checklist reset resolves to a failure', async () => {

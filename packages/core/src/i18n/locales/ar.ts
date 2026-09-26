@@ -530,6 +530,8 @@ export const arOverrides: Record<string, string> = {
         'calendar.scheduleResults': 'جدول',
         'calendar.scheduleAction': 'جدول',
         'calendar.events': 'الأحداث',
+        'calendar.eventSingular': 'حدث',
+        'calendar.eventPlural': 'أحداث',
         'calendar.tasksAndEvents': 'المهام والأحداث',
         'calendar.today': 'اليوم',
         'calendar.day': 'يوم',

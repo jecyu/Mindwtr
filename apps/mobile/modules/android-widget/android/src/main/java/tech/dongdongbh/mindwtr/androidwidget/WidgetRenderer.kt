@@ -178,7 +178,7 @@ object WidgetRenderer {
 
   private fun buildViews(context: Context, appWidgetId: Int, kind: WidgetKind, payload: WidgetPayload): RenderedViews {
     val views = RemoteViews(context.packageName, kind.layoutRes)
-    val palette = payload.palette?.takeUnless { payload.usesSystemColors }
+    val palette = payload.resolvedPalette(context)
     val captureIntent = Intent(context, QuickCaptureActivity::class.java).apply {
       addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }

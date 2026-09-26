@@ -234,7 +234,8 @@ const observeView = (
         expanded: ui.expanded,
         moreLabel: ui.expanded ? view.text.hideOptions : view.text.more,
         quickDates: ui.expanded ? view.due.quickDates.map(({ label, selected }) => ({ label, selected })) : null,
-        customDate: ui.expanded ? view.due.custom : null,
+        // startDay is native-only (RN's picker reads its own state), so it stays out of the RN comparison.
+        customDate: ui.expanded ? { label: view.due.custom.label, accessibilityLabel: view.due.custom.accessibilityLabel } : null,
         dueTimeChip: ui.expanded && view.due.time ? view.due.time.accessibilityLabel : null,
         pickers: {
             project: ui.open === 'project'

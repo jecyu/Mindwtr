@@ -1,4 +1,4 @@
-import { type Area, type Project, type ProjectSequenceTaskCue, type StoreActionResult, type Task } from '@mindwtr/core';
+import { type Area, type Project, type ProjectSequenceTaskCue, type RangeSelectionOptions, type StoreActionResult, type Task } from '@mindwtr/core';
 import { useDraggable } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -164,6 +164,7 @@ const NARROW_TASK_ITEM_PROPS = {
 export function SortableProjectTaskRow({
     task,
     project,
+    onToggleSelect,
     sequenceCue,
     availableSequenceLabel,
     laterSequenceLabel,
@@ -172,6 +173,7 @@ export function SortableProjectTaskRow({
 }: {
     task: Task;
     project: Project;
+    onToggleSelect?: (options?: RangeSelectionOptions) => void;
     sequenceCue?: ProjectSequenceTaskCue;
     availableSequenceLabel: string;
     laterSequenceLabel: string;
@@ -204,6 +206,7 @@ export function SortableProjectTaskRow({
                 <TaskItem
                     task={task}
                     project={project}
+                    onToggleSelect={onToggleSelect}
                     enableDoubleClickEdit
                     showProjectBadgeInActions={false}
                     showProjectBadgeInMetadata={false}
@@ -232,6 +235,7 @@ export function SortableProjectTaskRow({
 export function DraggableProjectTaskRow({
     task,
     project,
+    onToggleSelect,
     sequenceCue,
     availableSequenceLabel,
     laterSequenceLabel,
@@ -240,6 +244,7 @@ export function DraggableProjectTaskRow({
 }: {
     task: Task;
     project: Project;
+    onToggleSelect?: (options?: RangeSelectionOptions) => void;
     sequenceCue?: ProjectSequenceTaskCue;
     availableSequenceLabel: string;
     laterSequenceLabel: string;
@@ -266,6 +271,7 @@ export function DraggableProjectTaskRow({
                 <TaskItem
                     task={task}
                     project={project}
+                    onToggleSelect={onToggleSelect}
                     enableDoubleClickEdit
                     showProjectBadgeInActions={false}
                     showProjectBadgeInMetadata={false}

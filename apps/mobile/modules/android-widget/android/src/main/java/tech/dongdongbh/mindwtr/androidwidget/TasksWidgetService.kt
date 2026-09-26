@@ -81,7 +81,7 @@ class TasksWidgetFactory(
   override fun getViewAt(position: Int): RemoteViews = viewForRow(rows[position])
 
   internal fun viewForRow(row: Row): RemoteViews {
-    val palette = payload.palette?.takeUnless { payload.usesSystemColors }
+    val palette = payload.resolvedPalette(context)
     return when (row) {
       is Row.Header -> RemoteViews(context.packageName, R.layout.mindwtr_widget_section).apply {
         // Section rows live inside the ListView, so the parent's blank-space

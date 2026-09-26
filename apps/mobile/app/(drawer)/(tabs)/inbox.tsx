@@ -4,7 +4,7 @@ import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Brain, ListChecks } from 'lucide-react-native';
 
-import { isTaskVisibleInInbox, useTaskStore } from '@mindwtr/core';
+import { buildInboxScreenModel, isTaskVisibleInInbox, useTaskStore } from '@mindwtr/core';
 import { TaskList, type TaskListGroupBy } from '../../../components/task-list';
 import { InboxProcessingModal } from '../../../components/inbox-processing-modal';
 import { ErrorBoundary } from '../../../components/ErrorBoundary';
@@ -50,24 +50,17 @@ export default function InboxScreen() {
     )),
     [projectById, tasks],
   );
+  // The Process label, the Mind Sweep placement and the capture method's empty
+  // action are core's, shared with the native host. The list's empty text is
+  // core's too (TaskList reads it for the Inbox).
+  const screen = buildInboxScreenModel({ count: inboxTasks.length, settings, t });
   const inboxScopeHint = (
     <View style={styles.scopeHint}>
       <CompactText style={[styles.scopeHintText, { color: tc.secondaryText }]}>
-        {t('projects.allAreas')}
+        {screen.scopeLabel}
       </CompactText>
     </View>
   );
-
-  const defaultCaptureMethod = settings.gtd?.defaultCaptureMethod ?? 'text';
-  const emptyHint = defaultCaptureMethod === 'audio'
-    ? t('inbox.emptyAddHintVoice')
-    : t('inbox.emptyAddHint');
-  const emptyActionLabel = defaultCaptureMethod === 'audio'
-    ? t('quickAdd.audioCaptureLabel')
-    : t('nav.addTask');
-
-  const hasInboxTasks = inboxTasks.length > 0;
-  const processCount = inboxTasks.length > 99 ? '99+' : `${inboxTasks.length}`;
 
   // Mind Sweep (secondary, labeled) rides on the sort/filter row's empty right
   // side when there are tasks to process; deliberately neutral like the
@@ -78,14 +71,14 @@ export default function InboxScreen() {
       style={[styles.mindSweepPill, { borderColor: tc.border, backgroundColor: tc.filterBg }]}
       onPress={() => router.push('/mind-sweep-modal')}
       accessibilityRole="button"
-      accessibilityLabel={t('mindSweep.launchButton')}
+      accessibilityLabel={screen.mindSweep.label}
     >
       <Brain size={18} color={tc.secondaryText} strokeWidth={2} />
       <CompactText
         style={[styles.mindSweepLabel, { color: tc.secondaryText }]}
         numberOfLines={2}
       >
-        {t('mindSweep.launchButton')}
+        {screen.mindSweep.label}
       </CompactText>
     </TouchableOpacity>
   );
@@ -95,7 +88,7 @@ export default function InboxScreen() {
   const primaryActionRow = (
     <>
     <View style={styles.actionRow}>
-      {hasInboxTasks ? (
+      {screen.process ? (
         <TouchableOpacity
           style={[styles.processButton, { backgroundColor: processButtonBg, borderColor: processButtonBorder }]}
           onPress={() => {
@@ -103,14 +96,14 @@ export default function InboxScreen() {
             setShowProcessing(true);
           }}
           accessibilityRole="button"
-          accessibilityLabel={`${t('inbox.processButton')} (${inboxTasks.length})`}
+          accessibilityLabel={screen.process.accessibilityLabel}
         >
           <ListChecks size={18} color={processIconColor} strokeWidth={2.2} />
           <CompactText
             style={[styles.actionLabel, { color: processLabelColor }]}
             numberOfLines={2}
           >
-            {t('inbox.processButton')} ({processCount})
+            {screen.process.label}
           </CompactText>
         </TouchableOpacity>
       ) : (
@@ -118,14 +111,14 @@ export default function InboxScreen() {
           style={[styles.processButton, { backgroundColor: processButtonBg, borderColor: processButtonBorder }]}
           onPress={() => router.push('/mind-sweep-modal')}
           accessibilityRole="button"
-          accessibilityLabel={t('mindSweep.launchButton')}
+          accessibilityLabel={screen.mindSweep.label}
         >
           <Brain size={18} color={processIconColor} strokeWidth={2.2} />
           <CompactText
             style={[styles.actionLabel, { color: processLabelColor }]}
             numberOfLines={2}
           >
-            {t('mindSweep.launchButton')}
+            {screen.mindSweep.label}
           </CompactText>
         </TouchableOpacity>
       )}
@@ -137,15 +130,12 @@ export default function InboxScreen() {
     <View onLayout={onStartupLayout} style={[styles.container, { backgroundColor: tc.bg }]}>
       <TaskList
         statusFilter="inbox"
-        title={t('inbox.title')}
+        title={screen.title}
         showHeader={false}
         enableBulkActions
         enableInboxBulkOrganize
-        emptyText={t('inbox.empty')}
-        emptyHint={emptyHint}
-        emptyActionLabel={emptyActionLabel}
-        onEmptyAction={() => openQuickCapture({ autoRecord: defaultCaptureMethod === 'audio' })}
-        headerAccessory={hasInboxTasks ? mindSweepPill : undefined}
+        onEmptyAction={() => openQuickCapture({ autoRecord: screen.autoRecord })}
+        headerAccessory={screen.mindSweep.placement === 'accessory' ? mindSweepPill : undefined}
         groupBy={groupBy}
         onChangeGroupBy={setGroupBy}
         primaryActionRow={primaryActionRow}

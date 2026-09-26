@@ -43,11 +43,10 @@ const areaUi = source('AreaSwitcher.kt');
 const viewStateKt = source('ViewState.kt');
 const searchUi = source('SearchScreen.kt');
 const processUi = source('ProcessInbox.kt');
+const captureUi = source('CaptureScreen.kt');
+const snapshotsKt = readFileSync(resolve(app, 'android/app/src/main/java/tech/dongdongbh/mindwtr/pilot/core/RecoverySnapshots.kt'), 'utf8');
 // Comments may name the rules below; only code is checked against them.
 const code = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-assert.match(activity, /enabled = !busy && failedAction == null,[\s\S]*?modifier = Modifier\.weight\(1f\)/);
-assert.match(model, /submittedTitle != null && value != submittedTitle\) setCapture\(value, UUID\.randomUUID\(\)\.toString\(\), null\)/);
-assert.match(model, /val id = captureId\s+setCapture\(title, id, submitted = title\)/);
 // A failed read offers Try again; while a failed command's retry is owed, nothing else is offered.
 assert.match(activity, /if \(failedAction == null\) TextButton\(onClick = \{ refresh\(\) \}, enabled = !busy, modifier = Modifier\.testTag\("read-retry"\)\)/);
 // Every owed command keeps a reachable retry: each screen's failure banner offers Try again (retryOwed), which re-sends the
@@ -66,7 +65,6 @@ for (const [name, text] of Object.entries({ activity, editorUi, searchUi, proces
     assert.match(retry, /"saveDraft" -> sendDraft\(action\)/);
     assert.match(retry, /"inboxCommit", "inboxSkip" -> sendAnswer\(action,/);
 }
-assert.match(activity, /failedAction == null \|\| failedAction == FailedAction\("create", captureId, draft\)/);
 assert.match(rowUi, /failedAction == null \|\| failedAction == FailedAction\("complete", task\.id\)/);
 // The swipe is core's meta.swipe (RN's getLeftAction moved to core); it and TalkBack's custom action are one command with one enabled rule.
 // Done keeps core's completeTask and its retry; Restore and Next are the status change with theirs. RN draws no Done button.
@@ -91,7 +89,7 @@ assert.match(rowUi, /onDragStopped = \{ settle\(if \(offset\.value > open \/ 2\)
 assert.doesNotMatch(code(rowUi), /SwipeToDismissBox|combinedClickable\([^)]*\)[^\n]*openEditor/, 'no one-gesture swipe; the row\'s own long-press stays free');
 // Every failed command holds its exact retry, except an update or editor save core refused before writing.
 assert.match(model, /private val UPDATE_REFUSALS = listOf\("STALE_REVISION", "INVALID_INPUT", "TASK_NOT_FOUND"\)/);
-assert.match(model, /private val REFUSABLE = setOf\("update", "saveDraft", "saveSearch", "inboxCommit", "inboxSkip"\)/);
+assert.match(model, /private val REFUSABLE = setOf\("update", "saveDraft", "saveSearch", "inboxCommit", "inboxSkip", "capture", "captureLines", "capturePicker"\)/);
 assert.match(model, /val refused = action\?\.kind in REFUSABLE && UPDATE_REFUSALS\.any \{ message\.startsWith\(it\) \}/);
 assert.match(model, /\(action != null && !refused\) \|\| message\.startsWith\("SAVE_FAILED"\)/);
 // While a failed command's retry is owed, only that exact command runs: no read starts, and the retry
@@ -103,8 +101,8 @@ assert.match(model, /if \(failedAction == null\) error = null\s+\}/, 'a read\'s 
 assert.match(model, /val owed = failedAction\?\.takeIf \{ action == null && it\.kind != "storage" \}\s+if \(owed == null\) \{\s+error = message[\s\S]{0,120}?if \(failed != null\) failedAction = failed/);
 assert.match(owner, /if \(pending\.action\.kind == "storage" && failure\?\.action\?\.kind\.let \{ it != null && it != "storage" \}\) return/);
 // User actions go through perform: the three commands with their action, the reads the user asked for without one.
-assert.equal(code(model).match(/\bperform\(action\)/g).length, 11, 'create, complete, editor save, task star, project star, status, project create, area filter, saved search, Process Inbox answer, the storage retry');
-assert.equal(code(model).match(/\bperform\s*\{/g).length, 8, 'editor, reload, Try again, three More, open project, open Process Inbox');
+assert.equal(code(model).match(/\bperform\(action\)/g).length, 13, 'complete, editor save, task star, project star, status, project create, area filter, saved search, Process Inbox answer, the storage retry, and the capture popup\'s capture, lines and picker create');
+assert.equal(code(model).match(/\bperform\s*\{/g).length, 9, 'editor, reload, Try again, three More, open project, open Process Inbox, open the capture popup');
 // Background reads (resume, each minute, after a command) never take busy, so they disable no control and never
 // turn a user's tap away: only perform sets busy, and its guard knows nothing of reads in flight.
 const backgroundFn = code(model.slice(model.indexOf('private fun <T> background('), model.indexOf('private fun perform(')));
@@ -139,7 +137,6 @@ assert.equal(code(model).match(/(?<!var )\bcommandAt = /g).length, 1, 'only a co
 // The exact retry of a failed Done is enabled wherever its row shows: Inbox, Focus, and a project.
 assert.match(rowUi, /val canComplete = writable && !busy &&\s*\(failedAction == null \|\| failedAction == FailedAction\("complete", task\.id\)\)/);
 // Only the capture draft survives process death; a restored unchanged draft reuses its capture UUID.
-for (const field of ['draft', 'captureId', 'submittedTitle']) assert.match(model, new RegExp(`saved\\.get<String>\\("${field}"\\)`));
 // The editor draft survives process death through a synced file in the no-backup folder; the Bundle holds only its key.
 // The model is read again from core, and the saved edits go on top with their own bases.
 assert.match(model, /private var editorKey: String\? = saved\.get<String>\("editorKey"\)/);
@@ -167,13 +164,13 @@ assert.equal(code(editorUi).match(/toggle = true/g).length, 2, 'only the quick t
 assert.match(editorUi, /if \(status == "waiting" && !active\) openWaitingPrompt\(\) else editFields\(mapOf\("status" to status\)\)/);
 assert.match(model, /keepEditor\(current\.assignWaiting\(person\)\)\s+editFields\(mapOf\("status" to "waiting", "assignedTo" to person\)\)/);
 // One host per process: the Activity and ViewModel never close it, and only the owner constructs it.
-for (const file of [activity, model, editorUi, focusUi, projectsUi, labelsKt, rowUi, areaUi, viewStateKt, searchUi, processUi]) {
+for (const file of [activity, model, editorUi, focusUi, projectsUi, labelsKt, rowUi, areaUi, viewStateKt, searchUi, processUi, captureUi]) {
     assert.doesNotMatch(file, /close\(|onDestroy|onCleared|CoreHost\(/);
 }
 const guard = readFileSync(resolve(app, 'android/app/src/main/java/tech/dongdongbh/mindwtr/pilot/core/LegacyRnStoreGuard.kt'), 'utf8');
 const themeKt = source('Theme.kt');
 const iconsKt = source('Icons.kt');
-const kotlinFiles = [activity, model, owner, editorUi, focusUi, projectsUi, labelsKt, themeKt, iconsKt, rowUi, areaUi, viewStateKt, searchUi, processUi, coreHost, sqliteBridge, guard];
+const kotlinFiles = [activity, model, owner, editorUi, focusUi, projectsUi, labelsKt, themeKt, iconsKt, rowUi, areaUi, viewStateKt, searchUi, processUi, captureUi, snapshotsKt, coreHost, sqliteBridge, guard];
 assert.equal(kotlinFiles.join('\n').match(/(?<!class )CoreHost\(/g).length, 1);
 // The dev build keeps its own database. The upgradetest build gets the RN database and RN's state
 // only from the guard, before CoreHost exists: before any open of it, the checkpoint, and any core write.
@@ -242,8 +239,7 @@ assert.match(model, /PendingFailure\(failed, message, rows, total, editor, scree
 assert.match(model, /pending\.editor\?\.let\(::keepEditor\)/);
 // ...and a failure on Focus reopens Focus with its rows, since reads wait for the retry.
 assert.match(model, /focus = pending\.focus\s+projects = pending\.projects\s+keepProject\(pending\.project\?\.projectId\)\s+project = pending\.project\s+show\(pending\.screen\)/);
-assert.equal(model.match(/ProcessCoreHost\.failure\?\.let \{ pending -> ui \{ host = runtime; restore\(pending, storedProcessing\) \}/g).length, 2);
-assert.match(model, /runtime\.createInboxTask\(title, id\)\s+acknowledged\(action\)/);
+assert.equal(model.match(/ProcessCoreHost\.failure\?\.let \{ pending -> ui \{ host = runtime; restore\(pending, storedProcessing, storedCapture\) \}/g).length, 2);
 assert.match(model, /runtime\.completeTask\(id\)\s+acknowledged\(action\)/);
 assert.match(model, /runtime\.saveTaskDraft\(action\.id, draftJson\(action\.base\), draftJson\(action\.patch\)\)\s+\} catch \(failure: Exception\) \{[\s\S]{0,300}?throw failure\s+\}\s+acknowledged\(action\)\s+ui \{ closeEditor\(\) \}/);
 // The new contract commands: each is a perform(action) with its exact retry, acknowledged only after core's reply.
@@ -281,7 +277,11 @@ assert.match(coreHost, /setProperty\("log", guarded \{ args -> runCatching \{/);
 assert.match(coreHost, /try \{ work\(args\) \} catch \(error: Throwable\) \{ NATIVE_ERROR \+/);
 // Fault hooks exist only behind BuildConfig.DEBUG.
 assert.equal(coreHost.match(/getprop/g).length, 1);
-assert.match(coreHost, /private fun debugFault\(name: String\): String \{\s*if \(!BuildConfig\.DEBUG\) return ""/);
+assert.match(coreHost, /private fun debugFault\(name: String\): String = debugProperty\(name\)/);
+assert.match(coreHost, /fun debugProperty\(name: String\): String \{\s*if \(!BuildConfig\.DEBUG\) return ""/);
+// The only other debug property: the capture check's clipboard, put there for the field's real Paste.
+assert.equal([activity, model, owner, editorUi, focusUi, projectsUi, labelsKt, captureUi].join('\n').match(/debugProperty\(/g).length, 1);
+assert.match(captureUi, /withContext\(Dispatchers\.IO\) \{ debugProperty\("clipboard"\) \}\.takeIf \{ it\.isNotEmpty\(\) \}\?\.let \{ clipboard\.setText\(/);
 assert.equal(coreHost.match(/failCommits =/g).length, 1);
 assert.match(coreHost, /failCommits = debugFault\("fail_commit"\) == "1"/);
 assert.equal([activity, model, owner, editorUi, focusUi, projectsUi, labelsKt].join('\n').match(/failCommits|debugFault|getprop/g), null);
@@ -289,7 +289,7 @@ assert.equal([activity, model, owner, editorUi, focusUi, projectsUi, labelsKt].j
 assert.match(coreHost, /fun language\(stored: String, system: String\): JSONObject =\s*callAsync\("language", debugFault\("language"\)\.ifEmpty \{ stored \}, system\)/);
 assert.equal(coreHost.match(/debugFault\("language"\)/g).length, 1);
 // update and the editor's saveDraft are task commands: the fault hooks and the diagnostic line cover them.
-assert.match(coreHost, /val command = method in setOf\("create", "complete", "update", "saveDraft", "taskFocus", "projectFocus", "createProject", "setAreaFilter",\s*"saveSearch", "inboxCommit", "inboxSkip"\)/);
+assert.match(coreHost, /val command = method in setOf\("captureSubmit", "captureLines", "capturePicker", "complete", "update", "saveDraft", "taskFocus", "projectFocus", "createProject", "setAreaFilter",\s*"saveSearch", "inboxCommit", "inboxSkip"\)/);
 
 // The editor reads core's model (getTaskEditorModel, plus getTask's checklist and attachments) and saves only
 // through core's saveTaskDraft, via perform with an exact FailedAction. The status menu keeps updateTask.
@@ -311,7 +311,7 @@ assert.equal(model.match(/runtime\.saveTaskDraft\(/g).length, 1, 'the editor sav
 assert.equal(model.match(/runtime\.updateTask\(/g).length, 1, 'the status menu and the Restore and Next swipes');
 assert.equal(model.match(/runtime\.editorSuggestions\(/g).length, 1);
 assert.equal([activity, owner, editorUi].join('\n').match(/taskEditorModel\(|editorContent\(|editorSuggestions\(|saveTaskDraft\(|updateTask\(/g), null);
-assert.equal([activity, editorUi, focusUi, projectsUi, rowUi, areaUi, viewStateKt, searchUi, processUi].join('\n').replace(/^import .*$/gm, '').match(/CoreHost|callAsync|\bruntime\b/g), null);
+assert.equal([activity, editorUi, focusUi, projectsUi, rowUi, areaUi, viewStateKt, searchUi, processUi, captureUi].join('\n').replace(/^import .*$/gm, '').match(/CoreHost|callAsync|\bruntime\b/g), null);
 // The save: exactly the changed draft fields, base = their loaded values, as a perform with its exact FailedAction; no change means no call.
 assert.match(editorUi, /val patch: Map<String, String\?> get\(\) = edited\.filter \{ \(field, literal\) -> literal != base\(field\) \}/);
 assert.match(editorUi, /val base: Map<String, String\?> get\(\) = patch\.keys\.associateWith \{ base\(it\) \}/);
@@ -374,6 +374,19 @@ assert.match(editorUi, /val \(hour, minute\) = pickerClock\(editor\.view\.fields
 assert.doesNotMatch([editorUi.replace(PICKER_START, ''), model, activity, focusUi, projectsUi, rowUi, areaUi, viewStateKt].join('\n'),
     /java\.time|LocalDate|Instant|DateTimeFormatter|java\.util\.Calendar|GregorianCalendar|Calendar\.getInstance|(?<!InboxPage|FocusView|ProjectsView|ProjectDetail|AreaFilter|EditorSuggestions|SearchView)\.parse\(|DateFormat\.get|SimpleDateFormat\(\)/);
 assert.equal([model, activity, focusUi, projectsUi, rowUi, areaUi, viewStateKt].join('\n').match(/SimpleDateFormat|\.format\(/g), null);
+// A fade is always a layer (Theme.kt fade): Modifier.alpha(1f) drops its layer, which left the capture popup's
+// enabled Save pills undrawn on the test phone (runs 31-32).
+{
+    const { readdirSync } = await import('node:fs');
+    const dir = resolve(app, 'android/app/src/main/java/tech/dongdongbh/mindwtr/pilot');
+    for (const name of readdirSync(dir).filter((file) => file.endsWith('.kt'))) {
+        assert.doesNotMatch(code(readFileSync(resolve(dir, name), 'utf8')), /\.alpha\(|ui\.draw\.alpha/, `${name} uses Modifier.alpha; use fade`);
+    }
+}
+assert.match(source('Theme.kt'), /fun Modifier\.fade\(alpha: Float\): Modifier = graphicsLayer \{ this\.alpha = alpha \}/);
+// RN's Android Switch for Add another (the M3 Switch hid the off thumb): a toggleable Role.Switch node.
+assert.match(captureUi, /toggleable\(on, enabled = enabled, role = Role\.Switch\)/);
+assert.doesNotMatch(code(captureUi), /material3\.Switch|SwitchDefaults/);
 // No Kotlin date formatting or date coloring anywhere in the UI package: dates and their tones are core's (row meta, the Focus date line).
 {
     const { readdirSync } = await import('node:fs');
@@ -387,7 +400,7 @@ assert.equal(editorUi.match(/SimpleDateFormat|\.format\(/g).length, 4); // impor
 assert.match(editorUi, /private fun pickedDay\(pickerMillis: Long\): String =\s*SimpleDateFormat\("yyyy-MM-dd", Locale\.US\)\.apply \{ timeZone = TimeZone\.getTimeZone\("UTC"\) \}\.format\(Date\(pickerMillis\)\)/);
 assert.equal(editorUi.match(/pickedDay\(/g).length, 2);
 assert.match(editorUi, /private fun pickedTime\(hour: Int, minute: Int\) = "\$\{hour\.toString\(\)\.padStart\(2, '0'\)\}:\$\{minute\.toString\(\)\.padStart\(2, '0'\)\}"/);
-assert.equal(editorUi.match(/pickedTime\(/g).length, 2);
+assert.equal(editorUi.match(/pickedTime\(/g).length, 3, 'defined once; the editor\'s time picker and the shared ClockPickerDialog (the capture popup\'s due time)');
 // A draft date is never read apart: no substring, split, or pattern over a date field's value.
 assert.doesNotMatch(code(editorUi), /text\("(dueDate|startTime|reviewAt)"\)\.(substring|split|take|drop|contains|startsWith|endsWith|matches|replace)/);
 assert.doesNotMatch(code(editorUi), /\b(due|value)\.(substring|split|take|drop|contains|startsWith|endsWith|matches)\(/);
@@ -477,7 +490,7 @@ assert.match(editorUi, /ChoiceChips\(editor, "priority", editor\.view\.prioritie
     for (const id of ['scheduling', 'organization', 'details']) assert(labelKeys.includes(`taskEdit.${id}`), `LABEL_KEYS lacks taskEdit.${id}`);
 }
 // No literal text reaches a Text, a content description, or a click label; key literals are label keys.
-for (const [name, text] of Object.entries({ activity, model, editorUi, focusUi, projectsUi, themeKt, iconsKt, rowUi, areaUi, viewStateKt, searchUi, processUi })) {
+for (const [name, text] of Object.entries({ activity, model, editorUi, focusUi, projectsUi, themeKt, iconsKt, rowUi, areaUi, viewStateKt, searchUi, processUi, captureUi })) {
     const body = code(text);
     for (const [, key] of body.matchAll(/"([a-z][A-Za-z]*(?:\.[A-Za-z]+)+)"/g)) assert(labelKeys.includes(key), `${name}: ${key} is not in LABEL_KEYS`);
     for (const [, rest] of body.matchAll(/(?:\bText\(|contentDescription = |onClickLabel = )([^\n]*)/g)) {
@@ -497,14 +510,10 @@ assert.match(activity, /if \(open != null && writable\) TaskEditorScreen\(model,
 // Landscape: the Inbox's Process button and scope line are the list's first item; only the header, the tabs (and a failure) stay fixed.
 assert.match(activity, /LazyColumn\(modifier, contentPadding = PaddingValues\(12\.dp\)\) \{\s*item\(key = "header"\)[\s\S]*?items\(rows, key = \{ it\.id \}\)/);
 assert.match(activity, /Screen\.Inbox -> InboxList\(model, Modifier\.fillMaxSize\(\)\)/);
-// Capture: RN's center tab button opens the sheet; the sheet is the Inbox capture unchanged (draft, UUID, exact retry).
-assert.match(activity, /CaptureButton\(model\)[\s\S]*?clickable\(role = Role\.Button\) \{ model\.showCapture\(true\) \}/);
-assert.match(activity, /if \(capturing\) CaptureSheet\(model\)/);
-assert.match(activity, /PillButton\(t\("common\.save"\), filled = true, onClick = model::add,/);
-assert.match(model, /if \(action\.kind == "create"\) \{ setCapture\(action\.title, action\.id, action\.title\); showCapture\(true\) \}/,
-    'a new screen reopens the sheet on an owed capture retry');
-assert.match(model, /saved\.get<Boolean>\("capturing"\)/);
-assert.match(activity, /val closable = !busy && failedAction == null\s+BackHandler\(enabled = failedAction == null\)/, 'an owed capture retry keeps the sheet open');
+// Capture: RN's center tab button opens RN's capture popup (CaptureScreen.kt), on core's quick capture contract.
+assert.match(activity, /CaptureButton\(model\)[\s\S]*?clickable\(role = Role\.Button\) \{ model\.openCapture\(\) \}/);
+assert.match(activity, /capture\?\.let \{ CapturePopup\(model, it\) \}/);
+assert.doesNotMatch(code(activity + model), /CaptureSheet|createInboxTask|showCapture/, 'the pass-1 capture sheet is gone');
 // The tab bar: RN's order with Menu's slot kept empty, and RN's lucide icons.
 const tabBar = activity.slice(activity.indexOf('private fun TabBar('), activity.indexOf('private fun RowScope.TabItem('));
 assert.deepEqual([...tabBar.matchAll(/TabItem\(model, Screen\.(\w+)|CaptureButton\(model\)|Spacer\(Modifier\.weight\(1f\)\)/g)]
@@ -558,11 +567,11 @@ for (const scheme of ['light', 'dark']) {
     assert.deepEqual(kotlinPalette(`${scheme.toUpperCase()} =`), FIELDS.map((field) => genericValue(scheme, field)), `RN default ${scheme} matches`);
 }
 // No color is written anywhere else: every other file draws with LocalTheme.
-for (const [name, text] of Object.entries({ activity, model, editorUi, focusUi, projectsUi, labelsKt, iconsKt, owner, rowUi, areaUi, viewStateKt, searchUi, processUi })) {
+for (const [name, text] of Object.entries({ activity, model, editorUi, focusUi, projectsUi, labelsKt, iconsKt, owner, rowUi, areaUi, viewStateKt, searchUi, processUi, captureUi })) {
     assert.doesNotMatch(code(text), /\bColor\(|Color\.(Black|White|Red|Green|Blue|Gray|Yellow|Cyan|Magenta|DarkGray|LightGray|Transparent)\b|parseColor|"#[0-9A-Fa-f]{3,8}"|0x[0-9A-Fa-f]{8}/,
         `${name} writes a color; colors live only in Theme.kt`);
 }
-assert.equal([activity, focusUi, projectsUi, rowUi, areaUi, searchUi, processUi].join('\n').match(/MaterialTheme\.typography/g), null, 'the lists use RN\'s type (rnText), not Material\'s');
+assert.equal([activity, focusUi, projectsUi, rowUi, areaUi, searchUi, processUi, captureUi].join('\n').match(/MaterialTheme\.typography/g), null, 'the lists use RN\'s type (rnText), not Material\'s');
 assert.equal(code(activity).match(/MindwtrTheme\(/g).length, 1, 'one theme wraps the whole app');
 // Core classifies the theme and owns its hues; Kotlin never names a theme mode.
 assert.doesNotMatch(code(themeKt + owner), /"(system|material3-light|material3-dark)"/);
@@ -714,6 +723,70 @@ assert.match(activity, /if \(total > 0\) ProcessButton\(model\)/);
 assert.match(activity, /semantics \{ contentDescription = "\$label \(\$total\)" \}/);
 assert.doesNotMatch(code(activity), /"\$inbox · \$total"/, 'the "Inbox · N" count line is gone, as in RN');
 
+// The capture popup (pass 5): core's quick capture contract, every write through perform with its exact request on disk first.
+for (const [fn, js] of [['openQuickCapture', 'captureOpen'], ['quickCaptureView', 'captureView'], ['editQuickCapture', 'captureEdit'],
+    ['submitQuickCapture', 'captureSubmit'], ['createQuickCaptureSnapshot', 'captureSnapshot'], ['submitQuickCaptureLines', 'captureLines'],
+    ['submitQuickCapturePickerQuery', 'capturePicker']]) {
+    assert.match(coreHost, new RegExp(`fun ${fn}\\([^)]*\\): JSONObject = callAsync\\("${js}"`), `CoreHost.${fn} reaches host method ${js}`);
+}
+for (const read of ['captureOpen(): string', 'captureView(json: string): string', 'captureEdit(json: string): string']) {
+    assert.match(hostEntry, new RegExp(`${read.replace(/[()]/g, '\\$&')} \\{\\s*return submit\\(async \\(\\) => \\{\\s*requireSaved\\(\\);`), `${read} waits for an owed save`);
+}
+for (const [method, operation, call] of [['captureSubmit', 'quickCapture', 'submitQuickCapture'], ['captureLines', 'quickCaptureLines', 'submitQuickCaptureLines'],
+    ['capturePicker', 'quickCapturePicker', 'submitQuickCapturePickerQuery']]) {
+    assert.match(hostEntry, new RegExp(`${method}\\(json: string\\): string \\{\\s*return submit\\(async \\(\\) => taskResult\\('${operation}', await contract\\.${call}\\(JSON\\.parse\\(json\\)\\)\\)\\);`));
+}
+for (const [fn, call] of [['sendCapture', 'submitQuickCapture'], ['sendLines', 'submitQuickCaptureLines'], ['sendPicker', 'submitQuickCapturePickerQuery']]) {
+    assert.match(model, new RegExp(`private fun ${fn}\\(action: FailedAction\\) = perform\\(action\\) \\{ runtime ->`), `${fn} is a perform(action)`);
+    const body = model.slice(model.indexOf(`private fun ${fn}(`), model.indexOf('\n    }\n', model.indexOf(`private fun ${fn}(`)));
+    assert.match(body, new RegExp(`runtime\\.${call}\\(`));
+    assert.match(body, /acknowledged\(action\)/);
+    assert.match(body, /if \(UPDATE_REFUSALS\.any \{ failure\.message\?\.startsWith\(it\) == true \}\)[^\n]*freeCapture\(action\)/, `${fn}: a refusal frees the ID and unlocks`);
+}
+assert.equal(code(model).match(/runtime\.(submitQuickCapture|submitQuickCapturePickerQuery)\(/g).length, 2);
+assert.equal(code(model).match(/runtime\.submitQuickCaptureLines\(/g).length, 1);
+// Each request is on disk before its call; a retry reuses the same capture UUID(s) or request UUID.
+for (const [kind, fn] of [['capture', 'sendCapture'], ['captureLines', 'sendLines'], ['capturePicker', 'sendPicker']]) {
+    assert.match(model, new RegExp(`current\\.pending\\?\\.takeIf \\{ it\\.kind == "${kind}" \\}`), `${kind}: a retry reuses the pending request`);
+    assert.match(model, new RegExp(`keepCapture\\(current\\.copy\\(pending = action[^)]*\\)\\)\\s+${fn}\\(action\\)`), `${kind}: the request is persisted before the call`);
+}
+assert.match(model, /FailedAction\("capture", current\.captureId, current\.text, patch = mapOf\("options" to current\.options\.toString\(\), "openAfterSave" to "\$openAfterSave"\)\)/);
+assert.match(model, /FailedAction\("captureLines", current\.lineIds\.first\(\), current\.text,\s*patch = mapOf\("options" to current\.options\.toString\(\), "captureIds" to current\.lineIds\.joinToString\(","\)\)\)/);
+assert.match(model, /failedAction = action\s+when \(action\.kind\) \{ "capture" -> sendCapture\(action\); "captureLines" -> sendLines\(action\); else -> sendPicker\(action\) \}/,
+    'after process death an uncertain capture is sent again with the same IDs');
+assert.match(model, /if \(action\.kind in CAPTURE_KINDS\) storedCapture\?\.let \{ keepCapture\(it\.copy\(pending = action\)\) \}/, 'a new screen reopens the popup on an owed capture, never re-sends it');
+assert.match(model, /saved\["capturing"\] = value != null/);
+assert.doesNotMatch(code(model), /saved\["capturing"\] = (?!value != null)|saved\["(draft|captureId|submittedTitle)"\]/, 'the Bundle holds only whether the popup is open');
+assert.match(model, /CaptureStore\(File\(app\.noBackupFilesDir, "capture"\)\)/);
+assert.match(captureUi, /FileOutputStream\(partial\)\.use \{ out -> out\.write\(state\.toString\(\)\.toByteArray\(\)\); out\.fd\.sync\(\) \}\s+check\(partial\.renameTo\(file\)\)/);
+// Several lines: core's snapshot is written as mobile writes it (a temporary file, a clash number, the 5 newest) before the batch.
+assert.match(model, /RecoverySnapshots\.write\(snapshots, it\.getString\("fileName"\), it\.getString\("contents"\)\)/);
+assert.match(model, /private val snapshots = File\(app\.filesDir, "snapshots"\)/);
+assert.match(snapshotsKt, /private const val MAX_SNAPSHOTS = 5/);
+assert.match(snapshotsKt, /name = fileName\.removeSuffix\(SUFFIX\) \+ "\.\$clash\$SUFFIX"/);
+assert.match(snapshotsKt, /FileOutputStream\(pending\)\.use \{ out -> out\.write\(contents\.toByteArray\(\)\); out\.fd\.sync\(\) \}\s+check\(pending\.renameTo\(File\(dir, name\)\)\)/);
+// No Kotlin capture policy: every chip, picker row and reset sends core's own edit; Kotlin builds only the typed note and the picked day and time.
+assert.deepEqual([...new Set([...code(captureUi).matchAll(/put\("type", "(\w+)"\)/g)].map(([, type]) => type))].sort(), ['setDueDay', 'setDueTime', 'setNote']);
+// The Custom date and due time pickers open on core's values (due.custom.startDay, due.time.start).
+assert.match(captureUi, /DayPickerDialog\(due\.getJSONObject\("custom"\)\.getString\("startDay"\), \{ pickDay = false \}\) \{ day ->\s+editCapture\(JSONObject\(\)\.put\("type", "setDueDay"\)\.put\("day", day\)\)\s+\}/);
+assert.match(captureUi, /due\.child\("time"\)\?\.getString\("start"\)/);
+// In landscape the body under the header scrolls with the footer at its end, so Save stays reachable.
+assert.match(captureUi, /if \(landscape\) Modifier\.weight\(1f, fill = false\)\.verticalScroll\(rememberScrollState\(\)\)\.testTag\("capture-scroll"\)/);
+assert.match(captureUi, /if \(landscape\) footer\(\)\s+\}\s+if \(!landscape\) footer\(\)/);
+// Durable draft (review of pass 5): an unanswered request comes back without saved state, edits are on disk before
+// they are sent, and the batch sends and persists the snapshot name RecoverySnapshots wrote before the call.
+assert.match(model, /storedCapture\?\.takeIf \{ saved\.get<Boolean>\("capturing"\) == true \|\| it\.pending != null \}/);
+assert.match(model, /keepCapture\(current\.copy\(requests = current\.requests \+ JSONObject\(\)\.put\("edit", edit\)\)\)\n/, 'an edit is persisted before it is sent');
+assert.match(captureUi, /\.put\("edits", /);
+assert.match(model, /val written = taken\?\.let \{ RecoverySnapshots\.write\(snapshots, it\.getString\("fileName"\), it\.getString\("contents"\)\) \}\s+onMain \{ capture\?\.let \{ keepCapture\(it\.copy\(snapshot = written, snapshotTaken = true\)\) \} \}\s+submit\(written\)/);
+assert.equal(code(model).match(/snapshotFileName/g).length, 1);
+assert.match(model, /\.put\("snapshotFileName", name \?: JSONObject\.NULL\)/);
+assert.match(model, /if \(!taken\) fresh\(\) else try \{ submit\(name\) \} catch \(failure: Exception\) \{\s+if \(failure\.message\?\.startsWith\("STALE_REVISION"\) != true\) throw failure\s+fresh\(\)/,
+    'a replay sends the persisted snapshot name first; a stale one takes, persists and sends a new one with the same IDs');
+// RN keeps the field focused for the next capture: a save locks (and unfocuses) the field; it takes focus back after.
+assert.match(captureUi, /LaunchedEffect\(draft\.session, locked\) \{ if \(!draft\.expanded && !locked\) \{ delay\(120\); runCatching \{ titleFocus\.requestFocus\(\) \} \} \}/);
+assert.match(captureUi, /const val ADD_ANOTHER_KEY = "mindwtr:quickCapture:addAnother"/);
+
 const fakeCore = `
 export class SqliteAdapter {
   async getData() {
@@ -799,7 +872,13 @@ export function createNativeHostContract() {
       globalThis.projectInputs.push(JSON.stringify(input));
       return globalThis.projectDetailResult;
     },
-    async createInboxTask() { globalThis.createCount++; return { ok: true, value: { id: 'id' } }; },
+    async submitQuickCapture(input) { globalThis.createCount++; globalThis.captureInputs.push(JSON.stringify(['submit', input])); return { ok: true, value: { kind: 'saved', taskId: 'id', next: 'close', reset: null } }; },
+    openQuickCapture() { globalThis.captureInputs.push('open'); return { ok: true, value: { version: 1, options: {} } }; },
+    getQuickCaptureView(input) { globalThis.captureInputs.push(JSON.stringify(['view', input])); return { ok: true, value: { version: 1, options: input.options } }; },
+    editQuickCapture(input) { globalThis.captureInputs.push(JSON.stringify(['edit', input])); return { ok: true, value: { view: { options: input.options }, notice: null } }; },
+    async createQuickCaptureSnapshot() { globalThis.captureInputs.push('snapshot'); return globalThis.snapshotResult; },
+    async submitQuickCaptureLines(input) { globalThis.captureInputs.push(JSON.stringify(['lines', input])); return { ok: true, value: { kind: 'saved', taskIds: input.captureIds } }; },
+    async submitQuickCapturePickerQuery(input) { globalThis.captureInputs.push(JSON.stringify(['picker', input])); return { ok: true, value: { options: input.options, created: true } }; },
     async setTaskFocus(input) { globalThis.newInputs.push(JSON.stringify(['taskFocus', input])); return globalThis.taskFocusResult; },
     async setProjectFocus(input) { globalThis.newInputs.push(JSON.stringify(['projectFocus', input])); return { ok: true, value: { blocked: '' } }; },
     async createProject(input) { globalThis.newInputs.push(JSON.stringify(['createProject', input])); return { ok: true, value: { id: 'p' } }; },
@@ -845,7 +924,8 @@ const makeState = (taskCount, fakeDataSequence = []) => {
         fakeData: { tasks: [], projects: [], sections: [], areas: [], people: [], settings: {} },
         fakeDataSequence, activationCount: 0, saveCount: 0, queryCount: 0,
         events: [], planInputs: [], plan: null, sqliteHasData: true, saveError: null, afterSave: null, lastLoaded: null, commitResult: null,
-        createCount: 0, completeCount: 0, persistenceFailure: null, editorInputs: [], updateInputs: [], focusInputs: [],
+        createCount: 0, completeCount: 0, persistenceFailure: null, captureInputs: [],
+        snapshotResult: { ok: true, value: { fileName: 'data.2026-09-24T10-00-00.000.snapshot.json', contents: '{}' } }, editorInputs: [], updateInputs: [], focusInputs: [],
         languageInputs: [], projectInputs: [], settings: undefined, newInputs: [],
         taskFocusResult: { ok: true, value: { blocked: 'Max 5 focus items.', blockedTitle: 'Focus' } },
         projectDetailResult: { ok: false, error: { code: 'STALE_REVISION', message: 'Project changed; restart paging from offset zero' } },
@@ -894,8 +974,27 @@ assert.equal(secondRead.saveCount, 0);
 const ready = makeState(0);
 assert.equal((await poll(ready, ready.MindwtrHost.boot())).ok, true);
 assert.equal(ready.activationCount, 1);
-assert.equal((await poll(ready, ready.MindwtrHost.create('Test', '123'))).ok, true);
-assert.equal(ready.createCount, 1);
+// The capture popup: every call passes Kotlin's JSON to core unchanged; the snapshot comes wrapped, null in sandbox mode.
+{
+    const draft = { text: 'Call @phone', options: { addAnother: false } };
+    const submitInput = { ...draft, captureId: '123', openAfterSave: false };
+    assert.equal((await poll(ready, ready.MindwtrHost.captureSubmit(JSON.stringify(submitInput)))).value.kind, 'saved');
+    assert.equal(ready.createCount, 1);
+    assert.equal((await poll(ready, ready.MindwtrHost.captureOpen())).ok, true);
+    assert.deepEqual((await poll(ready, ready.MindwtrHost.captureView(JSON.stringify({ ...draft, picker: { kind: 'project', query: 'h' } })))).value.options, draft.options);
+    assert.equal((await poll(ready, ready.MindwtrHost.captureEdit(JSON.stringify({ ...draft, edit: { type: 'toggleFocus' } })))).value.notice, null);
+    assert.deepEqual((await poll(ready, ready.MindwtrHost.captureSnapshot())).value,
+        { snapshot: { fileName: 'data.2026-09-24T10-00-00.000.snapshot.json', contents: '{}' } });
+    ready.snapshotResult = { ok: true, value: null };
+    assert.deepEqual((await poll(ready, ready.MindwtrHost.captureSnapshot())).value, { snapshot: null });
+    const linesInput = { text: 'a\nb', options: draft.options, captureIds: ['1', '2'], snapshotFileName: null };
+    assert.deepEqual((await poll(ready, ready.MindwtrHost.captureLines(JSON.stringify(linesInput)))).value, { kind: 'saved', taskIds: ['1', '2'] });
+    const pickerInput = { picker: 'project', query: 'Home', ...draft, requestId: '9' };
+    assert.equal((await poll(ready, ready.MindwtrHost.capturePicker(JSON.stringify(pickerInput)))).value.created, true);
+    assert.deepEqual(ready.captureInputs, [JSON.stringify(['submit', submitInput]), 'open', JSON.stringify(['view', { ...draft, picker: { kind: 'project', query: 'h' } }]),
+        JSON.stringify(['edit', { ...draft, edit: { type: 'toggleFocus' } }]), 'snapshot', 'snapshot', JSON.stringify(['lines', linesInput]), JSON.stringify(['picker', pickerInput])]);
+    ready.captureInputs.length = 0;
+}
 // update passes Kotlin's { id, base, patch } to core unchanged, and a refusal keeps its code prefix.
 const updateInput = JSON.stringify({ id: 't', base: { title: 'a', dueDate: null }, patch: { title: 'b', dueDate: '2026-09-15' } });
 assert.deepEqual(await poll(ready, ready.MindwtrHost.update(updateInput)), { ok: true, value: { id: 't', changed: true } });
@@ -1013,7 +1112,15 @@ assert.equal(ready.focusInputs.length, 2);
 // Commands never wait on requireSaved: the exact retry of a failed command must reach core, which retries the save.
 const commandsBefore = ready.completeCount + ready.createCount + ready.updateInputs.length;
 assert.equal((await poll(ready, ready.MindwtrHost.complete('t'))).ok, true);
-assert.equal((await poll(ready, ready.MindwtrHost.create('Retry', '123'))).ok, true);
+assert.equal((await poll(ready, ready.MindwtrHost.captureSubmit('{"text":"Retry","options":{},"captureId":"123"}'))).ok, true);
+// The popup's reads wait for the retry; its commands (a capture, several lines, a picker create) reach core so the retry can save.
+for (const blocked of [ready.MindwtrHost.captureOpen(), ready.MindwtrHost.captureView('{"text":"a","options":{}}'), ready.MindwtrHost.captureEdit('{"text":"a","options":{},"edit":{}}')]) {
+    assert.deepEqual(await poll(ready, blocked), { ok: false, error: 'SAVE_FAILED: disk full' });
+}
+for (const command of [ready.MindwtrHost.captureLines('{"text":"a\\nb","options":{},"captureIds":["1","2"],"snapshotFileName":null}'),
+    ready.MindwtrHost.capturePicker('{"picker":"area","query":"x","text":"","options":{},"requestId":"9"}')]) {
+    assert.equal((await poll(ready, command)).ok, true);
+}
 ready.updateResult = { ok: true, value: { id: 't', changed: false } };
 assert.equal((await poll(ready, ready.MindwtrHost.update(updateInput))).ok, true);
 assert.equal((await poll(ready, ready.MindwtrHost.saveDraft(draftInput))).ok, true);

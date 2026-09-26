@@ -100,7 +100,7 @@ export interface TaskStore {
     /** Permanently remove all soft-deleted tasks from storage */
     purgeDeletedTasks: () => Promise<StoreActionResult>;
     /** Duplicate a task (useful for reusable lists/templates) */
-    duplicateTask: (id: string, asNextAction?: boolean) => Promise<StoreActionResult>;
+    duplicateTask: (id: string, asNextAction?: boolean, copyId?: string) => Promise<StoreActionResult>;
     /** Convert a task into a section of its project; checklist items become tasks and the task is soft-deleted */
     convertTaskToSection: (id: string) => Promise<StoreActionResult>;
     /** Create or reuse a project from a task, then move the task into it */
@@ -176,7 +176,7 @@ export interface TaskStore {
     /** Reorder tasks within a project or section */
     reorderProjectTasks: (projectId: string, orderedIds: string[], sectionId?: string | null) => Promise<void>;
     /** Reorder tasks within a Board status column by id list */
-    reorderBoardTasks: (status: TaskStatus, orderedIds: string[]) => Promise<void>;
+    reorderBoardTasks: (status: TaskStatus, orderedIds: string[], movedTaskId?: string) => Promise<void>;
 
     // People Actions
     /** Add a new managed person for delegated tasks */

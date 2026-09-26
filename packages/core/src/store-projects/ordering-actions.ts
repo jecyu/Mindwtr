@@ -1,5 +1,5 @@
 import { getTaskOrder } from '../store-helpers';
-import { compareTasksByProjectOrder } from '../task-utils';
+import { compareTasksByProjectOrder, sortTasksByBoardOrder } from '../task-utils';
 import { mutateTasks } from '../store-tasks';
 import type { OrderingActions, Project, ProjectActionContext, Section, Task, TaskStatus } from './shared';
 import { mutateEntities } from './shared';
@@ -30,6 +30,25 @@ const uniqueValidIds = (orderedIds: string[], validIds: Set<string>): string[] =
 const finalOrderedIds = (currentIds: string[], orderedIds: string[]): string[] => {
     const orderedSet = new Set(orderedIds);
     return [...orderedIds, ...currentIds.filter((id) => !orderedSet.has(id))];
+};
+
+const boardOrderedIds = (currentIds: string[], shownIds: string[], movedTaskId?: string): string[] => {
+    const shown = new Set(shownIds);
+    const currentShown = currentIds.filter((id) => shown.has(id));
+    if (sameOrder(currentShown, shownIds)) return currentIds;
+    const moved = movedTaskId && shown.has(movedTaskId) ? movedTaskId : findSingleMovedId(currentShown, shownIds);
+    if (moved) {
+        const remaining = currentIds.filter((id) => id !== moved);
+        const shownWithoutMoved = shownIds.filter((id) => id !== moved);
+        const at = shownIds.indexOf(moved);
+        const next = shownWithoutMoved[at];
+        const previous = shownWithoutMoved[at - 1];
+        const insert = previous ? remaining.indexOf(previous) + 1 : next ? remaining.indexOf(next) : remaining.length;
+        remaining.splice(insert, 0, moved);
+        return remaining;
+    }
+    let index = 0;
+    return currentIds.map((id) => shown.has(id) ? shownIds[index++] : id);
 };
 
 const findSingleMovedId = (currentIds: string[], nextIds: string[]): string | null => {
@@ -223,7 +242,7 @@ export const createOrderingActions = ({
         });
     },
 
-    reorderBoardTasks: async (status: TaskStatus, orderedIds: string[]) => {
+    reorderBoardTasks: async (status: TaskStatus, orderedIds: string[], movedTaskId?: string) => {
         if (!status || orderedIds.length === 0) return;
         let orderPlan: SparseOrderPlan | null = null;
         await mutateTasks({ set, debouncedSave }, {
@@ -232,15 +251,8 @@ export const createOrderingActions = ({
                 const columnTaskIds = new Set(columnTasks.map((task) => task.id));
                 const validOrderedIds = uniqueValidIds(orderedIds, columnTaskIds);
                 if (validOrderedIds.length === 0) return [];
-                const currentIds = columnTasks
-                    .sort((a, b) => {
-                        const aOrder = Number.isFinite(a.boardOrder) ? (a.boardOrder as number) : Number.POSITIVE_INFINITY;
-                        const bOrder = Number.isFinite(b.boardOrder) ? (b.boardOrder as number) : Number.POSITIVE_INFINITY;
-                        if (aOrder !== bOrder) return aOrder - bOrder;
-                        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-                    })
-                    .map((task) => task.id);
-                const nextIds = finalOrderedIds(currentIds, validOrderedIds);
+                const currentIds = sortTasksByBoardOrder(columnTasks).map((task) => task.id);
+                const nextIds = boardOrderedIds(currentIds, validOrderedIds, movedTaskId);
                 const orderById = new Map(columnTasks.map((task) => [task.id, finiteOrder(task.boardOrder)]));
                 orderPlan = createSparseOrderPlan(currentIds, nextIds, orderById);
                 if (!orderPlan) return [];

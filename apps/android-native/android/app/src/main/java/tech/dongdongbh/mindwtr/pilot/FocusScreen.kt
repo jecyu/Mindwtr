@@ -21,7 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -121,7 +120,7 @@ fun FocusList(model: InboxViewModel, modifier: Modifier) {
                         modifier = Modifier.weight(1f))
                     val label = t(if (othersOpen) "agenda.collapseOtherSections" else "agenda.expandOtherSections")
                     IconButton(onClick = { setOtherFocusSections(!othersOpen) }, enabled = others > 0,
-                        modifier = Modifier.alpha(if (others > 0) 1f else 0.4f).semantics { contentDescription = label; selected = !othersOpen }) {
+                        modifier = Modifier.fade(if (others > 0) 1f else 0.4f).semantics { contentDescription = label; selected = !othersOpen }) {
                         Icon(if (othersOpen) Lucide.ChevronsUp else Lucide.ChevronsDown, null,
                             tint = if (othersOpen) c.secondaryText else c.tint, modifier = Modifier.size(20.dp))
                     }

@@ -11,6 +11,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import org.json.JSONObject
 import tech.dongdongbh.mindwtr.pilot.core.CoreHost
+import tech.dongdongbh.mindwtr.pilot.core.RecoverySnapshots
 import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
@@ -58,7 +59,7 @@ data class FailedAction(
 /** Core refused the update or the editor save before writing anything, so there is no retry to hold. */
 private val UPDATE_REFUSALS = listOf("STALE_REVISION", "INVALID_INPUT", "TASK_NOT_FOUND")
 /** Commands core can refuse before writing: an update, an editor save, a saved search, and a Process Inbox answer. */
-private val REFUSABLE = setOf("update", "saveDraft", "saveSearch", "inboxCommit", "inboxSkip")
+private val REFUSABLE = setOf("update", "saveDraft", "saveSearch", "inboxCommit", "inboxSkip", "capture", "captureLines", "capturePicker")
 
 private fun JSONObject.metaPart(): MetaPart = MetaPart(
     getString("kind"), getString("text"), getBoolean("detail"), text("dotColor"), text("tone"),
@@ -138,11 +139,11 @@ class InboxViewModel(app: Application, private val saved: SavedStateHandle) : An
     var writable by mutableStateOf(false); private set
     var busy by mutableStateOf(false); private set
     var error by mutableStateOf<String?>(null); private set
-    var draft by mutableStateOf(saved.get<String>("draft") ?: ""); private set
-    var captureId by mutableStateOf(saved.get<String>("captureId") ?: UUID.randomUUID().toString()); private set
-    /** The quick capture sheet is open. It survives rotation and process death with its draft. */
-    var capturing by mutableStateOf(saved.get<Boolean>("capturing") ?: false); private set
-    private var submittedTitle: String? = saved.get<String>("submittedTitle")
+    /**
+     * RN's capture popup, open with its draft: the typed text, core's options and view, the open picker, and an answer's
+     * exact request. It is on disk (see [CaptureStore]); the Bundle holds only whether it is open.
+     */
+    var capture by mutableStateOf<CaptureDraft?>(null); private set
     var failedAction by mutableStateOf<FailedAction?>(null); private set
     var rows by mutableStateOf<List<TaskRow>>(emptyList()); private set
     private var revision = ""
@@ -193,6 +194,8 @@ class InboxViewModel(app: Application, private val saved: SavedStateHandle) : An
     /** Process Inbox on screen: core's session and step view, and an answer's exact request (see [ProcessingStore]). */
     var processing by mutableStateOf<InboxProcessing?>(null); private set
     private val processingStore = ProcessingStore(File(app.noBackupFilesDir, "process-inbox"))
+    private val captureStore = CaptureStore(File(app.noBackupFilesDir, "capture"))
+    private val snapshots = File(app.filesDir, "snapshots")
     /** RN's per-device Process Inbox mode (guided or quick), under RN's key. */
     var processingMode by mutableStateOf(readProcessingMode(prefs)); private set
     @Volatile private var host: CoreHost? = null
@@ -200,7 +203,6 @@ class InboxViewModel(app: Application, private val saved: SavedStateHandle) : An
     private val main = Handler(Looper.getMainLooper())
 
     init {
-        saved["captureId"] = captureId
         saved["projectRequestId"] = projectRequestId
         val at = depth()
         val savedDraft = editorKey?.let(drafts::read)
@@ -209,15 +211,19 @@ class InboxViewModel(app: Application, private val saved: SavedStateHandle) : An
         // Process Inbox left open at process death (the Bundle says so), or owed by a failure in this process.
         val storedProcessing = processingStore.read()
         val reopenProcessing = storedProcessing?.takeIf { saved.get<Boolean>("processing") == true }
+        // The capture popup left open at process death, or owed by a failure in this process. A request whose outcome
+        // was never answered comes back even without saved state (a force-stop or a crash): the captured text is user data.
+        val storedCapture = captureStore.read()
+        val reopenCapture = storedCapture?.takeIf { saved.get<Boolean>("capturing") == true || it.pending != null }
         Thread({
             try {
                 val runtime = ProcessCoreHost.get(getApplication())
-                ProcessCoreHost.failure?.let { pending -> ui { host = runtime; restore(pending, storedProcessing) }; return@Thread }
+                ProcessCoreHost.failure?.let { pending -> ui { host = runtime; restore(pending, storedProcessing, storedCapture) }; return@Thread }
                 val lists = try {
                     read(runtime, at)
                 } catch (failure: Throwable) {
                     // A save that failed while this screen opened blocks reads; show its retry.
-                    ProcessCoreHost.failure?.let { pending -> ui { host = runtime; restore(pending, storedProcessing) }; return@Thread }
+                    ProcessCoreHost.failure?.let { pending -> ui { host = runtime; restore(pending, storedProcessing, storedCapture) }; return@Thread }
                     throw failure
                 }
                 // The editor open at process death: core's model read again, the saved draft on top.
@@ -231,6 +237,7 @@ class InboxViewModel(app: Application, private val saved: SavedStateHandle) : An
                     // Control edits core had not answered before the process died are sent again, in order.
                     pumpEdits()
                     if (reopenProcessing != null) resumeProcessing(reopenProcessing) else processingStore.delete()
+                    if (reopenCapture != null) resumeCapture(reopenCapture) else captureStore.delete()
                     search?.let { current ->
                         readSearch()
                         // A Save Search whose outcome was lost with the process: its exact request first, then the dialog unlocks.
@@ -258,22 +265,6 @@ class InboxViewModel(app: Application, private val saved: SavedStateHandle) : An
     fun show(target: Screen) {
         screen = target
         saved["screen"] = target.name
-    }
-
-    /** Opens or closes the quick capture sheet. The draft stays either way; only a saved capture clears it. */
-    fun showCapture(open: Boolean) {
-        capturing = open
-        saved["capturing"] = open
-    }
-
-    /** The draft, its capture UUID, and the title last sent with it; all survive process death. */
-    private fun setCapture(text: String, id: String, submitted: String?) {
-        draft = text
-        captureId = id
-        submittedTitle = submitted
-        saved["draft"] = text
-        saved["captureId"] = id
-        saved["submittedTitle"] = submitted
     }
 
     private fun keepKey(key: String?) {
@@ -310,9 +301,10 @@ class InboxViewModel(app: Application, private val saved: SavedStateHandle) : An
         sendDraft(action)
     }
 
-    private fun restore(pending: ProcessCoreHost.PendingFailure, storedProcessing: InboxProcessing?) {
+    private fun restore(pending: ProcessCoreHost.PendingFailure, storedProcessing: InboxProcessing?, storedCapture: CaptureDraft?) {
         val action = pending.action
-        if (action.kind == "create") { setCapture(action.title, action.id, action.title); showCapture(true) }
+        // An owed capture reopens the popup on the same request, never re-sent here.
+        if (action.kind in CAPTURE_KINDS) storedCapture?.let { keepCapture(it.copy(pending = action)) }
         // An owed saved search or Process Inbox answer reopens its screen on the same request.
         if (action.kind == "saveSearch") keepSearch(SearchState(action.title, saveName = action.patch["name"], saveRequestId = action.id, submitted = action.patch["name"]))
         if (action.kind in STEP_KINDS) storedProcessing?.let { keepProcessing(it.copy(pending = action)) }
@@ -331,24 +323,6 @@ class InboxViewModel(app: Application, private val saved: SavedStateHandle) : An
         error = pending.error
         writable = true
         loading = false
-    }
-
-    fun editDraft(value: String) {
-        if (submittedTitle != null && value != submittedTitle) setCapture(value, UUID.randomUUID().toString(), null)
-        else setCapture(value, captureId, submittedTitle)
-    }
-
-    fun add() {
-        val title = draft
-        val id = captureId
-        setCapture(title, id, submitted = title)
-        val action = FailedAction("create", id, title)
-        perform(action) { runtime ->
-            runtime.createInboxTask(title, id)
-            acknowledged(action)
-            // As in RN's quick capture: a saved capture closes the sheet.
-            ui { setCapture("", UUID.randomUUID().toString(), null); showCapture(false) }
-        }
     }
 
     /** From the Inbox, Focus, or a project: the same command, the same exact-retry lock. */
@@ -696,7 +670,9 @@ class InboxViewModel(app: Application, private val saved: SavedStateHandle) : An
     fun retryOwed() {
         val action = failedAction ?: return
         when (action.kind) {
-            "create" -> add()
+            "capture" -> sendCapture(action)
+            "captureLines" -> sendLines(action)
+            "capturePicker" -> sendPicker(action)
             "complete" -> complete(action.id)
             "update" -> sendUpdate(action)
             "saveDraft" -> sendDraft(action)
@@ -712,6 +688,299 @@ class InboxViewModel(app: Application, private val saved: SavedStateHandle) : An
                 acknowledged(action)
                 ui { showLists(lists, ++issued) }
             }
+        }
+    }
+
+    // ---- The capture popup (RN's components/quick-capture-sheet.tsx) ----
+
+    /** Every popup change is on disk (synced) before anything else, except reads and edits waiting for core; closing deletes it. */
+    private fun keepCapture(value: CaptureDraft?, persist: Boolean = true) {
+        capture = value
+        saved["capturing"] = value != null
+        if (value == null) captureStore.delete() else if (persist) captureStore.write(value.state())
+    }
+
+    /** RN's center +: core's empty draft; RN's sticky "Add another" goes on with core's own edit. */
+    fun openCapture() {
+        if (capture != null) return
+        perform { runtime ->
+            val view = runtime.openQuickCapture()
+            ui {
+                keepCapture(CaptureDraft.opened(view))
+                val addAnother = view.getJSONObject("addAnother")
+                if (prefs.getString(ADD_ANOTHER_KEY, null) == "true" && !addAnother.getBoolean("value")) editCapture(addAnother.getJSONObject("edit"))
+            }
+        }
+    }
+
+    /** RN's Close (and the backdrop, and Back): the draft goes, as RN's popup discards it. */
+    fun closeCapture() {
+        keepCapture(null)
+        captureInFlight = null
+    }
+
+    /**
+     * After process death: the popup comes back with its draft. An answer whose outcome was unknown is sent again
+     * exactly first (core answers a capture already written from its task, and writes nothing twice).
+     */
+    private fun resumeCapture(restored: CaptureDraft) {
+        keepCapture(restored.reading())
+        val action = restored.pending ?: return
+        if (failedAction != null) return
+        failedAction = action
+        when (action.kind) { "capture" -> sendCapture(action); "captureLines" -> sendLines(action); else -> sendPicker(action) }
+    }
+
+    /** The typed text, then core's view for it (preview and Save's state). */
+    fun typeCapture(text: String) {
+        val current = capture ?: return
+        keepCapture(current.copy(text = text).reading())
+        pumpCapture()
+    }
+
+    /** A control's edit as core's view carries it; queued, then sent one at a time. */
+    fun editCapture(edit: JSONObject) {
+        val current = capture ?: return
+        // The edit is part of the durable draft (on disk before it is sent), so a death before core answers keeps it.
+        keepCapture(current.copy(requests = current.requests + JSONObject().put("edit", edit)))
+        pumpCapture()
+    }
+
+    /** RN's Add another switch: core's edit, and RN's device preference for the next open. */
+    fun setCaptureAddAnother(addAnother: JSONObject) {
+        val on = addAnother.getJSONObject("edit").getBoolean("value")
+        prefs.edit().apply { if (on) putString(ADD_ANOTHER_KEY, "true") else remove(ADD_ANOTHER_KEY) }.apply()
+        editCapture(addAnother.getJSONObject("edit"))
+    }
+
+    fun setCaptureExpanded(open: Boolean) { capture?.let { keepCapture(it.copy(expanded = open)) } }
+
+    /** Opens a picker (project, area, context, priority) with an empty search; core's view then carries it. */
+    fun openCapturePicker(kind: String) {
+        val current = capture ?: return
+        val picker = JSONObject().put("kind", kind).apply { if (kind != "priority") put("query", "") }
+        keepCapture(current.copy(picker = picker, pickerRequestId = UUID.randomUUID().toString()).reading())
+        pumpCapture()
+    }
+
+    fun closeCapturePicker() { capture?.let { keepCapture(it.copy(picker = null)) } }
+
+    /** The picker's search text; core's view lists the matches. */
+    fun captureQuery(query: String) {
+        val current = capture ?: return
+        val picker = current.picker ?: return
+        keepCapture(current.copy(picker = JSONObject(picker.toString()).put("query", query)).reading())
+        pumpCapture()
+    }
+
+    /** A picker row's edit. Project, area and priority close the picker, as RN's do; contexts stay open for more. */
+    fun pickCapture(edit: JSONObject, close: Boolean, clearQuery: Boolean = false) {
+        val current = capture ?: return
+        val picker = current.picker?.let { if (clearQuery && it.has("query")) JSONObject(it.toString()).put("query", "") else it }
+        keepCapture(current.copy(picker = if (close) null else picker))
+        editCapture(edit)
+    }
+
+    /** The read or edit core is answering now. */
+    private var captureInFlight: JSONObject? = null
+
+    /** Sends the next queued read or edit, then a queued Save. The popup calls it again whenever no action runs. */
+    fun pumpCapture() {
+        val current = capture ?: return
+        val runtime = host
+        if (captureInFlight != null || runtime == null || busy || failedAction != null) return
+        val next = current.requests.firstOrNull()
+        if (next == null) {
+            current.queuedSave?.let { saveCapture(openAfterSave = it == "edit") }
+            return
+        }
+        captureInFlight = next
+        val edit = next.optJSONObject("edit")
+        val request = JSONObject().put("text", current.text).put("options", current.options)
+            .apply { current.picker?.let { put("picker", it) }; edit?.let { put("edit", it) } }
+        background(emptyList(), { engine -> runCatching { if (edit != null) engine.editQuickCapture(request.toString()) else engine.quickCaptureView(request.toString()) } }) { reply, _ ->
+            if (captureInFlight === next) captureInFlight = null
+            // A reply counts only for its popup and the request it answers, still first in the queue.
+            val now = capture?.takeIf { it.session == current.session && it.requests.firstOrNull() === next } ?: return@background pumpCapture()
+            reply.onSuccess { result ->
+                val view = if (edit != null) result.getJSONObject("view") else result
+                if (edit != null) result.optJSONObject("notice")?.let { showToast(it.getString("title"), it.getString("message"), it.getString("tone")) }
+                val answered = now.copy(options = view.getJSONObject("options"), view = view, requests = now.requests.drop(1))
+                // Text typed while core answered is read again, so the preview follows the field.
+                keepCapture(if (now.text != current.text) answered.reading() else answered)
+            }.onFailure { failure ->
+                // Core refused the request: its message shows, and the queue (with a queued Save) is dropped.
+                Log.w(CoreHost.TAG, "Capture request refused", failure)
+                showToast(null, (failure.message ?: failure.javaClass.simpleName).substringAfter(": "), "warning")
+                keepCapture(now.copy(requests = emptyList(), queuedSave = null))
+            }
+            pumpCapture()
+        }
+    }
+
+    /** A Save's exact request: the text, core's options, the capture UUID, and Save and edit. A retry reuses it. */
+    fun captureAction(current: CaptureDraft, openAfterSave: Boolean) = current.pending?.takeIf { it.kind == "capture" }
+        ?: FailedAction("capture", current.captureId, current.text, patch = mapOf("options" to current.options.toString(), "openAfterSave" to "$openAfterSave"))
+
+    /** RN's Save (and Return): reads and edits still with core go first; the request is on disk before the call. */
+    fun saveCapture(openAfterSave: Boolean) {
+        val current = capture ?: return
+        if (current.requests.isNotEmpty() || captureInFlight != null) {
+            keepCapture(current.copy(queuedSave = if (openAfterSave) "edit" else "save"), persist = false)
+            return
+        }
+        val action = captureAction(current, openAfterSave)
+        if (busy || (failedAction != null && failedAction != action)) return
+        keepCapture(current.copy(pending = action, queuedSave = null))
+        sendCapture(action)
+    }
+
+    /** A refused request wrote nothing: the ID is free, and the draft stays for the next try. */
+    private fun freeCapture(action: FailedAction) = ui {
+        if (failedAction == action) failedAction = null
+        capture?.let { keepCapture(it.copy(pending = null, captureId = UUID.randomUUID().toString(), pickerRequestId = UUID.randomUUID().toString(),
+            snapshot = null, snapshotTaken = false)) }
+    }
+
+    /** Core's submitQuickCapture with [action]'s exact request. */
+    private fun sendCapture(action: FailedAction) = perform(action) { runtime ->
+        val request = JSONObject().put("text", action.title).put("options", JSONObject(action.patch["options"]!!)).put("captureId", action.id)
+            .put("openAfterSave", action.patch["openAfterSave"] == "true")
+        val reply = try {
+            runtime.submitQuickCapture(request.toString())
+        } catch (failure: Exception) {
+            if (UPDATE_REFUSALS.any { failure.message?.startsWith(it) == true }) freeCapture(action)
+            throw failure
+        }
+        acknowledged(action)
+        ui { finishCapture(reply) }
+    }
+
+    /** Core's answer: saved (close, open the editor, or the next capture), refused (the notice; the draft stays), or several lines. */
+    private fun finishCapture(reply: JSONObject) {
+        val current = capture ?: return
+        val fresh = current.copy(pending = null, captureId = UUID.randomUUID().toString())
+        when (reply.getString("kind")) {
+            "saved" -> when (reply.getString("next")) {
+                "open" -> {
+                    keepCapture(null)
+                    val id = reply.getString("taskId")
+                    main.post { openEditor(id) }
+                }
+                "addAnother" -> {
+                    val reset = reply.getJSONObject("reset")
+                    keepCapture(fresh.copy(text = reset.getString("text"), options = reset.getJSONObject("options"), picker = null, confirm = null).reading())
+                    pumpCapture()
+                }
+                else -> keepCapture(null)
+            }
+            "refused" -> {
+                reply.getJSONObject("notice").let { showToast(it.getString("title"), it.getString("message"), it.getString("tone")) }
+                keepCapture(fresh)
+            }
+            else -> {
+                val confirm = JSONObject(reply.getJSONObject("confirm").toString())
+                keepCapture(fresh.copy(confirm = confirm, lineIds = List(reply.getInt("lineCount")) { UUID.randomUUID().toString() }))
+            }
+        }
+    }
+
+    fun cancelCaptureLines() { capture?.let { keepCapture(it.copy(confirm = null, lineIds = emptyList())) } }
+
+    /** The several lines' exact request: the text, core's options and one capture UUID per line. A retry reuses it. */
+    fun linesAction(current: CaptureDraft) = current.pending?.takeIf { it.kind == "captureLines" }
+        ?: FailedAction("captureLines", current.lineIds.first(), current.text,
+            patch = mapOf("options" to current.options.toString(), "captureIds" to current.lineIds.joinToString(",")))
+
+    /** RN's Create tasks: the request is on disk before the call. */
+    fun createCaptureLines() {
+        val current = capture ?: return
+        if (current.lineIds.isEmpty()) return
+        val action = linesAction(current)
+        if (busy || (failedAction != null && failedAction != action)) return
+        keepCapture(current.copy(pending = action))
+        sendLines(action)
+    }
+
+    /** Runs [work] on the main thread and waits for it: an action thread's durable write of the popup's state. */
+    private fun <T> onMain(work: () -> T): T {
+        val done = java.util.concurrent.CountDownLatch(1)
+        var result: Result<T>? = null
+        main.post { result = runCatching(work); done.countDown() }
+        done.await()
+        return result!!.getOrThrow()
+    }
+
+    /**
+     * Core's recovery snapshot, written as mobile writes it, then submitQuickCaptureLines with the name actually written
+     * (core accepts its clash name). The name goes on disk with the request before the batch is sent; a retry (after
+     * process death too) first re-sends that exact request. Core refuses a stale snapshot (STALE_REVISION): a fresh one
+     * is taken, its name persisted, and the same capture IDs are sent again.
+     */
+    private fun sendLines(action: FailedAction) = perform(action) { runtime ->
+        val ids = org.json.JSONArray(action.patch["captureIds"]!!.split(","))
+        val submit = { name: String? ->
+            runtime.submitQuickCaptureLines(JSONObject().put("text", action.title).put("options", JSONObject(action.patch["options"]!!))
+                .put("captureIds", ids).put("snapshotFileName", name ?: JSONObject.NULL).toString())
+        }
+        val fresh = {
+            val taken = runtime.createQuickCaptureSnapshot().optJSONObject("snapshot")
+            val written = taken?.let { RecoverySnapshots.write(snapshots, it.getString("fileName"), it.getString("contents")) }
+            onMain { capture?.let { keepCapture(it.copy(snapshot = written, snapshotTaken = true)) } }
+            submit(written)
+        }
+        val (taken, name) = onMain { (capture?.snapshotTaken == true) to capture?.snapshot }
+        val reply = try {
+            if (!taken) fresh() else try { submit(name) } catch (failure: Exception) {
+                if (failure.message?.startsWith("STALE_REVISION") != true) throw failure
+                fresh()
+            }
+        } catch (failure: Exception) {
+            if (UPDATE_REFUSALS.any { failure.message?.startsWith(it) == true }) freeCapture(action)
+            throw failure
+        }
+        acknowledged(action)
+        ui {
+            val current = capture ?: return@ui
+            if (reply.getString("kind") == "saved") keepCapture(null) else {
+                reply.getJSONObject("notice").let { showToast(it.getString("title"), it.getString("message"), it.getString("tone")) }
+                keepCapture(current.copy(pending = null, confirm = null, lineIds = emptyList(), snapshot = null, snapshotTaken = false))
+            }
+        }
+    }
+
+    /** The project or area picker's search, chosen or created: its exact request, with a UUID kept while the picker is open. */
+    fun pickerAction(current: CaptureDraft) = current.pending?.takeIf { it.kind == "capturePicker" }
+        ?: FailedAction("capturePicker", current.pickerRequestId, current.picker?.optString("query").orEmpty().trim(),
+            patch = mapOf("picker" to current.picker?.optString("kind").orEmpty(), "text" to current.text, "options" to current.options.toString()))
+
+    /** RN's picker submit (Return, or the Create row): the request is on disk before the call. */
+    fun submitCapturePicker() {
+        val current = capture ?: return
+        if (current.picker == null) return
+        val action = pickerAction(current)
+        if (action.title.isEmpty() || busy || (failedAction != null && failedAction != action)) return
+        keepCapture(current.copy(pending = action))
+        sendPicker(action)
+    }
+
+    /** Core's submitQuickCapturePickerQuery; its options come back with the choice made, and the picker closes. */
+    private fun sendPicker(action: FailedAction) = perform(action) { runtime ->
+        val request = JSONObject().put("picker", action.patch["picker"]).put("query", action.title).put("text", action.patch["text"])
+            .put("options", JSONObject(action.patch["options"]!!)).put("requestId", action.id)
+        val reply = try {
+            runtime.submitQuickCapturePickerQuery(request.toString())
+        } catch (failure: Exception) {
+            if (UPDATE_REFUSALS.any { failure.message?.startsWith(it) == true }) freeCapture(action)
+            throw failure
+        }
+        acknowledged(action)
+        ui {
+            capture?.let {
+                keepCapture(it.copy(options = reply.getJSONObject("options"), picker = null, pending = null,
+                    pickerRequestId = UUID.randomUUID().toString()).reading())
+            }
+            pumpCapture()
         }
     }
 

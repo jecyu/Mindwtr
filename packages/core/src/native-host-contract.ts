@@ -1,5 +1,5 @@
 import { MAX_FOCUSED_PROJECTS } from './store-projects/project-actions';
-import { AREA_FILTER_ALL, AREA_FILTER_NONE, areaFilterSelectionToFilters, areaFilterSelectionToValue, cycleAreaFilterSelection, isAreaFilterSelectionActive, isTaskVisibleInArea, isTaskVisibleInInbox, projectMatchesAreaFilterSelection, resolveAreaFilterSelection, taskMatchesAreaFilterSelection, type AreaFilterSelection } from './area-filter';
+import { AREA_FILTER_ALL, AREA_FILTER_NONE, areaFilterSelectionToFilters, areaFilterSelectionToValue, cycleAreaFilterSelection, isAreaFilterSelectionActive, isTaskVisibleInArea, isTaskVisibleInInbox, resolveAreaFilterSelection, taskMatchesAreaFilterSelection, type AreaFilterSelection } from './area-filter';
 import { DEFAULT_PROJECT_COLOR } from './color-constants';
 import { flushPendingSave, getPersistenceStatus, getStorageAdapter, useTaskStore } from './store';
 import { noopStorage, type StorageAdapter } from './storage';
@@ -55,17 +55,23 @@ import { getProjectRowStatus } from './project-row-meta';
 import { getFocusStarBlockedText } from './focus-star';
 import { normalizeFocusTaskLimit } from './focus-utils';
 import {
-    buildFocusPools,
     buildFocusTaskSections,
-    DEFAULT_FOCUS_SORT_BY,
-    deriveFocusTaskLists,
-    getReviewDueProjects,
     type FocusTaskSection,
     type FocusTaskSectionKey,
 } from './focus-sections';
+import {
+    applyFocusControlEdit,
+    buildFocusControlsModel,
+    buildFocusNextItems,
+    DEFAULT_FOCUS_CONTROL_STATE,
+    type FocusControlEdit,
+    type FocusControlsModel,
+    type FocusControlState,
+} from './focus-controls';
+import { themeDescriptor } from './theme-scheme';
 import { formatLocalDate } from './import-source-reader';
 import { resolveFeatureFlags } from './resolve-feature-flags';
-import { isTaskActionable, isTaskCancelled, isTaskFinished } from './task-status';
+import { isTaskCancelled, isTaskFinished } from './task-status';
 import { buildTaskRowMeta, resolveTaskRowFeatures, resolveTaskRowLookup, type TaskRowMeta, type TaskRowMetaInput } from './task-row-meta';
 import type { ProjectDeadlineBoost } from './task-utils';
 import { getEnglishI18nValue, getTranslator, tFallback } from './i18n';
@@ -183,9 +189,20 @@ import {
     type ListConfirmation,
 } from './trash-view-model';
 import type { MultiValueFilterMatchMode, TaskEnergyLevel, TaskSortBy } from './types';
-import { createMenuViewMethods } from './native-host-contract-menu-views';
+import { createMenuViewMethods, paramsKey } from './native-host-contract-menu-views';
 import { createReviewViewMethods } from './native-host-contract-review-views';
 import { createQuickCaptureMethods } from './native-host-contract-quick-capture';
+import { createCalendarViewMethods } from './native-host-contract-calendar';
+import { createBoardViewMethods } from './native-host-contract-board';
+import { createInboxViewMethods } from './native-host-contract-inbox-view';
+import {
+    buildNativeFocusControls,
+    createFocusControlMethods,
+    readNativeFocusControlEdit,
+    readNativeFocusControls,
+    type NativeFocusControls,
+    type NativeFocusControlsInput,
+} from './native-host-contract-focus-controls';
 
 export const NATIVE_HOST_CONTRACT_VERSION = 1;
 export const NATIVE_HOST_MAX_WINDOW = 100;
@@ -290,10 +307,27 @@ export type NativeSearchView = {
 export type NativeFocusSection = {
     key: FocusTaskSectionKey;
     title: string;
+    /** The header count: the section's tasks. */
     total: number;
     rows: NativeTaskRow[];
     focusBlockedLabel: string | null;
+    /**
+     * Only on a read that sends `controls`. The rows to page through: `total`, except
+     * that under a grouping a task in two groups is listed twice. A read without
+     * `controls` keeps the flat rows it always had: each task once, never grouped.
+     */
+    rowTotal?: number;
+    /**
+     * Only on a read that sends `controls`. Next actions under a grouping
+     * (controls.view.group): RN's group headings, each drawn before the row at `start`
+     * (an index into the section's rows, so a heading belongs to the window that holds
+     * that row). Rows under a heading are indented. Null for other sections and
+     * without a grouping.
+     */
+    groups?: NativeFocusGroup[] | null;
 };
+export type NativeFocusGroup = { id: string; title: string; count: number; muted: boolean; dotColor: string | null; start: number };
+type CachedFocusSection = FocusTaskSection & { total: number; groups: NativeFocusGroup[] | null };
 export type NativeFocusView = {
     version: typeof NATIVE_HOST_CONTRACT_VERSION;
     revision: string;
@@ -305,6 +339,8 @@ export type NativeFocusView = {
      * task sections and hidden when empty; its header count is this length.
      */
     reviewProjects: NativeReviewProjectRow[];
+    /** The filter sheet, saved filters, View options and reorder, for the control state read (native-host-contract-focus-controls.ts). */
+    controls: NativeFocusControls;
 };
 export type NativeProjectRow = Pick<Project, 'id' | 'title' | 'status'> & {
     cancelled: boolean;
@@ -656,8 +692,9 @@ export function createNativeHostContract() {
     let cachedRevision = '';
     let cachedInbox: Task[] = [];
     let cachedProjectTitles = new Map<string, string>();
-    let cachedFocusRevision = '';
-    let cachedFocusSections: FocusTaskSection[] = [];
+    let cachedFocusKey = '';
+    let cachedFocusSections: CachedFocusSection[] = [];
+    let cachedFocusModel: FocusControlsModel | null = null;
     let cachedFocusProjectTitles = new Map<string, string>();
     let cachedRevealDates = new Map<string, Date>();
     let cachedLaterTodayIds = new Set<string>();
@@ -751,46 +788,104 @@ export function createNativeHostContract() {
         });
     };
 
-    const focusSections = (currentRevision: string, now: Date): FocusTaskSection[] => {
-        if (cachedFocusRevision !== currentRevision) {
+    // The RN Focus screen's pass for a control state (focus-controls.ts): area-visible
+    // actionable tasks, the state's criteria, sort and grouping, then buildFocusPools
+    // and deriveFocusTaskLists. Cached per revision and state. `null` is a read without
+    // `controls`: the default state, and Next actions stays flat whatever grouping is
+    // stored, as it was before controls existed (a caller keying rows by task ID must
+    // never see a task twice).
+    const focusSections = (currentRevision: string, now: Date, controls: FocusControlState | null): CachedFocusSection[] => {
+        const key = `${currentRevision}\u0000${controls ? paramsKey(controls) : 'flat'}`;
+        if (cachedFocusKey !== key) {
             const state = useTaskStore.getState();
-            const tasks = state.tasks.filter(isTaskActionable);
-            const projectById = new Map(state.projects.map((project) => [project.id, project]));
-            const resolvedAreaFilter = resolveAreaFilterSelection(state.settings.filters, state.areas);
-            const areaById = new Map(sortAreasForDisplay(state.areas).map((area) => [area.id, area]));
-            // RN Focus uses the selected area for visible tasks and review projects.
-            const visibleTasks = tasks.filter((task) => isTaskVisibleInArea(task, { projectById, areaById, resolvedAreaFilter }));
-            const pools = buildFocusPools({ tasks, visibleTasks, projects: state.projects, criteria: undefined, now });
-            const lists = deriveFocusTaskLists(pools, {
-                now,
+            const formatDate = createDateFormatter(dateFormatting());
+            const model = buildFocusControlsModel({
+                state: controls ?? DEFAULT_FOCUS_CONTROL_STATE,
+                tasks: state.tasks,
                 projects: state.projects,
+                areas: state.areas,
                 sections: state.sections,
-                sortBy: DEFAULT_FOCUS_SORT_BY,
-                prioritiesEnabled: resolveFeatureFlags(state.settings).priorities,
-                sortOrder: undefined,
+                settings: state.settings,
+                now,
+                t: translate,
+                formatDate: (value) => formatDate(value, 'P', value),
             });
+            const { lists } = model;
+            const groupBy = controls ? model.perspective.effectiveGroupBy : 'none';
             const schedule = splitTodayTasksByStartTime(lists.schedule, now);
             cachedDeadlineBoosts = lists.projectDeadlineBoosts;
-            cachedReviewProjects = getReviewDueProjects(state.projects.filter((project) => (
-                !project.deletedAt && projectMatchesAreaFilterSelection(project, resolvedAreaFilter, areaById)
-            )), now);
+            cachedReviewProjects = model.reviewProjects;
             cachedLaterTodayIds = new Set(schedule.laterToday.map((task) => task.id));
             cachedFocusSections = buildFocusTaskSections(lists, (key) => {
                 const value = translate(key);
                 return value === key ? undefined : value;
-            }).map((section) => (
-                section.key === 'schedule'
-                    ? { ...section, items: [...schedule.ready, ...schedule.laterToday] }
-                    : section
-            ));
+            }).map((section): CachedFocusSection => {
+                if (section.key === 'schedule') {
+                    return { ...section, items: [...schedule.ready, ...schedule.laterToday], total: section.items.length, groups: null };
+                }
+                if (section.key !== 'next' || groupBy === 'none') return { ...section, total: section.items.length, groups: null };
+                const items: Task[] = [];
+                const groups: NativeFocusGroup[] = [];
+                for (const item of buildFocusNextItems({
+                    groupBy,
+                    tasks: section.items,
+                    projects: state.projects,
+                    areas: state.areas,
+                    t: translate,
+                    // RN's theme preset, for the context and tag swatches.
+                    theme: themeDescriptor(state.settings.theme)?.statusPreset ?? 'default',
+                })) {
+                    if (item.type === 'task') items.push(item.task);
+                    else groups.push({ id: item.id, title: item.title, count: item.count, muted: item.muted === true, dotColor: item.dotColor ?? null, start: items.length });
+                }
+                return { ...section, items, total: section.items.length, groups };
+            });
             cachedFocusProjectTitles = new Map(state.projects.map((project) => [project.id, project.title]));
-            cachedRevealDates = new Map(pools.upcoming.map(({ task, appearsAt }) => [task.id, appearsAt]));
-            cachedFocusRevision = currentRevision;
+            cachedRevealDates = new Map(model.pools.upcoming.map(({ task, appearsAt }) => [task.id, appearsAt]));
+            cachedFocusModel = model;
+            cachedFocusKey = key;
         }
         return cachedFocusSections;
     };
 
-    const focusRows = (section: FocusTaskSection, offset: number, limit: number, now: Date): NativeTaskRow[] => {
+    /**
+     * The Focus model for a control state (null: a read without `controls`), and the
+     * revision a Focus read answers under. A read without `controls` keeps the plain
+     * Focus revision it always had.
+     */
+    const focusModel = (controls: FocusControlState | null, now: Date): { model: FocusControlsModel; revision: string } => {
+        const currentRevision = focusRevision(now);
+        focusSections(currentRevision, now, controls);
+        const model = cachedFocusModel as FocusControlsModel;
+        return { model, revision: controls ? `${currentRevision}:${paramsKey(model.filter.state)}` : currentRevision };
+    };
+
+    /**
+     * The control state a Focus read asks for: the host's state after its control edit;
+     * `controls: null` for a read that sends neither; null when invalid.
+     */
+    const readFocusControls = (input: { controls?: unknown; controlEdit?: unknown }, now: Date): { controls: FocusControlState | null } | null => {
+        if (input.controls === undefined && input.controlEdit === undefined) return { controls: null };
+        const controls = readNativeFocusControls(input.controls);
+        if (!controls) return null;
+        if (input.controlEdit === undefined) return { controls };
+        const edit = readNativeFocusControlEdit(input.controlEdit);
+        if (!edit) return null;
+        const { model } = focusModel(controls, now);
+        const next = applyFocusControlEdit({
+            state: model.filter.state,
+            activeSavedFilter: model.filter.activeSavedFilter,
+            effectiveSortBy: model.perspective.effectiveSortBy,
+        }, edit, model.savedFilters);
+        return next ? { controls: next } : null;
+    };
+
+    // A heading belongs to the window holding the row it precedes.
+    const windowGroups = (section: CachedFocusSection, offset: number, limit: number) => (
+        section.groups?.filter(({ start }) => start >= offset && start < offset + limit) ?? null
+    );
+
+    const focusRows = (section: CachedFocusSection, offset: number, limit: number, now: Date): NativeTaskRow[] => {
         const formatDate = createDateFormatter(dateFormatting());
         return section.items.slice(offset, offset + limit).map((task) => {
             const appearsAt = section.key === 'upcoming' ? cachedRevealDates.get(task.id) : undefined;
@@ -943,6 +1038,19 @@ export function createNativeHostContract() {
                 return tasks.map((task) => toNativeTaskRow(task, titles, rowMeta(task, now)));
             },
         }),
+        // The Calendar screen: native-host-contract-calendar.ts.
+        ...createCalendarViewMethods({
+            readiness,
+            save,
+            t: () => translate,
+            dateFormatting,
+            revision: (now) => `${revision()}:${displayRevision(now)}`,
+            dataRevision: () => `${revision()}:${settingsRevision()}`,
+            rows: (tasks, now) => {
+                const titles = new Map(useTaskStore.getState().projects.map((project) => [project.id, project.title]));
+                return tasks.map((task) => toNativeTaskRow(task, titles, rowMeta(task, now)));
+            },
+        }),
         // The capture popup: native-host-contract-quick-capture.ts.
         ...createQuickCaptureMethods({
             readiness,
@@ -950,6 +1058,37 @@ export function createNativeHostContract() {
             t: () => translate,
             formatDate: () => createDateFormatter(dateFormatting()),
             revision: (now) => `${revision()}:${displayRevision(now)}`,
+            requestIdPattern: CAPTURE_ID_PATTERN,
+        }),
+        // The Inbox tab's list, toolbar and screen parts: native-host-contract-inbox-view.ts.
+        ...createInboxViewMethods({
+            readiness,
+            t: () => translate,
+            revision: (now) => `${revision()}:${displayRevision(now)}`,
+            // Mobile's Inbox list hides checklist progress.
+            rows: (tasks, now) => {
+                const titles = new Map(useTaskStore.getState().projects.map((project) => [project.id, project.title]));
+                return tasks.map((task) => toNativeTaskRow(task, titles, rowMeta(task, now, { hideChecklistProgress: true })));
+            },
+        }),
+        // The Board: native-host-contract-board.ts.
+        ...createBoardViewMethods({
+            readiness,
+            save,
+            t: () => translate,
+            revision: (now) => `${revision()}:${displayRevision(now)}`,
+            rows: (tasks, now) => {
+                const titles = new Map(useTaskStore.getState().projects.map((project) => [project.id, project.title]));
+                return tasks.map((task) => toNativeTaskRow(task, titles, rowMeta(task, now)));
+            },
+            requestIdPattern: CAPTURE_ID_PATTERN,
+        }),
+        // Focus's control commands: native-host-contract-focus-controls.ts.
+        ...createFocusControlMethods({
+            readiness,
+            save,
+            t: () => translate,
+            focusModel,
             requestIdPattern: CAPTURE_ID_PATTERN,
         }),
 
@@ -1254,22 +1393,32 @@ export function createNativeHostContract() {
             }
         },
 
-        getFocus(input: { limit: number }): NativeHostResult<NativeFocusView> {
+        /**
+         * Focus: its sections with each one's first `limit` rows, and its controls.
+         * `controls` is the control state the host keeps (default: no filter, the
+         * default sort); a control's `edit` sent as `controlEdit` changes it first.
+         * Keep the returned `controls.state` and send it with later reads.
+         */
+        getFocus(input: { limit: number; controls?: NativeFocusControlsInput; controlEdit?: FocusControlEdit }): NativeHostResult<NativeFocusView> {
             const ready = readiness();
             if (!ready.ok) return ready;
             if (!input || !Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > NATIVE_HOST_MAX_WINDOW) {
                 return fail('INVALID_INPUT', 'A bounded limit is required');
             }
             const now = new Date();
-            const currentRevision = focusRevision(now);
-            const sections = focusSections(currentRevision, now).map((section) => ({
+            const read = readFocusControls(input, now);
+            if (!read) return fail('INVALID_INPUT', 'The Focus controls or control edit are not valid');
+            const { controls } = read;
+            const { model, revision: currentRevision } = focusModel(controls, now);
+            const sections = focusSections(focusRevision(now), now, controls).map((section) => ({
                 key: section.key,
                 title: section.title,
-                total: section.items.length,
+                total: section.total,
                 rows: focusRows(section, 0, input.limit, now),
                 focusBlockedLabel: section.key === 'upcoming'
                     ? getFocusStarBlockedText(translate, { blockedReason: 'deferred' }, normalizeFocusTaskLimit(useTaskStore.getState().settings.gtd?.focusTaskLimit))
                     : null,
+                ...(controls ? { rowTotal: section.items.length, groups: windowGroups(section, 0, input.limit) } : {}),
             }));
             const { projectTaskSummaryById: summaries, focusedProjectCount } = useTaskStore.getState().getDerivedState();
             const formatDate = createDateFormatter(dateFormatting());
@@ -1284,6 +1433,7 @@ export function createNativeHostContract() {
                         ...toNativeProjectRow(project, summaries, focusedProjectCount, translate),
                         reviewDateLabel: project.reviewAt ? formatDate(project.reviewAt, 'P') : null,
                     })),
+                    controls: buildNativeFocusControls(model, { t: translate, formatDate }),
                 },
             };
         },
@@ -1372,27 +1522,31 @@ export function createNativeHostContract() {
             };
         },
 
+        /** A later window of one Focus section's rows. Send the `controls.state` the Focus read returned. */
         getFocusSectionWindow(input: {
-            key: FocusTaskSectionKey; offset: number; limit: number; revision: string;
+            key: FocusTaskSectionKey; offset: number; limit: number; revision: string; controls?: NativeFocusControlsInput;
         }): NativeHostResult<{
             version: typeof NATIVE_HOST_CONTRACT_VERSION;
             revision: string;
             key: FocusTaskSectionKey;
             total: number;
             rows: NativeTaskRow[];
+            rowTotal?: number;
+            groups?: NativeFocusGroup[] | null;
         }> {
             const ready = readiness();
             if (!ready.ok) return ready;
-            if (!input || typeof input.key !== 'string'
+            const controls = input && input.controls !== undefined ? readNativeFocusControls(input.controls) : null;
+            if (!input || typeof input.key !== 'string' || (input.controls !== undefined && !controls)
                 || !Number.isSafeInteger(input.offset) || input.offset < 0
                 || !Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > NATIVE_HOST_MAX_WINDOW
                 || typeof input.revision !== 'string') {
-                return fail('INVALID_INPUT', 'A valid section, offset, bounded limit, and revision are required');
+                return fail('INVALID_INPUT', 'A valid section, offset, bounded limit, revision and Focus controls are required');
             }
             const now = new Date();
-            const currentRevision = focusRevision(now);
+            const { revision: currentRevision } = focusModel(controls, now);
             if (input.revision !== currentRevision) return fail('STALE_REVISION', 'Focus changed; restart paging');
-            const section = focusSections(currentRevision, now).find(({ key }) => key === input.key);
+            const section = focusSections(focusRevision(now), now, controls).find(({ key }) => key === input.key);
             if (!section) return fail('INVALID_INPUT', 'Focus section is not available');
             return {
                 ok: true,
@@ -1400,8 +1554,9 @@ export function createNativeHostContract() {
                     version: NATIVE_HOST_CONTRACT_VERSION,
                     revision: currentRevision,
                     key: section.key,
-                    total: section.items.length,
+                    total: section.total,
                     rows: focusRows(section, input.offset, input.limit, now),
+                    ...(controls ? { rowTotal: section.items.length, groups: windowGroups(section, input.offset, input.limit) } : {}),
                 },
             };
         },

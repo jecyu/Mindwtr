@@ -42,19 +42,13 @@ type ContrastViolation = {
 const KNOWN_CONTRAST_VIOLATIONS = new Set<string>([
     // Status chips: the status hue on its own 14% tint, just under 4.5:1.
     'light | color-contrast | #228145 on #e0ede5',
-    'light | color-contrast | #9d6607 on #f1eadc',
     'material3-light | color-contrast | #228145 on #e0ede5',
-    'material3-light | color-contrast | #9d6607 on #f1eadc',
-    'dark | color-contrast | #5593f7 on #253042',
-    'material3-dark | color-contrast | #5593f7 on #253042',
     'nord | color-contrast | #77c591 on #3f4f55',
     'nord | color-contrast | #77c591 on #43545b',
     'sepia | color-contrast | #3e743e on #dbdbc2',
     'sepia | color-contrast | #3e743e on #dee0c9',
     'sepia | color-contrast | #3e743e on #e0e1cc',
-    'sepia | color-contrast | #855e33 on #e4d8c1',
     'sepia | color-contrast | #855e33 on #efe2c7',
-    'sepia | color-contrast | #886134 on #e5d9c1',
     'sepia | color-contrast | #886134 on #e9dec8',
     'catppuccin-macchiato | color-contrast | #a5adcb on #494d64',
     'dracula | color-contrast | #bd93f9 on #3b3c4f',
@@ -125,6 +119,9 @@ for (const theme of THEMES) {
         // Three screens and three axe passes in one browser context: past the
         // default per-test budget, well inside the job's.
         test.slow();
+        // This adaptive mode uses the light palette here; OLED is checked separately.
+        if (theme === 'system-oled') await page.emulateMedia({ colorScheme: 'light' });
+        const contrastTheme = theme === 'system-oled' ? 'light' : theme;
         await dismissOnboarding(page);
         await seedTheme(page, theme);
         await seedAppData(page, { ...FIXTURE, settings: { theme } });
@@ -133,15 +130,15 @@ for (const theme of THEMES) {
 
         await page.goto('/');
         await expect(page.locator('[data-sidebar-item][data-view="agenda"]')).toBeVisible();
-        found.push(...await runAxeContrast(page, theme, 'focus'));
+        found.push(...await runAxeContrast(page, contrastTheme, 'focus'));
 
         // Settings is code-split, so wait for its own heading, not the shell.
         await page.goto('/?view=settings');
         await expect(page.getByRole('heading', { name: 'General', level: 2 })).toBeVisible();
-        found.push(...await runAxeContrast(page, theme, 'settings'));
+        found.push(...await runAxeContrast(page, contrastTheme, 'settings'));
 
         await openDailyReview(page);
-        found.push(...await runAxeContrast(page, theme, 'daily-review'));
+        found.push(...await runAxeContrast(page, contrastTheme, 'daily-review'));
 
         const unlisted = [...new Set(
             found

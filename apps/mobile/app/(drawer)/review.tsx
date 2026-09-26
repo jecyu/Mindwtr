@@ -1,20 +1,24 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BackHandler, View, Text, FlatList, Pressable, StyleSheet, TouchableOpacity, Modal, TextInput, Share } from 'react-native';
+import { AppState, BackHandler, View, Text, FlatList, Pressable, StyleSheet, TouchableOpacity, Modal, TextInput, Share } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   REVIEW_BULK_STATUSES,
   buildReviewShareText,
   decorateReviewOverviewGroups,
+  flushPendingSave,
+  getAdvancedReviewDate,
   getReviewExpansionControl,
   getReviewOverviewGroups,
   getReviewOverviewSortBy,
   getReviewOverviewText,
+  isTaskDueForReview,
   toggleReviewExpandedId,
   useTaskStore,
   shallow,
   type Task,
   type TaskStatus,
+  type ReviewOverviewScope,
 } from '@mindwtr/core';
 import { useTheme } from '../../contexts/theme-context';
 import { useLanguage } from '../../contexts/language-context';
@@ -26,6 +30,7 @@ import { ReviewModal } from '../../components/review-modal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronDown, ChevronRight, ChevronsDown, ChevronsUp } from 'lucide-react-native';
 import { logError } from '../../lib/app-log';
+import { useToast } from '../../contexts/toast-context';
 
 import { TaskEditModal } from '@/components/task-edit-modal';
 import { SwipeableTaskItem, type TaskRowActions } from '@/components/swipeable-task-item';
@@ -56,10 +61,15 @@ export default function ReviewScreen() {
   const [bulkOrganizeVisible, setBulkOrganizeVisible] = useState(false);
   const [expandedAreaIds, setExpandedAreaIds] = useState<Set<string>>(new Set());
   const [expandedReviewProjectIds, setExpandedReviewProjectIds] = useState<Set<string>>(new Set());
+  const [scope, setScope] = useState<ReviewOverviewScope>('due');
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  const [reviewWriteBusy, setReviewWriteBusy] = useState(false);
+  const [reviewSavePending, setReviewSavePending] = useState(false);
 
   const tc = useThemeColors();
   const filledButton = useFilledButtonColors();
   const insets = useSafeAreaInsets();
+  const { showToast } = useToast();
   const { areaById, resolvedAreaFilter, sortedAreas } = useMobileAreaFilter();
 
   const tasksById = useMemo(() => {
@@ -68,8 +78,37 @@ export default function ReviewScreen() {
       return acc;
     }, {} as Record<string, Task>);
   }, [tasks]);
+  const dueIds = useMemo(() => new Set(tasks.filter((task) => isTaskDueForReview(task, new Date(nowTick))).map((task) => task.id)), [nowTick, tasks]);
+
+  useEffect(() => {
+    const refresh = () => setNowTick(Date.now());
+    const interval = setInterval(refresh, 60_000);
+    const listener = AppState.addEventListener('change', (state) => { if (state === 'active') refresh(); });
+    return () => { clearInterval(interval); listener.remove(); };
+  }, []);
 
   const text = useMemo(() => getReviewOverviewText(t), [t]);
+  const sortBy = getReviewOverviewSortBy(settings);
+  const reviewOverviewGroups = useMemo(() => getReviewOverviewGroups({
+    tasks,
+    projects,
+    orderedAreas: sortedAreas,
+    areaFilter: resolvedAreaFilter,
+    sortBy,
+    scope,
+    now: new Date(nowTick),
+  }), [nowTick, projects, resolvedAreaFilter, scope, sortBy, sortedAreas, tasks]);
+  const unassignedAreaColor = settings?.appearance?.unassignedAreaColor;
+  const reviewTaskGroups = useMemo(
+    () => decorateReviewOverviewGroups(reviewOverviewGroups, { areaById, unassignedAreaColor, text, scope }),
+    [areaById, reviewOverviewGroups, scope, text, unassignedAreaColor],
+  );
+  const renderedTaskIds = useMemo(() => new Set(reviewTaskGroups.flatMap((area) => (
+    !expandedAreaIds.has(area.id) ? [] : area.projectGroups.flatMap((project) => (
+      expandedReviewProjectIds.has(project.id) ? project.tasks.map((task) => task.id) : []
+    ))
+  ))), [expandedAreaIds, expandedReviewProjectIds, reviewTaskGroups]);
+  const canSelectTaskId = useCallback((id: string) => renderedTaskIds.has(id), [renderedTaskIds]);
   const {
     bulkActionLoading,
     exitSelectionMode,
@@ -94,16 +133,17 @@ export default function ReviewScreen() {
     batchDeleteTasks,
     batchMoveTasks,
     batchUpdateTasks,
+    canSelectTaskId,
     restoreTask,
     t,
     tasksById,
   });
 
   useEffect(() => {
-    if (selectionMode && multiSelectedIds.size === 0) {
+    if (selectionMode && (multiSelectedIds.size === 0 || [...multiSelectedIds].some((id) => !renderedTaskIds.has(id)))) {
       exitSelectionMode();
     }
-  }, [exitSelectionMode, multiSelectedIds, selectionMode]);
+  }, [exitSelectionMode, multiSelectedIds, renderedTaskIds, selectionMode]);
 
   useFocusEffect(
     useCallback(() => {
@@ -158,19 +198,52 @@ export default function ReviewScreen() {
     }
   }, [hasSelection, selectedIdsArray, tasksById, exitSelectionMode]);
 
-  const sortBy = getReviewOverviewSortBy(settings);
-  const reviewOverviewGroups = useMemo(() => getReviewOverviewGroups({
-    tasks,
-    projects,
-    orderedAreas: sortedAreas,
-    areaFilter: resolvedAreaFilter,
-    sortBy,
-  }), [projects, resolvedAreaFilter, sortBy, sortedAreas, tasks]);
-  const unassignedAreaColor = settings?.appearance?.unassignedAreaColor;
-  const reviewTaskGroups = useMemo(
-    () => decorateReviewOverviewGroups(reviewOverviewGroups, { areaById, unassignedAreaColor, text }),
-    [areaById, reviewOverviewGroups, text, unassignedAreaColor],
-  );
+  const persistReviewWrite = useCallback(async (write: () => Promise<{ success: boolean; error?: string }>) => {
+    if (reviewWriteBusy || reviewSavePending) return;
+    setReviewWriteBusy(true);
+    try {
+      const result = await write();
+      if (!result.success) throw new Error(result.error || 'Review update failed');
+      setReviewSavePending(true);
+      await flushPendingSave();
+      setReviewSavePending(false);
+      exitSelectionMode();
+      showToast({ message: t('review.markReviewedDone'), tone: 'success' });
+    } catch (error) {
+      void logError(error, { scope: 'review', extra: { message: 'Mark reviewed failed' } });
+      showToast({ message: t('bulk.updateFailed'), tone: 'warning' });
+    } finally {
+      setReviewWriteBusy(false);
+    }
+  }, [exitSelectionMode, reviewSavePending, reviewWriteBusy, showToast, t]);
+
+  const retryReviewSave = useCallback(async () => {
+    setReviewWriteBusy(true);
+    try {
+      if (useTaskStore.getState().persistenceFailure) await useTaskStore.getState().retryPersistence();
+      else await flushPendingSave();
+      setReviewSavePending(false);
+      exitSelectionMode();
+      showToast({ message: t('persistence.saved'), tone: 'success' });
+    } catch {
+      showToast({ message: t('bulk.updateFailed'), tone: 'warning' });
+    } finally {
+      setReviewWriteBusy(false);
+    }
+  }, [exitSelectionMode, showToast, t]);
+
+  const markReviewed = useCallback((task: Task, advance = false) => {
+    if (!isTaskDueForReview(task, new Date(nowTick))) return;
+    void persistReviewWrite(() => updateTask(task.id, { reviewAt: advance ? getAdvancedReviewDate(task.reviewAt) : undefined }));
+  }, [nowTick, persistReviewWrite, updateTask]);
+
+  const markSelectedReviewed = useCallback(() => {
+    if (scope !== 'due') return;
+    const ids = selectedIdsArray.filter((id) => dueIds.has(id));
+    if (ids.length === 0) return;
+    void persistReviewWrite(() => batchUpdateTasks(ids.map((id) => ({ id, updates: { reviewAt: undefined } }))));
+  }, [batchUpdateTasks, dueIds, persistReviewWrite, scope, selectedIdsArray]);
+
   const expansionControl = useMemo(() => getReviewExpansionControl(
     reviewTaskGroups,
     { areaIds: expandedAreaIds, projectIds: expandedReviewProjectIds },
@@ -212,8 +285,8 @@ export default function ReviewScreen() {
   }, []);
 
   const renderReviewTaskItem = (task: Task) => (
+    <View key={task.id}>
     <SwipeableTaskItem
-      key={task.id}
       task={task}
       isDark={isDark}
       tc={tc}
@@ -225,10 +298,33 @@ export default function ReviewScreen() {
       onContextPress={openContextsScreen}
       onTagPress={openContextsScreen}
     />
+    {dueIds.has(task.id) && <View style={styles.reviewTaskActions}>
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${text.markReviewed}: ${task.title}`} disabled={reviewWriteBusy || reviewSavePending} onPress={() => markReviewed(task)} style={styles.reviewTaskActionButton}>
+        <Text style={{ color: tc.tint }}>{text.markReviewed}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${t('review.advanceWeek')}: ${task.title}`} disabled={reviewWriteBusy || reviewSavePending} onPress={() => markReviewed(task, true)} style={styles.reviewTaskActionButton}>
+        <Text style={{ color: tc.tint }}>{t('review.advanceWeek')}</Text>
+      </TouchableOpacity>
+    </View>}
+    </View>
   );
 
   return (
     <View style={[styles.container, { backgroundColor: tc.bg }]}>
+      <View style={[styles.scopeBar, { borderBottomColor: tc.border }]}>
+        {(['due', 'all'] as const).map((choice) => <TouchableOpacity
+          key={choice}
+          accessibilityRole="button"
+          accessibilityState={{ selected: scope === choice }}
+          onPress={() => { if (choice !== scope) { exitSelectionMode(); setScope(choice); } }}
+          style={[styles.scopeButton, { backgroundColor: scope === choice ? tc.tint : tc.filterBg }]}
+        ><Text style={{ color: scope === choice ? tc.onTint : tc.text }}>{choice === 'due' ? text.scopeDue : text.scopeAll}</Text></TouchableOpacity>)}
+        <Text style={[styles.scopeHelp, { color: tc.secondaryText }]}>{scope === 'due' ? text.dueHelp : text.overviewHelp}</Text>
+        {scope === 'all' && <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${t('nav.done')} ${t('common.tasks')}`} onPress={() => router.push('/history')} style={styles.reviewTaskActionButton}><Text style={{ color: tc.tint }}>{t('nav.done')}</Text></TouchableOpacity>}
+      </View>
+      {reviewSavePending && <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('common.retry')} disabled={reviewWriteBusy} onPress={() => { void retryReviewSave(); }} style={styles.retryButton}>
+        <Text style={{ color: tc.danger }}>{t('common.retry')}</Text>
+      </TouchableOpacity>}
       {!selectionMode && (
         <View style={[styles.reviewActionBar, { backgroundColor: tc.cardBg, borderBottomColor: tc.border }]}>
           <TouchableOpacity
@@ -274,6 +370,12 @@ export default function ReviewScreen() {
             </TouchableOpacity>
           </View>
           <View style={styles.bulkActions}>
+            {scope === 'due' && <TouchableOpacity
+              accessibilityRole="button"
+              onPress={markSelectedReviewed}
+              disabled={!hasSelection || reviewWriteBusy || reviewSavePending}
+              style={[styles.bulkActionButton, styles.reviewTaskActionButton, { backgroundColor: tc.tint, opacity: hasSelection && !reviewWriteBusy && !reviewSavePending ? 1 : 0.5 }]}
+            ><Text style={[styles.bulkActionText, { color: tc.onTint }]}>{text.markReviewed}</Text></TouchableOpacity>}
             <TouchableOpacity
               onPress={() => setBulkOrganizeVisible(true)}
               disabled={!hasSelection || bulkActionLoading}
@@ -445,7 +547,7 @@ export default function ReviewScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={[styles.emptyText, { color: tc.secondaryText }]}>{t('review.noTasks')}</Text>
+            <Text style={[styles.emptyText, { color: tc.secondaryText }]}>{scope === 'due' ? text.dueEmpty : text.overviewEmpty}</Text>
           </View>
         }
       />
@@ -631,6 +733,12 @@ export default function ReviewScreen() {
 }
 
 const styles = StyleSheet.create({
+  scopeBar: { borderBottomWidth: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, padding: 12 },
+  scopeButton: { borderRadius: 8, minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, paddingVertical: 8 },
+  scopeHelp: { width: '100%', fontSize: 12 },
+  reviewTaskActions: { flexDirection: 'row', gap: 20, paddingHorizontal: 12, paddingVertical: 8 },
+  reviewTaskActionButton: { minHeight: 44, minWidth: 44, justifyContent: 'center' },
+  retryButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },
   container: {
     flex: 1,
   },

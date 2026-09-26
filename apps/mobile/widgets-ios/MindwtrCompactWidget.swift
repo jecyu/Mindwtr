@@ -145,6 +145,9 @@ private struct MindwtrCompactWidgetView: View {
         let mode = (payload.themeMode ?? "system")
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
+        if mode == "system-oled" {
+            return colorScheme == .dark ? .oled : .light
+        }
         if mode.isEmpty || mode == "system" {
             return colorScheme == .dark ? .dark : .light
         }

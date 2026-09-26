@@ -44,7 +44,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -213,7 +212,7 @@ private fun ProgressHeader(model: InboxViewModel, flow: InboxProcessing, canSkip
         val close = t("common.close")
         Box(Modifier.widthIn(min = 72.dp).heightIn(min = 44.dp).clickable(enabled = !locked, role = Role.Button) { closeProcessing() }
             .semantics { contentDescription = close }, contentAlignment = Alignment.CenterStart) {
-            Icon(Lucide.X, null, tint = c.text, modifier = Modifier.size(22.dp).alpha(if (locked) 0.5f else 1f))
+            Icon(Lucide.X, null, tint = c.text, modifier = Modifier.size(22.dp).fade(if (locked) 0.5f else 1f))
         }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(progress.getString("label"), style = rnText(12, 400), color = c.secondaryText, modifier = Modifier.padding(bottom = 4.dp))
@@ -232,7 +231,7 @@ private fun ProgressHeader(model: InboxViewModel, flow: InboxProcessing, canSkip
         val skip = view.getString("skip")
         Box(Modifier.widthIn(min = 72.dp).heightIn(min = 44.dp).clickable(enabled = canSkip, role = Role.Button) { answer("inboxSkip", "") }
             .semantics { contentDescription = skip }, contentAlignment = Alignment.CenterEnd) {
-            Text(skip, style = rnText(16, 600), color = c.tint, modifier = Modifier.alpha(if (canSkip) 1f else 0.5f))
+            Text(skip, style = rnText(16, 600), color = c.tint, modifier = Modifier.fade(if (canSkip) 1f else 0.5f))
         }
     }
 }
@@ -382,7 +381,7 @@ private fun ChoiceButton(choice: JSONObject, compact: Boolean, enabled: Boolean,
     val shape = RoundedCornerShape(14.dp)
     Row(modifier.heightIn(min = if (compact) 48.dp else 52.dp).clip(shape).background(c.cardBg).border(1.dp, c.border, shape)
         .clickable(enabled = enabled, role = Role.Button, onClick = onClick).semantics { contentDescription = label }
-        .alpha(if (enabled) 1f else 0.5f).padding(horizontal = if (compact) 12.dp else 16.dp, vertical = if (compact) 10.dp else 12.dp),
+        .fade(if (enabled) 1f else 0.5f).padding(horizontal = if (compact) 12.dp else 16.dp, vertical = if (compact) 10.dp else 12.dp),
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         choice.text("icon")?.let(CHOICE_ICONS::get)?.let { Icon(it, null, tint = c.text, modifier = Modifier.padding(end = 8.dp).size(18.dp)) }
         Text(label, style = rnText(16, 600), color = c.text, textAlign = TextAlign.Center)
@@ -394,7 +393,7 @@ private fun ChoiceButton(choice: JSONObject, compact: Boolean, enabled: Boolean,
 private fun FilledButton(label: String, enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val theme = LocalTheme.current
     Box(modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(12.dp)).background(theme.filledBg)
-        .clickable(enabled = enabled, role = Role.Button, onClick = onClick).alpha(if (enabled) 1f else 0.5f)
+        .clickable(enabled = enabled, role = Role.Button, onClick = onClick).fade(if (enabled) 1f else 0.5f)
         .padding(horizontal = 12.dp, vertical = 12.dp), contentAlignment = Alignment.Center) {
         Text(label, style = rnText(16, 700), color = theme.filledText)
     }
@@ -602,7 +601,7 @@ private fun TokenSection(flow: InboxProcessing, tokens: JSONObject, locked: Bool
             send(JSONObject().put("type", "set").put("field", "tokenInput").put("value", it))
         }
         val addLabel = add.getString("label")
-        Box(Modifier.padding(start = 8.dp).size(44.dp).clip(RoundedCornerShape(10.dp)).background(c.tint).alpha(if (add.getBoolean("enabled")) 1f else 0.5f)
+        Box(Modifier.padding(start = 8.dp).size(44.dp).clip(RoundedCornerShape(10.dp)).background(c.tint).fade(if (add.getBoolean("enabled")) 1f else 0.5f)
             .clickable(enabled = canAdd, role = Role.Button) { send(add.getJSONObject("edit")) }.semantics { contentDescription = addLabel },
             contentAlignment = Alignment.Center) {
             Text("+", style = rnText(18, 700), color = c.onTint)

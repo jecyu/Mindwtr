@@ -349,7 +349,7 @@ export interface PendingRemoteAttachmentDelete {
 import type { MergeStats, SyncHistoryEntry } from './sync';
 import type { Language } from './i18n/i18n-types';
 
-export type AppTheme = 'light' | 'dark' | 'system' | 'eink' | 'nord' | 'sepia' | 'material3-light' | 'material3-dark' | 'oled' | 'catppuccin-macchiato' | 'dracula';
+export type AppTheme = 'light' | 'dark' | 'system' | 'system-oled' | 'eink' | 'nord' | 'sepia' | 'material3-light' | 'material3-dark' | 'oled' | 'catppuccin-macchiato' | 'dracula';
 // Every supported UI language (see LOCALES in i18n/i18n-locales.ts) plus 'system', which
 // tracks the device locale instead of pinning one.
 export type AppLanguage = Language | 'system';

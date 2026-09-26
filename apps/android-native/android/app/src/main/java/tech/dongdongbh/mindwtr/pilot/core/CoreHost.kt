@@ -115,8 +115,26 @@ class CoreHost(private val databaseFile: File, private val rnDataDir: File? = nu
     fun focusWindow(key: String, offset: Int, limit: Int, revision: String): JSONObject =
         callAsync("focusWindow", key, offset, limit, revision)
 
-    fun createInboxTask(title: String, captureId: String): JSONObject =
-        callAsync("create", title, captureId)
+    /** Core's openQuickCapture: the popup's empty draft and its starting options. */
+    fun openQuickCapture(): JSONObject = callAsync("captureOpen")
+
+    /** Core's getQuickCaptureView with [json] (`{ text, options, picker? }`) unchanged. */
+    fun quickCaptureView(json: String): JSONObject = callAsync("captureView", json)
+
+    /** Core's editQuickCapture with [json] (`{ text, options, edit, picker? }`) unchanged. */
+    fun editQuickCapture(json: String): JSONObject = callAsync("captureEdit", json)
+
+    /** Core's submitQuickCapture with [json] unchanged; its captureId makes a retry exact. */
+    fun submitQuickCapture(json: String): JSONObject = callAsync("captureSubmit", json)
+
+    /** Core's createQuickCaptureSnapshot, as `{ snapshot: { fileName, contents } | null }`. */
+    fun createQuickCaptureSnapshot(): JSONObject = callAsync("captureSnapshot")
+
+    /** Core's submitQuickCaptureLines with [json] unchanged; one capture ID per line. */
+    fun submitQuickCaptureLines(json: String): JSONObject = callAsync("captureLines", json)
+
+    /** Core's submitQuickCapturePickerQuery with [json] unchanged; its requestId makes a create's retry exact. */
+    fun submitQuickCapturePickerQuery(json: String): JSONObject = callAsync("capturePicker", json)
 
     fun completeTask(id: String): JSONObject = callAsync("complete", id)
 
@@ -208,13 +226,7 @@ class CoreHost(private val databaseFile: File, private val rnDataDir: File? = nu
      * Read once per task command, on the engine thread. Release builds return
      * "" before reading anything, so no property can reach them.
      */
-    private fun debugFault(name: String): String {
-        if (!BuildConfig.DEBUG) return ""
-        return runCatching {
-            val process = ProcessBuilder("getprop", "debug.mindwtr.native.$name").start()
-            process.inputStream.bufferedReader().use { it.readText().trim() }.also { process.waitFor() }
-        }.getOrDefault("")
-    }
+    private fun debugFault(name: String): String = debugProperty(name)
 
     private fun debugDelay(name: String) {
         val ms = debugFault(name).toLongOrNull() ?: return
@@ -222,7 +234,7 @@ class CoreHost(private val databaseFile: File, private val rnDataDir: File? = nu
     }
 
     private fun callAsync(method: String, vararg args: Any?): JSONObject = onEngine {
-        val command = method in setOf("create", "complete", "update", "saveDraft", "taskFocus", "projectFocus", "createProject", "setAreaFilter",
+        val command = method in setOf("captureSubmit", "captureLines", "capturePicker", "complete", "update", "saveDraft", "taskFocus", "projectFocus", "createProject", "setAreaFilter",
             "saveSearch", "inboxCommit", "inboxSkip")
         if (command) {
             checkNotNull(sqlite).failCommits = debugFault("fail_commit") == "1"
@@ -270,4 +282,16 @@ class CoreHost(private val databaseFile: File, private val rnDataDir: File? = nu
         }
         task.get()
     }
+}
+
+/**
+ * A device check's debug property `debug.mindwtr.native.<name>`. Release builds return "" before reading anything,
+ * so no property can reach them.
+ */
+fun debugProperty(name: String): String {
+    if (!BuildConfig.DEBUG) return ""
+    return runCatching {
+        val process = ProcessBuilder("getprop", "debug.mindwtr.native.$name").start()
+        process.inputStream.bufferedReader().use { it.readText().trim() }.also { process.waitFor() }
+    }.getOrDefault("")
 }

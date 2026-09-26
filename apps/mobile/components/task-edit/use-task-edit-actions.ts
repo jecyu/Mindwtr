@@ -7,11 +7,13 @@ import {
     TaskStatus,
     TimeEstimate,
     createAIProvider,
+    createTaskCancellationUndo,
     generateUUID,
     type AIProviderId,
     getUsedTaskTokens,
     tFallback,
     type StoreActionResult,
+    useTaskStore,
 } from '@mindwtr/core';
 
 import type { AIResponseAction } from '../ai-response-modal';
@@ -114,6 +116,7 @@ export function useTaskEditActions({
     titleDraftRef,
     canMutate = () => true,
 }: TaskEditActionsParams) {
+    const cancellationBeforeRef = React.useRef<Task | null>(null);
     const showTaskWriteError = useCallback((message?: string) => showToast({
         title: tFallback(t, 'common.error', 'Error'),
         message: message || tFallback(t, 'task.updateFailed', 'Could not update task.'),
@@ -343,8 +346,49 @@ export function useTaskEditActions({
 
     const handleCancelTask = useCallback(async () => {
         if (!task || !canMutate()) return;
-        await draftLifecycle.cancel();
-    }, [canMutate, draftLifecycle, task]);
+        const before = cancellationBeforeRef.current?.id === task.id
+            ? cancellationBeforeRef.current
+            : useTaskStore.getState()._tasksById.get(task.id) ?? task;
+        cancellationBeforeRef.current = before;
+        try {
+            if (!await draftLifecycle.cancel()) {
+                const current = useTaskStore.getState()._tasksById.get(task.id);
+                if (current?.status !== 'archived' || !current.cancelledAt) cancellationBeforeRef.current = null;
+                return;
+            }
+            cancellationBeforeRef.current = null;
+            const cancelledAt = useTaskStore.getState()._tasksById.get(task.id)?.cancelledAt;
+            const undoCancellation = createTaskCancellationUndo(before, cancelledAt);
+            const restore = async () => {
+                const outcome = await undoCancellation();
+                if (outcome.success) return;
+                logTaskError('Failed to undo task cancellation', new Error(outcome.error || 'Cancellation was superseded'));
+                showToast({
+                    title: tFallback(t, 'common.error', 'Error'),
+                    message: outcome.error || tFallback(t, 'task.updateFailed', 'Could not update task.'),
+                    tone: 'error',
+                    durationMs: 5200,
+                    ...(outcome.retryable ? {
+                        actionLabel: tFallback(t, 'common.undo', 'Undo'),
+                        onAction: restore,
+                    } : {}),
+                });
+            };
+            showToast({
+                title: tFallback(t, 'common.notice', 'Notice'),
+                message: tFallback(t, 'task.cancelledWithRestore', 'Task cancelled. You can restore it from Archive.'),
+                tone: 'info',
+                durationMs: 5200,
+                ...(useTaskStore.getState().settings?.undoNotificationsEnabled === false ? {} : {
+                    actionLabel: tFallback(t, 'common.undo', 'Undo'),
+                    onAction: restore,
+                }),
+            });
+        } catch (error) {
+            logTaskError('Failed to cancel task', error);
+            showTaskWriteError(error instanceof Error ? error.message : undefined);
+        }
+    }, [canMutate, draftLifecycle, showTaskWriteError, showToast, t, task]);
 
     const handleSkipOccurrence = useCallback(async () => {
         if (!task || !canMutate()) return;

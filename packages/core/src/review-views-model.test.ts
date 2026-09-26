@@ -134,6 +134,18 @@ describe('review view models', () => {
         expect(area.color).toBeNull();
     });
 
+    it('does not claim a project lacks a next action from a due-only subset', () => {
+        const groups = [{ areaId: 'area', taskCount: 1, projectCount: 1, needsActionCount: 1,
+            projectGroups: [{ project: { id: 'project', title: 'Project' }, tasks: [{ id: 'due', status: 'someday' }], nextActionState: 'none' }] }] as never;
+        const [area] = decorateReviewOverviewGroups(groups, {
+            areaById: new Map([['area', { id: 'area', name: 'Area' } as never]]),
+            text: getReviewOverviewText((key) => key), unassignedAreaColor: undefined, scope: 'due',
+        });
+        expect(area.summary).not.toContain('needs action');
+        expect(area.projectGroups[0]).toMatchObject({ statusTone: null, summaryTone: 'secondary' });
+        expect(area.projectGroups[0].summary).not.toContain('Needs Action');
+    });
+
     it('uses the singular active-task noun in Weekly Review Projects', () => {
         const labels = getWeeklyReviewLabels((key) => ({ 'review.activeTask': 'active task',
             'review.activeTasks': 'active tasks' }[key] ?? key));

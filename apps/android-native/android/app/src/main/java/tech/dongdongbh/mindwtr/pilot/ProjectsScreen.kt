@@ -37,7 +37,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -266,7 +265,7 @@ private fun AddProjectField(model: InboxViewModel) = with(model) {
             Box(
                 Modifier.padding(start = 8.dp).size(46.dp).clip(RoundedCornerShape(8.dp)).background(c.tint)
                     .clickable(enabled = canAdd, role = Role.Button) { createProject(chosen) }
-                    .semantics { contentDescription = add }.alpha(if (canAdd) 1f else 0.5f),
+                    .semantics { contentDescription = add }.fade(if (canAdd) 1f else 0.5f),
                 contentAlignment = Alignment.Center,
             ) { Icon(Lucide.PlusMedium, null, tint = c.onTint, modifier = Modifier.size(22.dp)) }
         }
@@ -364,7 +363,7 @@ private fun ProjectDetailList(model: InboxViewModel, modifier: Modifier) = with(
             for (entry in detail?.items.orEmpty()) when (entry) {
                 is DetailSection -> item(key = "section:${entry.id}") {
                     SectionTitle(entry.title, entry.count,
-                        Modifier.fillMaxWidth().alpha(if (entry.muted) 0.6f else 1f).padding(top = 12.dp, bottom = 8.dp, start = 4.dp))
+                        Modifier.fillMaxWidth().fade(if (entry.muted) 0.6f else 1f).padding(top = 12.dp, bottom = 8.dp, start = 4.dp))
                 }
                 is DetailTask -> item(key = "task:${entry.row.id}") {
                     TaskRowItem(model, entry.row, status = RowStatus.Badge, completable = completable,

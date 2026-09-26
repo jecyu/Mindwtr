@@ -1238,6 +1238,16 @@ describe('TaskItem', () => {
         expect(getByDisplayValue('Test Task')).toBeInTheDocument();
     });
 
+    it('does not edit when double-clicking a nested row action', () => {
+        const { getByRole, queryByDisplayValue } = render(
+            <LanguageProvider>
+                <TaskItem task={mockTask} enableDoubleClickEdit />
+            </LanguageProvider>
+        );
+        fireEvent.doubleClick(getByRole('button', { name: /more options/i }));
+        expect(queryByDisplayValue('Test Task')).not.toBeInTheDocument();
+    });
+
     it('opens a single editor when the same task renders in multiple rows (Focus grouped by tags)', async () => {
         const multiTagTask: Task = { ...mockTask, tags: ['home', 'errand'] };
         const { getAllByRole, getAllByDisplayValue } = render(

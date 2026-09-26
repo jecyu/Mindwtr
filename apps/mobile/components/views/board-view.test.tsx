@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, Text, TextInput } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Project, Task } from '@mindwtr/core';
@@ -202,6 +203,21 @@ afterEach(() => {
 });
 
 describe('Board compact filters', () => {
+  it('swipes left to duplicate without trashing, even when copy is refused; right trashes only', async () => {
+    mocked.tasks = [makeTask('a', 'A')];
+    mocked.duplicateTask.mockResolvedValue({ success: false, error: 'Copy refused' });
+    renderBoard();
+    const swipe = tree!.root.findByType(Swipeable);
+    const close = vi.fn();
+    await act(async () => { swipe.props.onSwipeableOpen('left', { close }); });
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(mocked.duplicateTask).toHaveBeenCalledWith('a', false);
+    expect(mocked.deleteTask).not.toHaveBeenCalled();
+    await act(async () => { swipe.props.onSwipeableOpen('right', { close }); });
+    expect(close).toHaveBeenCalledTimes(2);
+    expect(mocked.duplicateTask).toHaveBeenCalledTimes(1);
+    expect(mocked.deleteTask).toHaveBeenCalledWith('a');
+  });
   it('searches token options without searching tasks and cycles include, exclude, then remove', async () => {
     mocked.tasks = [
       makeTask('ideas', 'Keep visible while searching options', { tags: ['ideas'] }),

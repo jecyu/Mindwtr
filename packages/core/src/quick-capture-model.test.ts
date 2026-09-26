@@ -11,6 +11,7 @@ import { safeFormatDate } from './date';
 import { buildQuickAddParseOptions } from './quick-add';
 import {
     applyQuickCaptureEdit,
+    buildQuickCaptureView,
     createQuickCaptureOptions,
     normalizeQuickCaptureContext,
     parseQuickCaptureContextQuery,
@@ -165,6 +166,16 @@ describe('capture popup save: what the popup shows is what is saved', () => {
         expect(props.dueDate).toBeUndefined();
         expect(props.isFocusedToday).toBeUndefined();
         expect(props.contexts).toEqual(['@home']);
+    });
+
+    it('opens the date and time pickers where mobile does: on the due date, or on today', () => {
+        const context = contextFor({});
+        const blank = createQuickCaptureOptions({ projects, defaultAreaId: null });
+        expect(buildQuickCaptureView('Fix fence', blank, context).due).toMatchObject({ custom: { startDay: '2026-09-23' }, time: null });
+        const timed = { ...blank, dueDate: new Date(2026, 9, 5, 14, 30).toISOString(), dueDateHasTime: true };
+        expect(buildQuickCaptureView('Fix fence', timed, context).due).toMatchObject({ custom: { startDay: '2026-10-05' }, time: { start: '14:30' } });
+        const dateOnly = { ...blank, dueDate: new Date(2026, 9, 5).toISOString(), dueDateHasTime: false };
+        expect(buildQuickCaptureView('Fix fence', dateOnly, context).due).toMatchObject({ custom: { startDay: '2026-10-05' }, time: { start: '00:00' } });
     });
 
     it('checks every line of a batch before it writes anything', async () => {

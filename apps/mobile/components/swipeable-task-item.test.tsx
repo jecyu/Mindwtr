@@ -1147,7 +1147,7 @@ it('can keep the focus star without adding a redundant focus outline', () => {
   it('keeps essential date metadata with hideDetails while hiding description and task age', () => {
     storeState.settings = { features: {}, appearance: { showTaskAge: true } };
     getTaskStaleness.mockReturnValue('fresh');
-    const renderRow = (hideDetails: boolean) => {
+    const renderRow = (hideDetails: boolean, waiting = false) => {
       let tree!: renderer.ReactTestRenderer;
       renderer.act(() => {
         tree = renderer.create(
@@ -1156,7 +1156,8 @@ it('can keep the focus star without adding a redundant focus outline', () => {
               id: 'task-1',
               title: 'Client call',
               description: 'Prep the deck',
-              status: 'next',
+              status: waiting ? 'waiting' : 'next',
+              assignedTo: waiting ? 'Sam' : undefined,
               startTime: '2026-05-12T08:30:00.000Z',
               createdAt: '2026-01-01T00:00:00.000Z',
               updatedAt: '2026-01-01T00:00:00.000Z',
@@ -1193,6 +1194,10 @@ it('can keep the focus star without adding a redundant focus outline', () => {
     expect(hasText(hidden, 'Prep the deck')).toBe(false);
     expect(hasText(hidden, start)).toBe(true);
     expect(hasText(hidden, age)).toBe(false);
+
+    const waiting = renderRow(true, true);
+    expect(hasText(waiting, 'Sam')).toBe(true);
+    expect(waiting.root.findAll((node) => String(node.type) === 'UserRound')).toHaveLength(1);
   });
 
   it('shows the completion date and time for completed tasks', () => {

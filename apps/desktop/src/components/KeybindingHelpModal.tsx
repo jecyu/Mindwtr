@@ -6,7 +6,6 @@ import {
     type GlobalQuickAddShortcutSetting,
     formatGlobalQuickAddShortcutForDisplay,
 } from '../lib/global-quick-add-shortcut';
-import { MANUAL_SYNC_SHORTCUT_DISPLAY } from '../lib/manual-sync-shortcut';
 
 interface KeybindingHelpModalProps {
     style: KeybindingStyle;
@@ -33,18 +32,18 @@ export function KeybindingHelpModal({
     const prioritiesEnabled = useTaskStore((state) => resolveFeatureFlags(state.settings).priorities);
     const timelineEnabled = useTaskStore((state) => resolveFeatureFlags(state.settings).timeline);
     const isMac = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform);
+    const primary = isMac ? 'Cmd' : 'Ctrl';
     const quickAddShortcutDisplay = formatGlobalQuickAddShortcutForDisplay(quickAddShortcut, isMac);
     const sharedGlobal: HelpItem[] = [
         { keys: quickAddShortcutDisplay, labelKey: 'keybindings.globalQuickAdd', fallbackLabel: 'Global quick add' },
         { keys: 'a', labelKey: 'keybindings.inAppQuickAdd', fallbackLabel: 'In-app quick add' },
-        { keys: MANUAL_SYNC_SHORTCUT_DISPLAY, labelKey: 'settings.syncNow', fallbackLabel: 'Sync now' },
-        { keys: 'Ctrl+, / Cmd+,', labelKey: 'keybindings.openSettings' },
-        { keys: 'Ctrl-b / Cmd-b', labelKey: 'keybindings.toggleSidebar' },
-        { keys: 'Ctrl+\\ / Cmd+\\', labelKey: 'keybindings.toggleSidebar' },
-        { keys: 'Ctrl+Shift+\\ / Cmd+Shift+\\', labelKey: 'keybindings.toggleFocusMode' },
-        { keys: 'Ctrl+Shift+D / Cmd+Shift+D', labelKey: 'keybindings.list.toggleDetails' },
-        { keys: 'Ctrl+Shift+C / Cmd+Shift+C', labelKey: 'keybindings.list.toggleDensity' },
-        { keys: 'Ctrl+Z / Cmd+Z', labelKey: 'keybindings.undo', fallbackLabel: 'Undo last complete/delete' },
+        { keys: isMac ? 'Cmd+Option+S' : 'Ctrl+Alt+S', labelKey: 'settings.syncNow', fallbackLabel: 'Sync now' },
+        { keys: `${primary}+,`, labelKey: 'keybindings.openSettings' },
+        { keys: `${primary}+B / ${primary}+\\`, labelKey: 'keybindings.toggleSidebar' },
+        { keys: `${primary}+Shift+\\`, labelKey: 'keybindings.toggleFocusMode' },
+        { keys: `${primary}+Shift+D`, labelKey: 'keybindings.list.toggleDetails' },
+        { keys: `${primary}+Shift+C`, labelKey: 'keybindings.list.toggleDensity' },
+        { keys: `${primary}+Z`, labelKey: 'keybindings.undo', fallbackLabel: 'Undo last complete/delete' },
         { keys: 'F11', labelKey: 'keybindings.toggleFullscreen' },
     ];
     const vimGlobal: HelpItem[] = [
@@ -78,10 +77,12 @@ export function KeybindingHelpModal({
         { keys: 'Enter', labelKey: 'keybindings.list.open', fallbackLabel: 'Open selected task' },
         { keys: 'e', labelKey: 'keybindings.list.edit' },
         { keys: '.', labelKey: 'taskEdit.moreOptions' },
-        { keys: 'Ctrl+Enter / Cmd+Enter', labelKey: 'keybindings.list.saveEdit' },
+        { keys: `${primary}+Enter`, labelKey: 'keybindings.list.saveEdit' },
         { keys: 'Esc', labelKey: 'keybindings.list.cancelEdit' },
         { keys: 'x', labelKey: 'keybindings.list.toggleDone' },
         { keys: 'dd', labelKey: 'keybindings.list.delete' },
+        { keys: 'yy', labelKey: 'keybindings.list.copyTitle' },
+        { keys: 'yi', labelKey: 'keybindings.list.copyWithDescription' },
         { keys: 'si / sn / sw / ss / sd / sa', labelKey: 'keybindings.list.setStatus', fallbackLabel: 'Set status: Inbox / Next / Waiting / Someday / Done / Archived' },
         { keys: 'Insert', labelKey: 'keybindings.list.newTask', fallbackLabel: 'Focus add-task input' },
     ];
@@ -98,7 +99,7 @@ export function KeybindingHelpModal({
         { keys: '#', labelKey: 'keybindings.list.delete' },
         { keys: 'z', labelKey: 'keybindings.undo', fallbackLabel: 'Undo last complete/delete' },
         { keys: '.', labelKey: 'taskEdit.moreOptions' },
-        { keys: 'Ctrl+Enter / Cmd+Enter', labelKey: 'keybindings.list.saveEdit' },
+        { keys: `${primary}+Enter`, labelKey: 'keybindings.list.saveEdit' },
         { keys: 'Esc', labelKey: 'keybindings.list.cancelEdit' },
         { keys: 'si / sn / sw / ss / sd / sa', labelKey: 'keybindings.list.setStatus', fallbackLabel: 'Set status: Inbox / Next / Waiting / Someday / Done / Archived' },
         { keys: 'Insert', labelKey: 'keybindings.list.newTask', fallbackLabel: 'Focus add-task input' },
@@ -106,36 +107,36 @@ export function KeybindingHelpModal({
 
     const emacsGlobal: HelpItem[] = [
         ...sharedGlobal,
-        { keys: 'Ctrl-s', labelKey: 'keybindings.openSearch' },
-        { keys: 'Ctrl-h / Ctrl-?', labelKey: 'keybindings.openHelp' },
-        { keys: 'Alt-i', labelKey: 'keybindings.goInbox' },
-        { keys: 'Alt-n', labelKey: 'keybindings.goNext' },
-        { keys: 'Alt-a', labelKey: 'keybindings.goAgenda' },
-        { keys: 'Alt-p', labelKey: 'keybindings.goProjects' },
-        { keys: 'Alt-c', labelKey: 'keybindings.goContexts' },
-        { keys: 'Alt-r', labelKey: 'keybindings.goReview' },
-        { keys: 'Alt-w', labelKey: 'keybindings.goWaiting' },
-        { keys: 'Alt-s', labelKey: 'keybindings.goSomeday' },
-        { keys: 'Alt-e', labelKey: 'keybindings.goReference' },
-        { keys: 'Alt-l', labelKey: 'keybindings.goCalendar' },
-        { keys: 'Alt-b', labelKey: 'keybindings.goBoard' },
-        ...(timelineEnabled ? [{ keys: 'Alt-t', labelKey: 'keybindings.goTimeline' }] : []),
-        { keys: 'Alt-d', labelKey: 'keybindings.goDone' },
-        { keys: 'Alt-A', labelKey: 'keybindings.goArchived' },
-        { keys: 'Alt-T', labelKey: 'keybindings.goTrash', fallbackLabel: 'Go to Trash' },
+        { keys: 'Ctrl+S', labelKey: 'keybindings.openSearch' },
+        { keys: 'Ctrl+H / Ctrl+?', labelKey: 'keybindings.openHelp' },
+        { keys: 'Alt+I', labelKey: 'keybindings.goInbox' },
+        { keys: 'Alt+N', labelKey: 'keybindings.goNext' },
+        { keys: 'Alt+A', labelKey: 'keybindings.goAgenda' },
+        { keys: 'Alt+P', labelKey: 'keybindings.goProjects' },
+        { keys: 'Alt+C', labelKey: 'keybindings.goContexts' },
+        { keys: 'Alt+R', labelKey: 'keybindings.goReview' },
+        { keys: 'Alt+W', labelKey: 'keybindings.goWaiting' },
+        { keys: 'Alt+S', labelKey: 'keybindings.goSomeday' },
+        { keys: 'Alt+E', labelKey: 'keybindings.goReference' },
+        { keys: 'Alt+L', labelKey: 'keybindings.goCalendar' },
+        { keys: 'Alt+B', labelKey: 'keybindings.goBoard' },
+        ...(timelineEnabled ? [{ keys: 'Alt+T', labelKey: 'keybindings.goTimeline' }] : []),
+        { keys: 'Alt+D', labelKey: 'keybindings.goDone' },
+        { keys: 'Alt+Shift+A', labelKey: 'keybindings.goArchived' },
+        { keys: 'Alt+Shift+T', labelKey: 'keybindings.goTrash', fallbackLabel: 'Go to Trash' },
         { keys: '1-9 / Shift+A 1-9', labelKey: 'keybindings.switchArea', fallbackLabel: 'Switch to Area 1-9' },
         { keys: '0 / Shift+A 0', labelKey: 'keybindings.clearAreaFilter', fallbackLabel: 'Clear area filter' },
     ];
 
     const emacsList: HelpItem[] = [
-        { keys: 'Ctrl-n / Ctrl-p / ↑ / ↓', labelKey: 'keybindings.list.nextPrev' },
+        { keys: 'Ctrl+N / Ctrl+P / ↑ / ↓', labelKey: 'keybindings.list.nextPrev' },
         { keys: 'Enter', labelKey: 'keybindings.list.open', fallbackLabel: 'Open selected task' },
-        { keys: 'Ctrl-e', labelKey: 'keybindings.list.edit' },
-        { keys: 'Ctrl-.', labelKey: 'taskEdit.moreOptions' },
-        { keys: 'Ctrl+Enter / Cmd+Enter', labelKey: 'keybindings.list.saveEdit' },
+        { keys: 'Ctrl+E', labelKey: 'keybindings.list.edit' },
+        { keys: 'Ctrl+.', labelKey: 'taskEdit.moreOptions' },
+        { keys: `${primary}+Enter`, labelKey: 'keybindings.list.saveEdit' },
         { keys: 'Esc', labelKey: 'keybindings.list.cancelEdit' },
-        { keys: 'Ctrl-t', labelKey: 'keybindings.list.toggleDone' },
-        { keys: 'Ctrl-d', labelKey: 'keybindings.list.delete' },
+        { keys: 'Ctrl+T', labelKey: 'keybindings.list.toggleDone' },
+        { keys: 'Ctrl+D', labelKey: 'keybindings.list.delete' },
         { keys: 'si / sn / sw / ss / sd / sa', labelKey: 'keybindings.list.setStatus', fallbackLabel: 'Set status: Inbox / Next / Waiting / Someday / Done / Archived' },
         { keys: 'Insert', labelKey: 'keybindings.list.newTask', fallbackLabel: 'Focus add-task input' },
     ];
@@ -164,7 +165,10 @@ export function KeybindingHelpModal({
     ];
 
     const globalItems = style === 'emacs' ? emacsGlobal : vimGlobal;
-    const listItems = style === 'emacs' ? emacsList : style === 'standard' ? standardList : vimList;
+    const listItems: HelpItem[] = [
+        { keys: `${primary}+Click / Shift+Click`, labelKey: 'keybindings.list.select' },
+        ...(style === 'emacs' ? emacsList : style === 'standard' ? standardList : vimList),
+    ];
     const resolveItemLabel = (item: HelpItem) => {
         const translated = t(item.labelKey);
         if (translated !== item.labelKey) return translated;

@@ -46,7 +46,7 @@ class WidgetConfigureActivity : AppCompatActivity() {
       findViewById<View>(R.id.mindwtr_widget_configure_title).visibility = View.GONE
     }
     val payload = WidgetPayloadStore.read(this)
-    val palette = payload.palette?.takeUnless { payload.usesSystemColors }
+    val palette = payload.resolvedPalette(this)
     val current = WidgetListStore.read(this, appWidgetId)
 
     val group = findViewById<RadioGroup>(R.id.mindwtr_widget_configure_lists)

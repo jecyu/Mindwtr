@@ -257,7 +257,7 @@ export function SettingsMainPage({
                 <SettingRow padded
                     settingsKey="appearance"
                     title={t.appearance}
-                    description={`${t.system} / ${t.light} / ${t.dark} / ${t.eink} / ${t.nord} / ${t.catppuccinMacchiato} / ${t.dracula} / ${t.sepia} / ${t.oled}`}
+                    description={`${t.system} / ${t.system} (${t.light} / OLED ${t.dark}) / ${t.light} / ${t.dark} / ${t.eink} / ${t.nord} / ${t.catppuccinMacchiato} / ${t.dracula} / ${t.sepia} / ${t.oled}`}
                 >
                     <select
                         aria-label={t.appearance}
@@ -266,6 +266,7 @@ export function SettingsMainPage({
                         className={selectCls}
                     >
                         <option value="system">{t.system}</option>
+                        <option value="system-oled">{t.system} ({t.light} / OLED {t.dark})</option>
                         <option value="light">{t.light}</option>
                         <option value="dark">{t.dark}</option>
                         <option value="eink">{t.eink}</option>

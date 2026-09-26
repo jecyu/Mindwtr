@@ -25,3 +25,21 @@ Stale-item detection already existed in core (`getStaleItems`, 14-day threshold 
 - Users without review dates get one weekly surface listing neglected items; users with disciplined review dates see no change unless items stall for 14+ days.
 - No new task fields, no new settings, no sync schema change (`reviewAt` writes go through the existing update path).
 - The 14-day stale threshold stays a core default rather than a setting; revisit only if real usage shows the fixed threshold failing.
+
+## Follow-up: distinguish reminders from the overview (2026-09-24)
+
+Discussion #1281 showed that the Review overview looked like a queue of outstanding
+review reminders. Marking an item reviewed cleared its `reviewAt`, but the item
+remained in the overview, so the action appeared to do nothing.
+
+The Review page offers **Due for review** and **All open tasks**. The due queue
+contains live actionable tasks whose explicit review date has arrived; tasks with
+no review date or a future review date are not outstanding reminders. Mark reviewed
+clears the review date and removes the item from this queue. Review in 1 week keeps
+the existing seven-day behavior. The scope is local UI state, not a synced setting.
+
+The full overview and Weekly Review retain waiting, someday, and stale candidates.
+Finishing a daily or weekly guide does not acknowledge individual review reminders.
+Completed work remains accessible for retrospection through the existing completed
+task surface. This adds no task status, review-history field, or separate planning
+module.

@@ -6,6 +6,7 @@ import {
 } from '../../../lib/sync-service';
 import { classifySyncEncryptionFailure } from '../../../lib/sync-encryption-service';
 import { useUiStore } from '../../../store/ui-store';
+import { showSyncErrorToast } from '../../../lib/sync-error-toast';
 import { logError, logInfo } from '../../../lib/app-log';
 
 // Activation probes requeue when local data changes mid-probe; retry a few times before giving up.
@@ -1459,7 +1460,7 @@ export const useSyncSettings = ({
                         'settings.sync.incomplete',
                         'Sync did not complete. Your previous sync settings are still active.',
                     );
-                showToast(message, 'error');
+                showSyncErrorToast(message);
             }
         } catch (error) {
             if (activationCredentialHandle) {
@@ -1476,7 +1477,7 @@ export const useSyncSettings = ({
                     )
                   : fallback;
             setSyncError(message);
-            showToast(message, 'error');
+            showSyncErrorToast(message);
         }
     }, [
         cloudProvider,

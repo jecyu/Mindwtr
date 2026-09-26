@@ -40,9 +40,10 @@ vi.mock('@mindwtr/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@mindwtr/core')>();
   return {
     ...actual,
-    getCalendarPlanningCandidates: (...args: Parameters<typeof actual.getCalendarPlanningCandidates>) => {
+    // The screen's planning list comes from core's calendar view model.
+    getCalendarPlanningTasks: (...args: Parameters<typeof actual.getCalendarPlanningTasks>) => {
       mocks.planningCandidates(...args);
-      return actual.getCalendarPlanningCandidates(...args);
+      return actual.getCalendarPlanningTasks(...args);
     },
     shallow: (a: unknown, b: unknown) => a === b,
     useTaskStore: (selector: (state: typeof mocks.storeState) => unknown) => selector(mocks.storeState),

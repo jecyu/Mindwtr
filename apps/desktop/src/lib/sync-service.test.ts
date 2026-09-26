@@ -4,6 +4,7 @@ import {
     runAfterStoreWriteLock,
     runDataTransferTransactionWithoutSnapshot,
     runSerializedSyncDocumentOperation,
+    mergeAppData,
     SyncFileLockBusyError,
     SyncRemoteWriteConflict,
     type AppData,
@@ -1449,6 +1450,66 @@ describe('SyncService testability hooks', () => {
         expect(events).toEqual(['recover_dropbox_credentials_before_sync_configuration']);
     });
 
+    it('restores above newer cancellation and deletion revisions, then converges on a second merge', async () => {
+        const old = '2026-07-01T00:00:00.000Z';
+        const newer = '2026-08-01T00:00:00.000Z';
+        const task = (id: string, title: string) => ({
+            id, title, status: 'next' as const, tags: [], contexts: [], createdAt: old, updatedAt: old,
+        });
+        const snapshot: AppData = {
+            ...emptyAppData(),
+            tasks: [task('cancelled', 'Recovered cancellation'), task('deleted', 'Recovered deletion')],
+        };
+        const current: AppData = {
+            ...emptyAppData(),
+            tasks: [
+                { ...task('cancelled', 'Newer cancellation'), status: 'archived', cancelledAt: newer, updatedAt: newer, rev: 8, revBy: 'other' },
+                { ...task('deleted', 'Newer tombstone'), deletedAt: newer, updatedAt: newer, rev: 9, revBy: 'other' },
+            ],
+        };
+        const events: string[] = [];
+        const logInfo = vi.fn(async () => null);
+        let persisted: AppData | undefined;
+        const invoke = vi.fn(async (command: string, args?: Record<string, unknown>) => {
+            events.push(command);
+            if (command === 'get_data') return current;
+            if (command === 'read_data_snapshot') return snapshot;
+            if (command === 'create_data_snapshot') return 'data.recovery.snapshot.json';
+            if (command === 'save_data') {
+                persisted = args?.data as AppData;
+                return persisted;
+            }
+            throw new Error(`Unexpected native command: ${command}`);
+        });
+        __syncServiceTestUtils.setDependenciesForTests({
+            isTauriRuntime: () => true,
+            invoke: invoke as unknown as <T>(command: string, args?: Record<string, unknown>) => Promise<T>,
+            flushPendingSave: vi.fn(async () => { events.push('flush'); }),
+            getStoreState: () => ({
+                fetchData: vi.fn(async () => { events.push('fetch'); }),
+                lastDataChangeAt: 0,
+            }) as any,
+            logInfo,
+        });
+
+        await expect(SyncService.restoreDataSnapshot('data.2026-07-31.snapshot.json')).resolves.toEqual({ success: true });
+        expect(events).toEqual(['flush', 'get_data', 'read_data_snapshot', 'create_data_snapshot', 'save_data', 'fetch']);
+        expect(invoke).toHaveBeenCalledWith('save_data', { data: persisted, mode: 'exact', expectedData: current });
+        expect(persisted?.tasks).toEqual(expect.arrayContaining([
+            expect.objectContaining({ id: 'cancelled', title: 'Recovered cancellation', rev: 9 }),
+            expect.objectContaining({ id: 'deleted', title: 'Recovered deletion', rev: 10 }),
+        ]));
+        expect(persisted?.tasks.every((item) => !item.deletedAt && !item.cancelledAt)).toBe(true);
+        const first = mergeAppData(persisted!, current);
+        const second = mergeAppData(first, current);
+        expect(first).toEqual(second);
+        expect(first.tasks.map((item) => item.title)).toEqual(['Recovered cancellation', 'Recovered deletion']);
+        expect(logInfo).toHaveBeenCalledWith('Recovery snapshot restore committed', {
+            scope: 'sync',
+            extra: { releaseCheck: 'v1.3.3/restore-snapshot-sync' },
+        });
+    });
+
     it('holds snapshot restore behind pending saves through the refresh', async () => {
         const events: string[] = [];
         let releaseFlush!: () => void;
@@ -1458,12 +1519,12 @@ describe('SyncService testability hooks', () => {
                 releaseFlush = resolve;
             });
         });
-        const invoke = vi.fn(async (command: string) => {
+        const invoke = vi.fn(async (command: string, args?: Record<string, unknown>) => {
             events.push(command);
-            if (command === 'get_data') {
-                return { tasks: [], projects: [], sections: [], areas: [], people: [], settings: {} };
-            }
-            return true;
+            if (command === 'get_data' || command === 'read_data_snapshot') return emptyAppData();
+            if (command === 'create_data_snapshot') return 'data.recovery.snapshot.json';
+            if (command === 'save_data') return args?.data;
+            throw new Error(`Unexpected native command: ${command}`);
         });
         const fetchData = vi.fn(async () => {
             events.push('fetch');
@@ -1482,8 +1543,8 @@ describe('SyncService testability hooks', () => {
 
         releaseFlush();
         await expect(restore).resolves.toEqual({ success: true });
-        expect(events).toEqual(['flush', 'get_data', 'restore_data_snapshot', 'fetch']);
-        expect(invoke).toHaveBeenCalledWith('restore_data_snapshot', {
+        expect(events).toEqual(['flush', 'get_data', 'read_data_snapshot', 'create_data_snapshot', 'save_data', 'fetch']);
+        expect(invoke).toHaveBeenCalledWith('read_data_snapshot', {
             snapshotFileName: 'data.2026-07-31.snapshot.json',
         });
     });
@@ -1498,12 +1559,12 @@ describe('SyncService testability hooks', () => {
             });
             events.push('sync:end');
         });
-        const invoke = vi.fn(async (command: string) => {
+        const invoke = vi.fn(async (command: string, args?: Record<string, unknown>) => {
             events.push(command);
-            if (command === 'get_data') {
-                return { tasks: [], projects: [], sections: [], areas: [], people: [], settings: {} };
-            }
-            return true;
+            if (command === 'get_data' || command === 'read_data_snapshot') return emptyAppData();
+            if (command === 'create_data_snapshot') return 'data.recovery.snapshot.json';
+            if (command === 'save_data') return args?.data;
+            throw new Error(`Unexpected native command: ${command}`);
         });
         __syncServiceTestUtils.setDependenciesForTests({
             isTauriRuntime: () => true,
@@ -1540,9 +1601,110 @@ describe('SyncService testability hooks', () => {
             'sync:end',
             'flush',
             'get_data',
-            'restore_data_snapshot',
+            'read_data_snapshot',
+            'create_data_snapshot',
+            'save_data',
             'fetch',
         ]);
+    });
+
+    it.each(['read_data_snapshot', 'create_data_snapshot', 'save_data'])(
+        'does not report restore success when %s fails', async (failedCommand) => {
+            const commands: string[] = [];
+            const logInfo = vi.fn(async () => null);
+            const fetchData = vi.fn(async () => {});
+            const invoke = vi.fn(async (command: string, args?: Record<string, unknown>) => {
+                commands.push(command);
+                if (command === failedCommand) throw new Error(`${command} failed`);
+                if (command === 'get_data' || command === 'read_data_snapshot') return emptyAppData();
+                if (command === 'create_data_snapshot') return 'data.recovery.snapshot.json';
+                if (command === 'save_data') return args?.data;
+                throw new Error(`Unexpected native command: ${command}`);
+            });
+            __syncServiceTestUtils.setDependenciesForTests({
+                isTauriRuntime: () => true,
+                invoke: invoke as unknown as <T>(command: string, args?: Record<string, unknown>) => Promise<T>,
+                flushPendingSave: vi.fn(async () => {}),
+                getStoreState: () => ({ fetchData, lastDataChangeAt: 0 }) as any,
+                logInfo,
+            });
+
+            await expect(SyncService.restoreDataSnapshot('data.2026-07-31.snapshot.json'))
+                .resolves.toEqual({ success: false, error: `${failedCommand} failed` });
+            expect(commands).not.toContain('restore_data_snapshot');
+            expect(fetchData).not.toHaveBeenCalled();
+            expect(logInfo).not.toHaveBeenCalledWith(
+                'Recovery snapshot restore committed',
+                expect.anything(),
+            );
+        },
+    );
+
+    it('aborts restore on a changed native baseline and prepares again on retry', async () => {
+        let current = emptyAppData();
+        const snapshot = emptyAppData();
+        const fetchData = vi.fn(async () => {});
+        const logInfo = vi.fn(async () => null);
+        const baselines: AppData[] = [];
+        const invoke = vi.fn(async (command: string, args?: Record<string, unknown>) => {
+            if (command === 'get_data') return current;
+            if (command === 'read_data_snapshot') return snapshot;
+            if (command === 'create_data_snapshot') return 'data.recovery.snapshot.json';
+            if (command === 'save_data') {
+                baselines.push(args?.expectedData as AppData);
+                if (baselines.length === 1) {
+                    current = { ...current, settings: { theme: 'dark' } };
+                    throw new Error('Local data changed during restore. Please try again.');
+                }
+                expect(args?.expectedData).toEqual(current);
+                return args?.data;
+            }
+            throw new Error(`Unexpected native command: ${command}`);
+        });
+        __syncServiceTestUtils.setDependenciesForTests({
+            isTauriRuntime: () => true,
+            invoke: invoke as unknown as <T>(command: string, args?: Record<string, unknown>) => Promise<T>,
+            flushPendingSave: vi.fn(async () => {}),
+            getStoreState: () => ({ fetchData, lastDataChangeAt: 0 }) as any,
+            logInfo,
+        });
+        await expect(SyncService.restoreDataSnapshot('data.2026-07-31.snapshot.json'))
+            .resolves.toMatchObject({ success: false, error: expect.stringContaining('Local data changed') });
+        expect(fetchData).not.toHaveBeenCalled();
+        expect(logInfo).not.toHaveBeenCalled();
+        await expect(SyncService.restoreDataSnapshot('data.2026-07-31.snapshot.json'))
+            .resolves.toEqual({ success: true });
+        expect(baselines[0]).not.toEqual(baselines[1]);
+        expect(fetchData).toHaveBeenCalledOnce();
+    });
+
+    it('reports a committed restore when reload fails after exact persistence', async () => {
+        const commands: string[] = [];
+        const logInfo = vi.fn(async () => null);
+        const fetchData = vi.fn(async (options: { silent: boolean; throwOnError: boolean }) => {
+            expect(options).toEqual({ silent: true, throwOnError: true });
+            throw new Error('reload failed');
+        });
+        const invoke = vi.fn(async (command: string, args?: Record<string, unknown>) => {
+            commands.push(command);
+            if (command === 'get_data' || command === 'read_data_snapshot') return emptyAppData();
+            if (command === 'create_data_snapshot') return 'data.recovery.snapshot.json';
+            if (command === 'save_data') return args?.data;
+            throw new Error(`Unexpected native command: ${command}`);
+        });
+        __syncServiceTestUtils.setDependenciesForTests({
+            isTauriRuntime: () => true,
+            invoke: invoke as unknown as <T>(command: string, args?: Record<string, unknown>) => Promise<T>,
+            flushPendingSave: vi.fn(async () => {}),
+            getStoreState: () => ({ fetchData, lastDataChangeAt: 0 }) as any,
+            logInfo,
+        });
+
+        const result = await SyncService.restoreDataSnapshot('data.2026-07-31.snapshot.json');
+        expect(result).toMatchObject({ success: false });
+        expect(result.error).toContain('Data was saved');
+        expect(commands).toContain('save_data');
+        expect(logInfo).not.toHaveBeenCalled();
     });
 
     it.each([

@@ -57,6 +57,34 @@ export const ensureAnalyticsProfileId = (settings: AppData['settings']): { setti
     return { settings: { ...settings, analyticsProfileId: uuidv4() }, updated: true };
 };
 
+/** Conservative replay check: a copy edited since creation cannot acknowledge a lost reply. */
+export const matchesDuplicateSource = (source: Task, copy: Task, asNextAction = false): boolean => {
+    if (source.id === copy.id || source.deletedAt || copy.deletedAt || copy.purgedAt
+        || copy.rev !== 1 || copy.createdAt !== copy.updatedAt
+        || copy.status !== (asNextAction ? 'next' : isTaskFinished(source) ? 'inbox' : source.status)
+        || copy.completedAt !== undefined || copy.cancelledAt !== undefined || copy.isFocusedToday !== false
+        || copy.focusOrder !== undefined || copy.statusBeforeProjectArchive !== undefined
+        || copy.completedAtBeforeProjectArchive !== undefined || copy.isFocusedTodayBeforeProjectArchive !== undefined
+        || copy.projectArchivedAt !== undefined) return false;
+    const ignored = new Set(['id', 'status', 'recurrence', 'checklist', 'attachments', 'completedAt', 'cancelledAt',
+        'isFocusedToday', 'focusOrder', 'statusBeforeProjectArchive', 'completedAtBeforeProjectArchive',
+        'isFocusedTodayBeforeProjectArchive', 'projectArchivedAt', 'deletedAt', 'purgedAt',
+        'createdAt', 'updatedAt', 'rev', 'revBy', 'order', 'orderNum', 'boardOrder']);
+    for (const key of new Set([...Object.keys(source), ...Object.keys(copy)])) {
+        if (!ignored.has(key) && JSON.stringify(source[key as keyof Task]) !== JSON.stringify(copy[key as keyof Task])) return false;
+    }
+    const recurrence = typeof source.recurrence === 'object' && source.recurrence
+        ? normalizeRecurrenceForLoad({ ...source.recurrence, seriesId: copy.id }) : source.recurrence;
+    if (JSON.stringify(recurrence) !== JSON.stringify(copy.recurrence)) return false;
+    const checklist = (source.checklist ?? []).map((item) => ({ ...item, id: '', isCompleted: false }));
+    if (JSON.stringify(checklist) !== JSON.stringify((copy.checklist ?? []).map((item) => ({ ...item, id: '' })))) return false;
+    const links = (source.attachments ?? []).filter((item) => item.kind !== 'file').map((item) => ({
+        ...item, id: '', createdAt: copy.createdAt, updatedAt: copy.createdAt,
+        deletedAt: undefined, cloudKey: undefined, fileHash: undefined, localStatus: undefined,
+    }));
+    return JSON.stringify(links) === JSON.stringify((copy.attachments ?? []).map((item) => ({ ...item, id: '' })));
+};
+
 export const getReferenceTaskFieldClears = (): Partial<Task> => ({
     status: 'reference',
     startTime: undefined,
@@ -163,6 +191,10 @@ export function applyTaskUpdates(oldTask: Task, updates: Partial<Task>, now: str
             ...finalUpdates,
             ...getReferenceTaskFieldClears(),
         };
+    }
+
+    if (hasOwnField(finalUpdates, 'suppressMindwtrReminders') && finalUpdates.suppressMindwtrReminders === undefined) {
+        finalUpdates = { ...finalUpdates, suppressMindwtrReminders: false };
     }
 
     return {

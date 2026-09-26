@@ -431,6 +431,60 @@ describe('reorderBoardTasks', () => {
         useTaskStore.getState().tasks.filter((task) => task.status === 'next'),
     ).map((task) => task.id);
 
+    it('uses the same incoming order as the Board for unordered cards', async () => {
+        const a = await addStatusTask('A', 'next');
+        const b = await addStatusTask('B', 'next');
+        await useTaskStore.getState().updateTask(a.id, { createdAt: '2026-09-20T00:00:00.000Z' });
+        await useTaskStore.getState().updateTask(b.id, { createdAt: '2026-09-10T00:00:00.000Z' });
+        expect(orderedNextIds()).toEqual([a.id, b.id]);
+        await useTaskStore.getState().reorderBoardTasks('next', [b.id, a.id]);
+        expect(orderedNextIds()).toEqual([b.id, a.id]);
+    });
+
+    it('keeps hidden cards in place when shown cards are reordered', async () => {
+        const a = await addStatusTask('A hidden', 'next');
+        const b = await addStatusTask('B shown', 'next');
+        const c = await addStatusTask('C hidden', 'next');
+        const d = await addStatusTask('D shown', 'next');
+        for (const [index, task] of [a, b, c, d].entries()) {
+            await useTaskStore.getState().updateTask(task.id, { boardOrder: index * 1024 });
+        }
+        const before = new Map(useTaskStore.getState().tasks.map((task) => [task.id, task.rev]));
+        await useTaskStore.getState().reorderBoardTasks('next', [d.id, b.id], d.id);
+        expect(orderedNextIds()).toEqual([a.id, d.id, b.id, c.id]);
+        const after = new Map(useTaskStore.getState().tasks.map((task) => [task.id, task.rev]));
+        for (const task of [a, b, c]) expect(after.get(task.id)).toBe(before.get(task.id));
+        expect(after.get(d.id)).toBe((before.get(d.id) ?? 0) + 1);
+    });
+
+    it('moves the first shown card after the last without moving hidden cards', async () => {
+        const a = await addStatusTask('A hidden', 'next');
+        const b = await addStatusTask('B shown', 'next');
+        const c = await addStatusTask('C hidden', 'next');
+        const d = await addStatusTask('D shown', 'next');
+        for (const [index, task] of [a, b, c, d].entries()) {
+            await useTaskStore.getState().updateTask(task.id, { boardOrder: index * 1024 });
+        }
+        const before = new Map(useTaskStore.getState().tasks.map((task) => [task.id, task.rev]));
+        await useTaskStore.getState().reorderBoardTasks('next', [d.id, b.id], b.id);
+        expect(orderedNextIds()).toEqual([a.id, c.id, d.id, b.id]);
+        const after = new Map(useTaskStore.getState().tasks.map((task) => [task.id, task.rev]));
+        for (const task of [a, c, d]) expect(after.get(task.id)).toBe(before.get(task.id));
+        expect(after.get(b.id)).toBe((before.get(b.id) ?? 0) + 1);
+    });
+
+    it('places a moved card directly after its shown anchor', async () => {
+        const a = await addStatusTask('A shown', 'next');
+        const hidden = await addStatusTask('Hidden', 'next');
+        const b = await addStatusTask('B shown', 'next');
+        const moved = await addStatusTask('Moved', 'next');
+        for (const [index, task] of [a, hidden, b, moved].entries()) {
+            await useTaskStore.getState().updateTask(task.id, { boardOrder: index * 1024 });
+        }
+        await useTaskStore.getState().reorderBoardTasks('next', [a.id, moved.id, b.id], moved.id);
+        expect(orderedNextIds()).toEqual([a.id, moved.id, hidden.id, b.id]);
+    });
+
     it('updates only the moved board task when a sparse order slot exists', async () => {
         const q = await addStatusTask('Task Q', 'next');
         const w = await addStatusTask('Task W', 'next');

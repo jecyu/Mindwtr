@@ -199,7 +199,8 @@ public class CloudKitSyncModule: Module {
     /// zoneNotFound: the zone does not exist for this account. Both mean the
     /// zone must be created again before anything else can succeed. A partial
     /// failure reports the reason on the per-item errors.
-    private static func isZoneGone(_ error: Error) -> Bool {
+    private static func isZoneGone(_ error: Error, depth: Int = 0) -> Bool {
+        if depth >= 8 { return false }
         let nsError = error as NSError
         if nsError.domain == CKError.errorDomain
             && (nsError.code == CKError.Code.userDeletedZone.rawValue
@@ -207,7 +208,10 @@ public class CloudKitSyncModule: Module {
             return true
         }
         if let partial = nsError.userInfo[CKPartialErrorsByItemIDKey] as? [AnyHashable: Error] {
-            return partial.values.contains { isZoneGone($0) }
+            if partial.values.contains(where: { isZoneGone($0, depth: depth + 1) }) { return true }
+        }
+        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? Error {
+            return isZoneGone(underlying, depth: depth + 1)
         }
         return false
     }
@@ -221,15 +225,22 @@ public class CloudKitSyncModule: Module {
 
     /// A partial failure carries the real reason — including the retry
     /// interval — on the per-item errors rather than the top-level one.
-    private static func retryAfterSeconds(in error: Error) -> Double? {
+    private static func retryAfterSeconds(in error: Error, depth: Int = 0) -> Double? {
+        if depth >= 8 { return nil }
         let nsError = error as NSError
-        if let retryAfter = nsError.userInfo[CKErrorRetryAfterKey] as? NSNumber {
-            return retryAfter.doubleValue
-        }
+        var longest = (nsError.userInfo[CKErrorRetryAfterKey] as? NSNumber)?.doubleValue
         if let partial = nsError.userInfo[CKPartialErrorsByItemIDKey] as? [AnyHashable: Error] {
-            return partial.values.compactMap { retryAfterSeconds(in: $0) }.max()
+            for nested in partial.values {
+                if let seconds = retryAfterSeconds(in: nested, depth: depth + 1) {
+                    longest = max(longest ?? seconds, seconds)
+                }
+            }
         }
-        return nil
+        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? Error,
+           let seconds = retryAfterSeconds(in: underlying, depth: depth + 1) {
+            longest = max(longest ?? seconds, seconds)
+        }
+        return longest
     }
 
     private func formatChangeResult(_ result: CloudKitChangeTracker.ChangeResult) -> [String: Any] {

@@ -5,10 +5,26 @@
  * Expo native modules. Provides readRemote/writeRemote functions that plug
  * into the existing SyncService sync cycle.
  */
-import { CLOUDKIT_ATTACHMENT_RECORD_TYPE, type AppData } from '@mindwtr/core';
+import { CLOUDKIT_ATTACHMENT_RECORD_TYPE, parseCloudKitRetryAfterMs, type AppData } from '@mindwtr/core';
 import { isTauriRuntime } from './runtime';
 import { logInfo, logWarn, logError } from './app-log';
-import { invokeNative } from './tauri-invoke';
+import { invokeNative as invokeTauriNative } from './tauri-invoke';
+
+const invokeNative = async <T>(command: string, args?: Record<string, unknown>): Promise<T> => {
+    try {
+        return await invokeTauriNative<T>(command, args);
+    } catch (error) {
+        const retryAfterMs = parseCloudKitRetryAfterMs(error);
+        if (retryAfterMs !== null) {
+            void logInfo('CloudKit retry interval received', {
+                scope: 'cloudkit',
+                force: true,
+                extra: { releaseCheck: 'v1.3.3/cloudkit-retry-hint', operation: command, retryAfterMs },
+            });
+        }
+        throw error;
+    }
+};
 
 // ---------------------------------------------------------------------------
 // Types

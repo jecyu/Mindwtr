@@ -1072,6 +1072,7 @@ export function ProjectWorkspace({
                         key={task.id}
                         task={task}
                         project={selectedProject!}
+                        onToggleSelect={(options) => toggleMultiSelect(task.id, options)}
                         interactionDisabled={isArchivedProject}
                         narrow={columnsLayout}
                         sequenceCue={projectTaskSequenceCues.get(task.id)}
@@ -1093,6 +1094,7 @@ export function ProjectWorkspace({
                     key={task.id}
                     task={task}
                     project={selectedProject!}
+                    onToggleSelect={(options) => toggleMultiSelect(task.id, options)}
                     interactionDisabled={isArchivedProject}
                     narrow={columnsLayout}
                     sequenceCue={projectTaskSequenceCues.get(task.id)}
@@ -1135,6 +1137,9 @@ export function ProjectWorkspace({
                     key={task.id}
                     task={task}
                     project={selectedProject}
+                    onToggleSelect={isArchivedProject || task.status === 'reference'
+                        ? undefined
+                        : (options) => toggleMultiSelect(task.id, options)}
                     enableDoubleClickEdit
                     showProjectBadgeInActions={false}
                     showProjectBadgeInMetadata={false}

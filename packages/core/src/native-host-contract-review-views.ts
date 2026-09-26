@@ -43,6 +43,8 @@ import {
     getDailyReviewBuckets,
     getExternalCalendarDaySummaries,
     getReviewOverviewGroups,
+    isTaskDueForReview,
+    type ReviewOverviewScope,
     getWeeklyReviewBuckets,
     resolveReviewStepSession,
     type ReviewStepFlags,
@@ -126,6 +128,8 @@ export type NativeReviewAction =
     | { type: 'addTag'; taskIds: string[]; tag: string }
     | { type: 'removeTags'; taskIds: string[]; tags: string[] }
     | { type: 'organizeTasks'; taskIds: string[]; input: BulkOrganizeTaskUpdateInput }
+    /** Clears reached review reminders after a durable save; a replay is a no-op. */
+    | { type: 'markReviewedTasks'; taskIds: string[] }
     /** The Weekly Review's project Add task (quick-add grammar). The requestId becomes the task id. */
     | { type: 'addProjectTask'; projectId: string; title: string }
     /** The Weekly Review's AI suggestions the user left selected. */
@@ -181,13 +185,15 @@ export type NativeReviewOverview = {
     total: number;
     items: NativeReviewOverviewItem[];
     empty: string | null;
+    /** Present when a caller opts into the Review scope choice. Omission preserves the older overview. */
+    scope?: { selected: ReviewOverviewScope; options: { id: ReviewOverviewScope; label: string }[]; help: string };
     startReview: { label: string; options: { id: 'daily' | 'weekly'; label: string }[]; cancelLabel: string };
     /** The bulk bar while tasks are selected. */
     bulk: {
         selectedIds: string[];
         countLabel: string;
         cancelLabel: string;
-        actions: { id: 'organize' | 'moveTo' | 'addTag' | 'removeTag' | 'share' | 'delete'; label: string; enabled: boolean }[];
+        actions: { id: 'organize' | 'moveTo' | 'addTag' | 'removeTag' | 'share' | 'delete' | 'markReviewed'; label: string; enabled: boolean }[];
         statuses: { status: TaskStatus; label: string }[];
         addTag: { title: string; placeholder: string; saveLabel: string; cancelLabel: string };
         removeTag: { title: string; placeholder: string; tags: string[] };
@@ -423,7 +429,7 @@ export function createReviewViewMethods(deps: ReviewViewDeps) {
 
     // ---- Review overview -------------------------------------------------------
 
-    const buildOverview = (base: string) => cached('overview', base, () => {
+    const buildOverview = (base: string, scope: ReviewOverviewScope, now: Date) => cached('overview', `${base}:${scope}`, () => {
         const state = useTaskStore.getState();
         const areas = sortAreasForDisplay(state.areas);
         const t = deps.t();
@@ -434,13 +440,17 @@ export function createReviewViewMethods(deps: ReviewViewDeps) {
             orderedAreas: areas,
             areaFilter: resolveAreaFilterSelection(state.settings.filters, areas),
             sortBy: getReviewOverviewSortBy(state.settings),
-        }), { areaById: new Map(areas.map((area) => [area.id, area])), unassignedAreaColor: state.settings.appearance?.unassignedAreaColor, text });
+            scope,
+            now,
+        }), { areaById: new Map(areas.map((area) => [area.id, area])), unassignedAreaColor: state.settings.appearance?.unassignedAreaColor, text, scope });
         return { groups, text, t };
     });
 
     const reviewOverview = (input: Record<string, unknown>): NativeHostResult<NativeReviewOverview> => {
         const edit = input.expansionEdit;
+        const scope = (input.scope ?? 'all') as ReviewOverviewScope;
         if (!isPaging(input)
+            || (scope !== 'due' && scope !== 'all')
             || (input.expandedAreaIds !== undefined && !isIdList(input.expandedAreaIds, true))
             || (input.expandedProjectIds !== undefined && !isIdList(input.expandedProjectIds, true))
             || (input.selectedIds !== undefined && !isIdList(input.selectedIds, true))
@@ -450,7 +460,7 @@ export function createReviewViewMethods(deps: ReviewViewDeps) {
         }
         const now = new Date();
         const base = deps.revision(now);
-        const { groups, text, t } = buildOverview(base);
+        const { groups, text, t } = buildOverview(base, scope, now);
         let areaIds = new Set((input.expandedAreaIds as string[] | undefined) ?? []);
         let projectIds = new Set((input.expandedProjectIds as string[] | undefined) ?? []);
         const expansionEdit = edit as NativeReviewExpansionEdit | undefined;
@@ -465,14 +475,14 @@ export function createReviewViewMethods(deps: ReviewViewDeps) {
         } else if (expansionEdit?.type === 'toggleProject') {
             projectIds = toggleReviewExpandedId(projectIds, expansionEdit.id);
         }
-        const liveIds = cached('overview-ids', base, () => new Set(useTaskStore.getState().tasks.map((task) => task.id)));
-        const selectedIds = ((input.selectedIds as string[] | undefined) ?? []).filter((id) => liveIds.has(id));
+        const visibleIds = new Set(groups.flatMap((area) => area.projectGroups.flatMap((project) => project.tasks.map((task) => task.id))));
+        const selectedIds = ((input.selectedIds as string[] | undefined) ?? []).filter((id) => visibleIds.has(id));
         const expandedAreaIds = Array.from(areaIds);
         const expandedProjectIds = Array.from(projectIds);
-        const revision = `${base}:${paramsKey([expandedAreaIds, expandedProjectIds, selectedIds])}`;
+        const revision = `${base}:${paramsKey([scope, expandedAreaIds, expandedProjectIds, selectedIds])}`;
         if (input.revision !== undefined && input.revision !== revision) return fail('STALE_REVISION', 'Review changed; restart paging from offset zero');
         // One flattened page source per revision and expansion; paging slices it.
-        const view = cached('overview-page', revision, () => buildOverviewPage(groups, text, t, areaIds, projectIds, selectedIds));
+        const view = cached('overview-page', revision, () => buildOverviewPage(groups, text, t, areaIds, projectIds, selectedIds, scope));
         const windowItems = page(view.entries, input as { offset: number; limit: number });
         const rows = deps.rows(windowItems.flatMap((entry) => (entry.type === 'task' ? [entry.task] : [])), now);
         const selected = new Set(selectedIds);
@@ -489,7 +499,12 @@ export function createReviewViewMethods(deps: ReviewViewDeps) {
                 items: windowItems.map((entry): NativeReviewOverviewItem => (entry.type === 'task'
                     ? { type: 'task', areaGroupId: entry.areaGroupId, projectGroupId: entry.projectGroupId, row: rows[rowIndex++], selected: selected.has(entry.task.id) }
                     : entry)),
-                empty: view.empty,
+                empty: input.scope === undefined && view.empty ? text.empty : view.empty,
+                ...(input.scope === undefined ? {} : { scope: {
+                    selected: scope,
+                    options: [{ id: 'due' as const, label: text.scopeDue }, { id: 'all' as const, label: text.scopeAll }],
+                    help: scope === 'due' ? text.dueHelp : text.overviewHelp,
+                } }),
                 startReview: view.startReview,
                 bulk: view.bulk,
             },
@@ -504,6 +519,7 @@ export function createReviewViewMethods(deps: ReviewViewDeps) {
         areaIds: Set<string>,
         projectIds: Set<string>,
         selectedIds: string[],
+        scope: ReviewOverviewScope,
     ) => {
         type Entry = OverviewEntry;
         const entries: Entry[] = groups.flatMap((group): Entry[] => [
@@ -534,6 +550,7 @@ export function createReviewViewMethods(deps: ReviewViewDeps) {
             actions: [
                 { id: 'organize', label: text.organize, enabled: true },
                 { id: 'moveTo', label: text.moveTo, enabled: true },
+                ...(scope === 'due' ? [{ id: 'markReviewed' as const, label: text.markReviewed, enabled: true }] : []),
                 { id: 'addTag', label: text.addTag, enabled: true },
                 { id: 'removeTag', label: text.removeTag, enabled: removableTags.length > 0 },
                 { id: 'share', label: text.share, enabled: true },
@@ -548,7 +565,7 @@ export function createReviewViewMethods(deps: ReviewViewDeps) {
         return {
             entries,
             expansion: { label: control.label, disabled: control.disabled, allExpanded: control.allExpanded },
-            empty: groups.length === 0 ? text.empty : null,
+            empty: groups.length === 0 ? (scope === 'due' ? text.dueEmpty : text.overviewEmpty) : null,
             startReview: {
                 label: text.startReview,
                 options: [{ id: 'daily' as const, label: text.dailyReview }, { id: 'weekly' as const, label: text.weeklyReview }],
@@ -873,6 +890,13 @@ export function createReviewViewMethods(deps: ReviewViewDeps) {
                 // Mobile counts the selection.
                 return written(() => store.batchMoveTasks(moving, action.status), doneToast(action.taskIds.length, t));
             }
+            case 'markReviewedTasks': {
+                if (!everyLive(action.taskIds)) return fail('INVALID_INPUT', 'Tasks that exist are required');
+                const now = new Date();
+                const due = action.taskIds.filter((id) => isTaskDueForReview(liveTask(id)!, now));
+                if (due.length === 0) return unchanged();
+                return written(() => store.batchUpdateTasks(due.map((id) => ({ id, updates: { reviewAt: undefined } }))));
+            }
             case 'trashTasks': {
                 if (!everyKnown(action.taskIds)) return fail('INVALID_INPUT', 'Every task must be live or in Trash');
                 const live = action.taskIds.filter((id) => liveTask(id));
@@ -964,6 +988,8 @@ export function createReviewViewMethods(deps: ReviewViewDeps) {
             expandedProjectIds?: string[];
             expansionEdit?: NativeReviewExpansionEdit;
             selectedIds?: string[];
+            /** Omitted for the previous whole-system overview; opt in to 'due' for reminders. */
+            scope?: ReviewOverviewScope;
             offset: number;
             limit: number;
             revision?: string;

@@ -100,6 +100,7 @@ export const getUrgencyColor = (task: Task) => {
 };
 
 const formatTimeEstimate = formatTimeEstimateLabel;
+const IS_MAC_PLATFORM = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform);
 
 export const TaskItemDisplay = memo(function TaskItemDisplay({
     task,
@@ -160,6 +161,8 @@ export const TaskItemDisplay = memo(function TaskItemDisplay({
                 : '')
         : '';
     const isReference = task.status === 'reference';
+    const assignedTo = task.assignedTo?.trim();
+    const waitingAssignee = task.status === 'waiting' ? assignedTo : undefined;
     const checklistProgress = isReference ? null : getChecklistProgress(task);
     const recurrenceLabel = formatRecurrenceLabel({ recurrence: task.recurrence, t });
     const projectedRecurrenceDateLabel = recurrenceLabel
@@ -209,7 +212,7 @@ export const TaskItemDisplay = memo(function TaskItemDisplay({
     // give, so it stays out.
     const hasTimedStart = Boolean(task.startTime && hasTimeComponent(task.startTime));
     const hasMetadata = isReference
-        ? Boolean((showProjectBadgeInMetadata && project) || area || task.assignedTo || task.tags.length > 0)
+        ? Boolean((showProjectBadgeInMetadata && project) || area || assignedTo || task.tags.length > 0)
         : Boolean(
             (showProjectBadgeInMetadata && project)
             || area
@@ -223,7 +226,7 @@ export const TaskItemDisplay = memo(function TaskItemDisplay({
             || recurrencePreviewLabel
             || (prioritiesEnabled && task.priority)
             || task.energyLevel
-            || task.assignedTo
+            || assignedTo
             || (task.contexts?.length ?? 0) > 0
             || task.tags.length > 0
             || checklistProgress
@@ -241,9 +244,11 @@ export const TaskItemDisplay = memo(function TaskItemDisplay({
             || task.startTime
             || task.dueDate
             || dateIssueLabel
+            || recurrencePreviewLabel
             || (prioritiesEnabled && task.priority)
             || (task.contexts?.length ?? 0) > 0
             || checklistProgress
+            || waitingAssignee
         );
     const resolvedDirection = resolveTaskTextDirection(task);
     const isRtl = resolvedDirection === 'rtl';
@@ -288,7 +293,13 @@ export const TaskItemDisplay = memo(function TaskItemDisplay({
     };
     const cancelInlineRename = () => setRenameDraft(null);
     const handleTitleClick = (event: MouseEvent<HTMLButtonElement>) => {
-        if (selectionMode) {
+        if (selectionMode || (event.detail > 0 && !event.altKey
+            && (event.shiftKey || (IS_MAC_PLATFORM ? event.metaKey : event.ctrlKey))
+            && onToggleSelect && !interactionDisabled)) {
+            clearClickTimer();
+            event.stopPropagation();
+            if (event.detail >= 2) return;
+            event.preventDefault();
             onToggleSelect?.({ range: event.shiftKey });
             return;
         }
@@ -310,7 +321,8 @@ export const TaskItemDisplay = memo(function TaskItemDisplay({
         }, 180);
     };
     const handleTitleDoubleClick = (event: MouseEvent<HTMLButtonElement>) => {
-        if (selectionMode || readOnly) return;
+        if (selectionMode || readOnly || (onToggleSelect && !event.altKey
+            && (event.shiftKey || (IS_MAC_PLATFORM ? event.metaKey : event.ctrlKey)))) return;
         event.stopPropagation();
         clearClickTimer();
         onEdit();
@@ -496,6 +508,12 @@ export const TaskItemDisplay = memo(function TaskItemDisplay({
         && task.startTime
         && safeFormatDate(task.startTime, 'P') === appearsAtLabel,
     );
+    const renderAssignedToBadge = () => assignedTo && (
+        <MetadataBadge
+            variant="info"
+            label={`${t('taskEdit.assignedTo')}: ${assignedTo}`}
+        />
+    );
     const renderMetadataRow = (className?: string, expanded = false) => (
         <div className={cn("flex flex-wrap items-center text-xs", className)}>
             {showProjectBadgeInMetadata && renderProjectBadge()}
@@ -548,7 +566,7 @@ export const TaskItemDisplay = memo(function TaskItemDisplay({
                     label={task.location}
                 />
             )}
-            {expanded && !isReference && recurrencePreviewLabel && (
+            {(expanded || showCompactMeta) && !isReference && recurrencePreviewLabel && (
                 <MetadataBadge
                     variant="info"
                     icon={Repeat}
@@ -568,12 +586,7 @@ export const TaskItemDisplay = memo(function TaskItemDisplay({
                     label={t(`energyLevel.${task.energyLevel}`)}
                 />
             )}
-            {expanded && task.assignedTo && (
-                <MetadataBadge
-                    variant="info"
-                    label={`${t('taskEdit.assignedTo')}: ${task.assignedTo}`}
-                />
-            )}
+            {(expanded || waitingAssignee) && renderAssignedToBadge()}
             {!isReference && task.contexts?.length > 0 && (
                 <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">
                     {(expanded ? task.contexts : task.contexts.slice(0, 3)).map((ctx) => renderContextBadge(ctx))}
@@ -810,6 +823,9 @@ export const TaskItemDisplay = memo(function TaskItemDisplay({
                         aria-label={[
                             `${tFallback(t, 'task.toggleDetails', 'Toggle task details')}: ${task.title}`,
                             collapsedPriorityAccessibilityLabel,
+                            !isViewOpen && !showCompactMeta && !isReference && recurrenceLabel
+                                ? `${tFallback(t, 'taskEdit.recurrenceLabel', 'Recurrence')}: ${recurrenceLabel}`
+                                : null,
                         ].filter(Boolean).join('. ')}
                         title={!selectionMode && !readOnly && showHoverHint ? hoverHintText : undefined}
                         dir={resolvedDirection}
@@ -824,6 +840,11 @@ export const TaskItemDisplay = memo(function TaskItemDisplay({
                             )}
                         >
                             {task.title}
+                            {!isViewOpen && !showCompactMeta && !isReference && recurrenceLabel && (
+                                <span title={recurrenceLabel} className="ms-1 inline-block align-[-2px]">
+                                    <Repeat aria-hidden="true" className="h-3.5 w-3.5" />
+                                </span>
+                            )}
                             {showPinnedFocusStar && (
                                 <FocusStarIcon
                                     filled
@@ -852,7 +873,7 @@ export const TaskItemDisplay = memo(function TaskItemDisplay({
                         dense ? "mt-0.5" : "mt-1",
                         (overlayDragHandle || overlayQuickDone) && "pl-12"
                     ))}
-                    {!isReference && !showCompactMeta && !isViewOpen && (completionLabel || projectDeadlineLabel || appearsAtLabel || hasTimedStart) && (
+                    {!isReference && !showCompactMeta && !isViewOpen && (completionLabel || projectDeadlineLabel || appearsAtLabel || hasTimedStart || waitingAssignee) && (
                         <div className={cn(
                             "flex flex-wrap items-center gap-2 text-xs text-muted-foreground",
                             dense ? "mt-0.5" : "mt-1",
@@ -863,6 +884,7 @@ export const TaskItemDisplay = memo(function TaskItemDisplay({
                                 "show list details" off along with the completion timestamp. */}
                             {renderAppearsAtMetadataBadge()}
                             {renderProjectDeadlineMetadataBadge()}
+                            {waitingAssignee && renderAssignedToBadge()}
                             {hasTimedStart && (
                                 <MetadataBadge
                                     variant="info"
@@ -874,7 +896,7 @@ export const TaskItemDisplay = memo(function TaskItemDisplay({
                     )}
 
                     {isViewOpen && (
-                        <div onClick={(e) => e.stopPropagation()}>
+                        <div data-task-row-ignore-double-click onClick={(e) => e.stopPropagation()}>
                             {task.description && (
                                 <div
                                     className={cn(
@@ -1037,6 +1059,7 @@ export const TaskItemDisplay = memo(function TaskItemDisplay({
 
             {!selectionMode && (
                 <div
+                    data-task-row-ignore-double-click
                     className={cn(
                         "task-item-display__actions relative z-20 flex shrink-0 items-center gap-2",
                         actionsOverlay && "absolute top-1 right-1 z-10"

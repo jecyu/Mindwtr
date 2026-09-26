@@ -29,6 +29,7 @@ import { useLanguage } from '../contexts/language-context';
 import { useUiStore } from '../store/ui-store';
 import { useObsidianStore } from '../store/obsidian-store';
 import { reportError } from '../lib/report-error';
+import { showSyncErrorToast } from '../lib/sync-error-toast';
 import { ToastHost } from './ToastHost';
 import { areaFilterSelectionToFilters, isTaskVisibleInInbox, resolveAreaFilterSelection, type AreaFilterSelection } from '@mindwtr/core';
 import { SyncService } from '../lib/sync-service';
@@ -611,7 +612,7 @@ export function Layout({
                     'Mindwtr kept the local attachment. File Sync can only sync attachments under 100 MB. Replace it with a smaller file or remove the attachment, then sync again.',
                 ), 'info', 6000);
             } else if (result.success && result.remoteWriteDeferred) {
-                showToast(result.error || settings?.lastSyncError || tFallback(t, 'settings.lastSyncError', 'Sync failed'), 'error');
+                showSyncErrorToast(result.error || settings?.lastSyncError || tFallback(t, 'settings.lastSyncError', 'Sync failed'));
             } else if (result.success && result.attachmentWriteDeferred) {
                 showToast(tFallback(
                     t,
@@ -651,12 +652,12 @@ export function Layout({
             } else if (result.success) {
                 showToast(tFallback(t, 'settings.lastSyncSuccess', 'Sync completed'), 'success');
             } else {
-                showToast(result.error || tFallback(t, 'settings.lastSyncError', 'Sync failed'), 'error');
+                showSyncErrorToast(result.error || tFallback(t, 'settings.lastSyncError', 'Sync failed'));
             }
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            reportError('Sync failed', error);
-            showToast(`${tFallback(t, 'settings.lastSyncError', 'Sync failed')}: ${message}`, 'error');
+            reportError('Sync failed', error, { toast: false });
+            showSyncErrorToast(message);
         } finally {
             setIsManualSyncing(false);
         }

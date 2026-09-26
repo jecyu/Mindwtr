@@ -1,0 +1,8709 @@
+{
+ "provenance": {
+  "command": "cd apps/mobile && MINDWTR_CAPTURE_INBOX_VIEW=1 MINDWTR_CAPTURE_INBOX_VIEW_COMMIT=$(git rev-parse HEAD) bunx vitest run components/task-list/inbox-view-parity.test.tsx",
+  "capturedAt": "6cb44d10c5b45fbdd2ef54bd441050e1d0a01948",
+  "capturedAtNote": "Captured from HEAD's React Native code before any Inbox change: the harness and this fixture were the only changes in the checkout.",
+  "renamedAfterCapture": {
+   "from": "inbox: a stored time-estimate sort with the feature off reads as default",
+   "to": "inbox: a stored time-estimate sort (the feature is on by default)",
+   "note": "Only the scenario name changed, in the harness and here; no observation changed. Time estimates are on by default, so the stored sort applies, as the observations show."
+  }
+ },
+ "timeZone": "America/New_York",
+ "now": "2026-09-24T14:00:00.000Z",
+ "tasks": [
+  {
+   "id": "i-dentist",
+   "title": "Call dentist",
+   "status": "inbox",
+   "contexts": [
+    "@phone"
+   ],
+   "tags": [
+    "#health"
+   ],
+   "createdAt": "2026-09-20T12:00:00.000Z",
+   "updatedAt": "2026-09-20T12:00:00.000Z",
+   "priority": "high"
+  },
+  {
+   "id": "i-milk",
+   "title": "Buy milk",
+   "status": "inbox",
+   "contexts": [
+    "@errands"
+   ],
+   "tags": [],
+   "createdAt": "2026-09-21T12:00:00.000Z",
+   "updatedAt": "2026-09-21T12:00:00.000Z",
+   "dueDate": "2026-09-25"
+  },
+  {
+   "id": "i-party",
+   "title": "Plan launch party",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [
+    "#work"
+   ],
+   "createdAt": "2026-09-18T12:00:00.000Z",
+   "updatedAt": "2026-09-18T12:00:00.000Z",
+   "projectId": "p-launch",
+   "energyLevel": "low",
+   "startTime": "2026-09-30"
+  },
+  {
+   "id": "i-gutter",
+   "title": "Fix gutter",
+   "status": "inbox",
+   "contexts": [
+    "@home",
+    "@phone"
+   ],
+   "tags": [],
+   "createdAt": "2026-09-19T12:00:00.000Z",
+   "updatedAt": "2026-09-19T12:00:00.000Z",
+   "projectId": "p-home",
+   "timeEstimate": "30min",
+   "description": "Before winter",
+   "checklist": [
+    {
+     "id": "c1",
+     "title": "Ladder",
+     "isCompleted": true
+    },
+    {
+     "id": "c2",
+     "title": "Gloves",
+     "isCompleted": false
+    }
+   ]
+  },
+  {
+   "id": "i-article",
+   "title": "Read article",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [
+    "#reading"
+   ],
+   "createdAt": "2026-09-22T12:00:00.000Z",
+   "updatedAt": "2026-09-22T12:00:00.000Z",
+   "areaId": "a-home",
+   "location": "Library"
+  },
+  {
+   "id": "i-seeds",
+   "title": "Order seeds",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-17T12:00:00.000Z",
+   "updatedAt": "2026-09-17T12:00:00.000Z",
+   "projectId": "p-garden",
+   "dueDate": "2026-10-01T09:00"
+  },
+  {
+   "id": "i-orphan",
+   "title": "Loose capture",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-16T12:00:00.000Z",
+   "updatedAt": "2026-09-16T12:00:00.000Z",
+   "projectId": "p-missing"
+  },
+  {
+   "id": "i-archived",
+   "title": "Archived capture",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-15T12:00:00.000Z",
+   "updatedAt": "2026-09-15T12:00:00.000Z",
+   "projectId": "p-old"
+  },
+  {
+   "id": "i-parked",
+   "title": "Parked capture",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-15T12:00:00.000Z",
+   "updatedAt": "2026-09-15T12:00:00.000Z",
+   "projectId": "p-spanish"
+  },
+  {
+   "id": "i-removed",
+   "title": "Removed project capture",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-15T12:00:00.000Z",
+   "updatedAt": "2026-09-15T12:00:00.000Z",
+   "projectId": "p-gone"
+  },
+  {
+   "id": "i-deleted",
+   "title": "Deleted capture",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-15T12:00:00.000Z",
+   "updatedAt": "2026-09-15T12:00:00.000Z",
+   "deletedAt": "2026-09-21T12:00:00.000Z"
+  },
+  {
+   "id": "n-a",
+   "title": "Draft launch post",
+   "status": "next",
+   "contexts": [
+    "@phone"
+   ],
+   "tags": [],
+   "createdAt": "2026-09-19T12:00:00.000Z",
+   "updatedAt": "2026-09-19T12:00:00.000Z",
+   "projectId": "p-launch"
+  },
+  {
+   "id": "d-a",
+   "title": "Filed taxes",
+   "status": "done",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-15T12:00:00.000Z",
+   "updatedAt": "2026-09-15T12:00:00.000Z",
+   "completedAt": "2026-09-23T10:00:00.000Z"
+  }
+ ],
+ "extraTasks": [
+  {
+   "id": "x-001",
+   "title": "Capture 001",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-01T12:00:00.000Z",
+   "updatedAt": "2026-09-01T12:00:00.000Z"
+  },
+  {
+   "id": "x-002",
+   "title": "Capture 002",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-02T12:00:00.000Z",
+   "updatedAt": "2026-09-02T12:00:00.000Z"
+  },
+  {
+   "id": "x-003",
+   "title": "Capture 003",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-03T12:00:00.000Z",
+   "updatedAt": "2026-09-03T12:00:00.000Z"
+  },
+  {
+   "id": "x-004",
+   "title": "Capture 004",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-04T12:00:00.000Z",
+   "updatedAt": "2026-09-04T12:00:00.000Z"
+  },
+  {
+   "id": "x-005",
+   "title": "Capture 005",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-05T12:00:00.000Z",
+   "updatedAt": "2026-09-05T12:00:00.000Z"
+  },
+  {
+   "id": "x-006",
+   "title": "Capture 006",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-06T12:00:00.000Z",
+   "updatedAt": "2026-09-06T12:00:00.000Z"
+  },
+  {
+   "id": "x-007",
+   "title": "Capture 007",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-07T12:00:00.000Z",
+   "updatedAt": "2026-09-07T12:00:00.000Z"
+  },
+  {
+   "id": "x-008",
+   "title": "Capture 008",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-08T12:00:00.000Z",
+   "updatedAt": "2026-09-08T12:00:00.000Z"
+  },
+  {
+   "id": "x-009",
+   "title": "Capture 009",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-09T12:00:00.000Z",
+   "updatedAt": "2026-09-09T12:00:00.000Z"
+  },
+  {
+   "id": "x-010",
+   "title": "Capture 010",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-10T12:00:00.000Z",
+   "updatedAt": "2026-09-10T12:00:00.000Z"
+  },
+  {
+   "id": "x-011",
+   "title": "Capture 011",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-11T12:00:00.000Z",
+   "updatedAt": "2026-09-11T12:00:00.000Z"
+  },
+  {
+   "id": "x-012",
+   "title": "Capture 012",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-12T12:00:00.000Z",
+   "updatedAt": "2026-09-12T12:00:00.000Z"
+  },
+  {
+   "id": "x-013",
+   "title": "Capture 013",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-13T12:00:00.000Z",
+   "updatedAt": "2026-09-13T12:00:00.000Z"
+  },
+  {
+   "id": "x-014",
+   "title": "Capture 014",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-14T12:00:00.000Z",
+   "updatedAt": "2026-09-14T12:00:00.000Z"
+  },
+  {
+   "id": "x-015",
+   "title": "Capture 015",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-15T12:00:00.000Z",
+   "updatedAt": "2026-09-15T12:00:00.000Z"
+  },
+  {
+   "id": "x-016",
+   "title": "Capture 016",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-16T12:00:00.000Z",
+   "updatedAt": "2026-09-16T12:00:00.000Z"
+  },
+  {
+   "id": "x-017",
+   "title": "Capture 017",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-17T12:00:00.000Z",
+   "updatedAt": "2026-09-17T12:00:00.000Z"
+  },
+  {
+   "id": "x-018",
+   "title": "Capture 018",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-18T12:00:00.000Z",
+   "updatedAt": "2026-09-18T12:00:00.000Z"
+  },
+  {
+   "id": "x-019",
+   "title": "Capture 019",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-19T12:00:00.000Z",
+   "updatedAt": "2026-09-19T12:00:00.000Z"
+  },
+  {
+   "id": "x-020",
+   "title": "Capture 020",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-20T12:00:00.000Z",
+   "updatedAt": "2026-09-20T12:00:00.000Z"
+  },
+  {
+   "id": "x-021",
+   "title": "Capture 021",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-21T12:00:00.000Z",
+   "updatedAt": "2026-09-21T12:00:00.000Z"
+  },
+  {
+   "id": "x-022",
+   "title": "Capture 022",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-22T12:00:00.000Z",
+   "updatedAt": "2026-09-22T12:00:00.000Z"
+  },
+  {
+   "id": "x-023",
+   "title": "Capture 023",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-23T12:00:00.000Z",
+   "updatedAt": "2026-09-23T12:00:00.000Z"
+  },
+  {
+   "id": "x-024",
+   "title": "Capture 024",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-24T12:00:00.000Z",
+   "updatedAt": "2026-09-24T12:00:00.000Z"
+  },
+  {
+   "id": "x-025",
+   "title": "Capture 025",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-25T12:00:00.000Z",
+   "updatedAt": "2026-09-25T12:00:00.000Z"
+  },
+  {
+   "id": "x-026",
+   "title": "Capture 026",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-26T12:00:00.000Z",
+   "updatedAt": "2026-09-26T12:00:00.000Z"
+  },
+  {
+   "id": "x-027",
+   "title": "Capture 027",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-27T12:00:00.000Z",
+   "updatedAt": "2026-09-27T12:00:00.000Z"
+  },
+  {
+   "id": "x-028",
+   "title": "Capture 028",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-28T12:00:00.000Z",
+   "updatedAt": "2026-09-28T12:00:00.000Z"
+  },
+  {
+   "id": "x-029",
+   "title": "Capture 029",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-01T12:00:00.000Z",
+   "updatedAt": "2026-09-01T12:00:00.000Z"
+  },
+  {
+   "id": "x-030",
+   "title": "Capture 030",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-02T12:00:00.000Z",
+   "updatedAt": "2026-09-02T12:00:00.000Z"
+  },
+  {
+   "id": "x-031",
+   "title": "Capture 031",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-03T12:00:00.000Z",
+   "updatedAt": "2026-09-03T12:00:00.000Z"
+  },
+  {
+   "id": "x-032",
+   "title": "Capture 032",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-04T12:00:00.000Z",
+   "updatedAt": "2026-09-04T12:00:00.000Z"
+  },
+  {
+   "id": "x-033",
+   "title": "Capture 033",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-05T12:00:00.000Z",
+   "updatedAt": "2026-09-05T12:00:00.000Z"
+  },
+  {
+   "id": "x-034",
+   "title": "Capture 034",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-06T12:00:00.000Z",
+   "updatedAt": "2026-09-06T12:00:00.000Z"
+  },
+  {
+   "id": "x-035",
+   "title": "Capture 035",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-07T12:00:00.000Z",
+   "updatedAt": "2026-09-07T12:00:00.000Z"
+  },
+  {
+   "id": "x-036",
+   "title": "Capture 036",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-08T12:00:00.000Z",
+   "updatedAt": "2026-09-08T12:00:00.000Z"
+  },
+  {
+   "id": "x-037",
+   "title": "Capture 037",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-09T12:00:00.000Z",
+   "updatedAt": "2026-09-09T12:00:00.000Z"
+  },
+  {
+   "id": "x-038",
+   "title": "Capture 038",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-10T12:00:00.000Z",
+   "updatedAt": "2026-09-10T12:00:00.000Z"
+  },
+  {
+   "id": "x-039",
+   "title": "Capture 039",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-11T12:00:00.000Z",
+   "updatedAt": "2026-09-11T12:00:00.000Z"
+  },
+  {
+   "id": "x-040",
+   "title": "Capture 040",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-12T12:00:00.000Z",
+   "updatedAt": "2026-09-12T12:00:00.000Z"
+  },
+  {
+   "id": "x-041",
+   "title": "Capture 041",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-13T12:00:00.000Z",
+   "updatedAt": "2026-09-13T12:00:00.000Z"
+  },
+  {
+   "id": "x-042",
+   "title": "Capture 042",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-14T12:00:00.000Z",
+   "updatedAt": "2026-09-14T12:00:00.000Z"
+  },
+  {
+   "id": "x-043",
+   "title": "Capture 043",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-15T12:00:00.000Z",
+   "updatedAt": "2026-09-15T12:00:00.000Z"
+  },
+  {
+   "id": "x-044",
+   "title": "Capture 044",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-16T12:00:00.000Z",
+   "updatedAt": "2026-09-16T12:00:00.000Z"
+  },
+  {
+   "id": "x-045",
+   "title": "Capture 045",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-17T12:00:00.000Z",
+   "updatedAt": "2026-09-17T12:00:00.000Z"
+  },
+  {
+   "id": "x-046",
+   "title": "Capture 046",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-18T12:00:00.000Z",
+   "updatedAt": "2026-09-18T12:00:00.000Z"
+  },
+  {
+   "id": "x-047",
+   "title": "Capture 047",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-19T12:00:00.000Z",
+   "updatedAt": "2026-09-19T12:00:00.000Z"
+  },
+  {
+   "id": "x-048",
+   "title": "Capture 048",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-20T12:00:00.000Z",
+   "updatedAt": "2026-09-20T12:00:00.000Z"
+  },
+  {
+   "id": "x-049",
+   "title": "Capture 049",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-21T12:00:00.000Z",
+   "updatedAt": "2026-09-21T12:00:00.000Z"
+  },
+  {
+   "id": "x-050",
+   "title": "Capture 050",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-22T12:00:00.000Z",
+   "updatedAt": "2026-09-22T12:00:00.000Z"
+  },
+  {
+   "id": "x-051",
+   "title": "Capture 051",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-23T12:00:00.000Z",
+   "updatedAt": "2026-09-23T12:00:00.000Z"
+  },
+  {
+   "id": "x-052",
+   "title": "Capture 052",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-24T12:00:00.000Z",
+   "updatedAt": "2026-09-24T12:00:00.000Z"
+  },
+  {
+   "id": "x-053",
+   "title": "Capture 053",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-25T12:00:00.000Z",
+   "updatedAt": "2026-09-25T12:00:00.000Z"
+  },
+  {
+   "id": "x-054",
+   "title": "Capture 054",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-26T12:00:00.000Z",
+   "updatedAt": "2026-09-26T12:00:00.000Z"
+  },
+  {
+   "id": "x-055",
+   "title": "Capture 055",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-27T12:00:00.000Z",
+   "updatedAt": "2026-09-27T12:00:00.000Z"
+  },
+  {
+   "id": "x-056",
+   "title": "Capture 056",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-28T12:00:00.000Z",
+   "updatedAt": "2026-09-28T12:00:00.000Z"
+  },
+  {
+   "id": "x-057",
+   "title": "Capture 057",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-01T12:00:00.000Z",
+   "updatedAt": "2026-09-01T12:00:00.000Z"
+  },
+  {
+   "id": "x-058",
+   "title": "Capture 058",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-02T12:00:00.000Z",
+   "updatedAt": "2026-09-02T12:00:00.000Z"
+  },
+  {
+   "id": "x-059",
+   "title": "Capture 059",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-03T12:00:00.000Z",
+   "updatedAt": "2026-09-03T12:00:00.000Z"
+  },
+  {
+   "id": "x-060",
+   "title": "Capture 060",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-04T12:00:00.000Z",
+   "updatedAt": "2026-09-04T12:00:00.000Z"
+  },
+  {
+   "id": "x-061",
+   "title": "Capture 061",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-05T12:00:00.000Z",
+   "updatedAt": "2026-09-05T12:00:00.000Z"
+  },
+  {
+   "id": "x-062",
+   "title": "Capture 062",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-06T12:00:00.000Z",
+   "updatedAt": "2026-09-06T12:00:00.000Z"
+  },
+  {
+   "id": "x-063",
+   "title": "Capture 063",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-07T12:00:00.000Z",
+   "updatedAt": "2026-09-07T12:00:00.000Z"
+  },
+  {
+   "id": "x-064",
+   "title": "Capture 064",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-08T12:00:00.000Z",
+   "updatedAt": "2026-09-08T12:00:00.000Z"
+  },
+  {
+   "id": "x-065",
+   "title": "Capture 065",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-09T12:00:00.000Z",
+   "updatedAt": "2026-09-09T12:00:00.000Z"
+  },
+  {
+   "id": "x-066",
+   "title": "Capture 066",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-10T12:00:00.000Z",
+   "updatedAt": "2026-09-10T12:00:00.000Z"
+  },
+  {
+   "id": "x-067",
+   "title": "Capture 067",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-11T12:00:00.000Z",
+   "updatedAt": "2026-09-11T12:00:00.000Z"
+  },
+  {
+   "id": "x-068",
+   "title": "Capture 068",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-12T12:00:00.000Z",
+   "updatedAt": "2026-09-12T12:00:00.000Z"
+  },
+  {
+   "id": "x-069",
+   "title": "Capture 069",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-13T12:00:00.000Z",
+   "updatedAt": "2026-09-13T12:00:00.000Z"
+  },
+  {
+   "id": "x-070",
+   "title": "Capture 070",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-14T12:00:00.000Z",
+   "updatedAt": "2026-09-14T12:00:00.000Z"
+  },
+  {
+   "id": "x-071",
+   "title": "Capture 071",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-15T12:00:00.000Z",
+   "updatedAt": "2026-09-15T12:00:00.000Z"
+  },
+  {
+   "id": "x-072",
+   "title": "Capture 072",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-16T12:00:00.000Z",
+   "updatedAt": "2026-09-16T12:00:00.000Z"
+  },
+  {
+   "id": "x-073",
+   "title": "Capture 073",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-17T12:00:00.000Z",
+   "updatedAt": "2026-09-17T12:00:00.000Z"
+  },
+  {
+   "id": "x-074",
+   "title": "Capture 074",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-18T12:00:00.000Z",
+   "updatedAt": "2026-09-18T12:00:00.000Z"
+  },
+  {
+   "id": "x-075",
+   "title": "Capture 075",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-19T12:00:00.000Z",
+   "updatedAt": "2026-09-19T12:00:00.000Z"
+  },
+  {
+   "id": "x-076",
+   "title": "Capture 076",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-20T12:00:00.000Z",
+   "updatedAt": "2026-09-20T12:00:00.000Z"
+  },
+  {
+   "id": "x-077",
+   "title": "Capture 077",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-21T12:00:00.000Z",
+   "updatedAt": "2026-09-21T12:00:00.000Z"
+  },
+  {
+   "id": "x-078",
+   "title": "Capture 078",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-22T12:00:00.000Z",
+   "updatedAt": "2026-09-22T12:00:00.000Z"
+  },
+  {
+   "id": "x-079",
+   "title": "Capture 079",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-23T12:00:00.000Z",
+   "updatedAt": "2026-09-23T12:00:00.000Z"
+  },
+  {
+   "id": "x-080",
+   "title": "Capture 080",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-24T12:00:00.000Z",
+   "updatedAt": "2026-09-24T12:00:00.000Z"
+  },
+  {
+   "id": "x-081",
+   "title": "Capture 081",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-25T12:00:00.000Z",
+   "updatedAt": "2026-09-25T12:00:00.000Z"
+  },
+  {
+   "id": "x-082",
+   "title": "Capture 082",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-26T12:00:00.000Z",
+   "updatedAt": "2026-09-26T12:00:00.000Z"
+  },
+  {
+   "id": "x-083",
+   "title": "Capture 083",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-27T12:00:00.000Z",
+   "updatedAt": "2026-09-27T12:00:00.000Z"
+  },
+  {
+   "id": "x-084",
+   "title": "Capture 084",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-28T12:00:00.000Z",
+   "updatedAt": "2026-09-28T12:00:00.000Z"
+  },
+  {
+   "id": "x-085",
+   "title": "Capture 085",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-01T12:00:00.000Z",
+   "updatedAt": "2026-09-01T12:00:00.000Z"
+  },
+  {
+   "id": "x-086",
+   "title": "Capture 086",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-02T12:00:00.000Z",
+   "updatedAt": "2026-09-02T12:00:00.000Z"
+  },
+  {
+   "id": "x-087",
+   "title": "Capture 087",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-03T12:00:00.000Z",
+   "updatedAt": "2026-09-03T12:00:00.000Z"
+  },
+  {
+   "id": "x-088",
+   "title": "Capture 088",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-04T12:00:00.000Z",
+   "updatedAt": "2026-09-04T12:00:00.000Z"
+  },
+  {
+   "id": "x-089",
+   "title": "Capture 089",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-05T12:00:00.000Z",
+   "updatedAt": "2026-09-05T12:00:00.000Z"
+  },
+  {
+   "id": "x-090",
+   "title": "Capture 090",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-06T12:00:00.000Z",
+   "updatedAt": "2026-09-06T12:00:00.000Z"
+  },
+  {
+   "id": "x-091",
+   "title": "Capture 091",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-07T12:00:00.000Z",
+   "updatedAt": "2026-09-07T12:00:00.000Z"
+  },
+  {
+   "id": "x-092",
+   "title": "Capture 092",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-08T12:00:00.000Z",
+   "updatedAt": "2026-09-08T12:00:00.000Z"
+  },
+  {
+   "id": "x-093",
+   "title": "Capture 093",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-09T12:00:00.000Z",
+   "updatedAt": "2026-09-09T12:00:00.000Z"
+  },
+  {
+   "id": "x-094",
+   "title": "Capture 094",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-10T12:00:00.000Z",
+   "updatedAt": "2026-09-10T12:00:00.000Z"
+  },
+  {
+   "id": "x-095",
+   "title": "Capture 095",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-11T12:00:00.000Z",
+   "updatedAt": "2026-09-11T12:00:00.000Z"
+  },
+  {
+   "id": "x-096",
+   "title": "Capture 096",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-12T12:00:00.000Z",
+   "updatedAt": "2026-09-12T12:00:00.000Z"
+  },
+  {
+   "id": "x-097",
+   "title": "Capture 097",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-13T12:00:00.000Z",
+   "updatedAt": "2026-09-13T12:00:00.000Z"
+  },
+  {
+   "id": "x-098",
+   "title": "Capture 098",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-14T12:00:00.000Z",
+   "updatedAt": "2026-09-14T12:00:00.000Z"
+  },
+  {
+   "id": "x-099",
+   "title": "Capture 099",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-15T12:00:00.000Z",
+   "updatedAt": "2026-09-15T12:00:00.000Z"
+  },
+  {
+   "id": "x-100",
+   "title": "Capture 100",
+   "status": "inbox",
+   "contexts": [],
+   "tags": [],
+   "createdAt": "2026-09-16T12:00:00.000Z",
+   "updatedAt": "2026-09-16T12:00:00.000Z"
+  }
+ ],
+ "projects": [
+  {
+   "id": "p-launch",
+   "title": "Launch",
+   "status": "active",
+   "color": "#2563eb",
+   "order": 0,
+   "tagIds": [],
+   "createdAt": "2026-09-01T12:00:00.000Z",
+   "updatedAt": "2026-09-01T12:00:00.000Z",
+   "areaId": "a-work"
+  },
+  {
+   "id": "p-home",
+   "title": "Home Repairs",
+   "status": "active",
+   "color": "#94a3b8",
+   "order": 1,
+   "tagIds": [],
+   "createdAt": "2026-09-01T12:00:00.000Z",
+   "updatedAt": "2026-09-01T12:00:00.000Z",
+   "areaId": "a-home"
+  },
+  {
+   "id": "p-old",
+   "title": "Old stuff",
+   "status": "archived",
+   "color": "#94a3b8",
+   "order": 2,
+   "tagIds": [],
+   "createdAt": "2026-09-01T12:00:00.000Z",
+   "updatedAt": "2026-09-01T12:00:00.000Z",
+   "areaId": "a-work"
+  },
+  {
+   "id": "p-spanish",
+   "title": "Learn Spanish",
+   "status": "someday",
+   "color": "#94a3b8",
+   "order": 3,
+   "tagIds": [],
+   "createdAt": "2026-09-01T12:00:00.000Z",
+   "updatedAt": "2026-09-01T12:00:00.000Z",
+   "areaId": "a-home"
+  },
+  {
+   "id": "p-garden",
+   "title": "Garden",
+   "status": "someday",
+   "color": "#94a3b8",
+   "order": 4,
+   "tagIds": [],
+   "createdAt": "2026-09-01T12:00:00.000Z",
+   "updatedAt": "2026-09-01T12:00:00.000Z",
+   "isFocused": true
+  },
+  {
+   "id": "p-gone",
+   "title": "Removed",
+   "status": "active",
+   "color": "#94a3b8",
+   "order": 5,
+   "tagIds": [],
+   "createdAt": "2026-09-01T12:00:00.000Z",
+   "updatedAt": "2026-09-01T12:00:00.000Z",
+   "deletedAt": "2026-09-02T12:00:00.000Z"
+  }
+ ],
+ "areas": [
+  {
+   "id": "a-home",
+   "name": "Home",
+   "color": "#16a34a",
+   "order": 1,
+   "createdAt": "2026-09-01T12:00:00.000Z",
+   "updatedAt": "2026-09-01T12:00:00.000Z"
+  },
+  {
+   "id": "a-work",
+   "name": "Work",
+   "color": "#2563eb",
+   "order": 0,
+   "createdAt": "2026-09-01T12:00:00.000Z",
+   "updatedAt": "2026-09-01T12:00:00.000Z"
+  }
+ ],
+ "settings": {
+  "base": {},
+  "features": {
+   "features": {
+    "priorities": true,
+    "timeEstimates": true
+   }
+  },
+  "audio": {
+   "gtd": {
+    "defaultCaptureMethod": "audio"
+   }
+  },
+  "staleTimeEstimate": {
+   "taskSortBy": "timeEstimate"
+  },
+  "areaWork": {
+   "filters": {
+    "areaIds": [
+     "a-work"
+    ]
+   }
+  }
+ },
+ "scenarios": [
+  {
+   "name": "inbox: toolbar, grouping and sort",
+   "settings": "base",
+   "actions": [
+    [
+     "group",
+     "context"
+    ],
+    [
+     "collapse",
+     "context:@phone"
+    ],
+    [
+     "group",
+     "area"
+    ],
+    [
+     "collapse",
+     "general"
+    ],
+    [
+     "group",
+     "context"
+    ],
+    [
+     "collapse",
+     "context:@phone"
+    ],
+    [
+     "group",
+     "project"
+    ],
+    [
+     "group",
+     "tag"
+    ],
+    [
+     "group",
+     "none"
+    ],
+    [
+     "sort",
+     "title"
+    ],
+    [
+     "sort",
+     "due"
+    ],
+    [
+     "sort",
+     "default"
+    ]
+   ]
+  },
+  {
+   "name": "inbox: filters, chips and the filtered empty state",
+   "settings": "features",
+   "actions": [
+    [
+     "filter",
+     "token",
+     "@phone"
+    ],
+    [
+     "filter",
+     "token",
+     "@home"
+    ],
+    [
+     "matchMode",
+     "context",
+     "any"
+    ],
+    [
+     "filter",
+     "token",
+     "@phone"
+    ],
+    [
+     "filter",
+     "token",
+     "#work"
+    ],
+    [
+     "clearChip",
+     "excluded-token:@phone"
+    ],
+    [
+     "filter",
+     "priority",
+     "high"
+    ],
+    [
+     "filter",
+     "energy",
+     "low"
+    ],
+    [
+     "clearFilters"
+    ],
+    [
+     "filter",
+     "location",
+     "Library"
+    ],
+    [
+     "filter",
+     "search",
+     "launch"
+    ],
+    [
+     "clearChip",
+     "search"
+    ],
+    [
+     "filter",
+     "search",
+     "nomatch"
+    ],
+    [
+     "emptyAction"
+    ],
+    [
+     "sort",
+     "timeEstimate"
+    ]
+   ]
+  },
+  {
+   "name": "inbox: a stored time-estimate sort (the feature is on by default)",
+   "settings": "staleTimeEstimate",
+   "actions": [
+    [
+     "sort",
+     "title"
+    ]
+   ]
+  },
+  {
+   "name": "inbox: the Work area still lists every inbox task",
+   "settings": "areaWork",
+   "actions": [
+    [
+     "group",
+     "area"
+    ]
+   ]
+  },
+  {
+   "name": "inbox: empty with text capture",
+   "settings": "base",
+   "omit": [
+    "i-dentist",
+    "i-milk",
+    "i-party",
+    "i-gutter",
+    "i-article",
+    "i-seeds",
+    "i-orphan",
+    "i-removed"
+   ],
+   "actions": [
+    [
+     "emptyAction"
+    ]
+   ]
+  },
+  {
+   "name": "inbox: empty with voice capture",
+   "settings": "audio",
+   "omit": [
+    "i-dentist",
+    "i-milk",
+    "i-party",
+    "i-gutter",
+    "i-article",
+    "i-seeds",
+    "i-orphan",
+    "i-removed"
+   ],
+   "actions": [
+    [
+     "emptyAction"
+    ]
+   ]
+  },
+  {
+   "name": "inbox: one task",
+   "settings": "base",
+   "omit": [
+    "i-milk",
+    "i-party",
+    "i-gutter",
+    "i-article",
+    "i-seeds",
+    "i-orphan",
+    "i-removed"
+   ],
+   "actions": []
+  },
+  {
+   "name": "inbox: 99 tasks",
+   "settings": "base",
+   "omit": [
+    "i-dentist",
+    "i-milk",
+    "i-party",
+    "i-gutter",
+    "i-article",
+    "i-seeds",
+    "i-orphan",
+    "i-removed"
+   ],
+   "extra": 99,
+   "actions": []
+  },
+  {
+   "name": "inbox: 100 tasks",
+   "settings": "base",
+   "omit": [
+    "i-dentist",
+    "i-milk",
+    "i-party",
+    "i-gutter",
+    "i-article",
+    "i-seeds",
+    "i-orphan",
+    "i-removed"
+   ],
+   "extra": 100,
+   "actions": [
+    [
+     "filter",
+     "search",
+     "Capture 00"
+    ]
+   ]
+  }
+ ],
+ "observations": {
+  "inbox: toolbar, grouping and sort": [
+   {
+    "items": [
+     [
+      "task",
+      "i-milk",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {},
+    "sort": [
+     [
+      "default",
+      "Default",
+      true
+     ],
+     [
+      "due",
+      "Due date",
+      false
+     ],
+     [
+      "start",
+      "Start date",
+      false
+     ],
+     [
+      "review",
+      "Review date",
+      false
+     ],
+     [
+      "timeEstimate",
+      "Time estimate",
+      false
+     ],
+     [
+      "title",
+      "Title",
+      false
+     ],
+     [
+      "created",
+      "Oldest",
+      false
+     ],
+     [
+      "created-desc",
+      "Newest",
+      false
+     ]
+    ],
+    "group": [
+     [
+      "No grouping",
+      true
+     ],
+     [
+      "Context",
+      false
+     ],
+     [
+      "Area",
+      false
+     ],
+     [
+      "Project",
+      false
+     ],
+     [
+      "Tags",
+      false
+     ]
+    ]
+   },
+   {
+    "items": [
+     [
+      "section",
+      "context:@errands",
+      "@errands",
+      1,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-milk",
+      "context:@errands",
+      false
+     ],
+     [
+      "section",
+      "context:@home",
+      "@home",
+      1,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      "context:@home",
+      false
+     ],
+     [
+      "section",
+      "context:@phone",
+      "@phone",
+      2,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      "context:@phone",
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      "context:@phone",
+      false
+     ],
+     [
+      "section",
+      "context:none",
+      "No context",
+      5,
+      true,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      "context:none",
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      "context:none",
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      "context:none",
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      "context:none",
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      "context:none",
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "Context",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: Context",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {}
+   },
+   {
+    "items": [
+     [
+      "section",
+      "context:@errands",
+      "@errands",
+      1,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-milk",
+      "context:@errands",
+      false
+     ],
+     [
+      "section",
+      "context:@home",
+      "@home",
+      1,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      "context:@home",
+      false
+     ],
+     [
+      "section",
+      "context:@phone",
+      "@phone",
+      2,
+      false,
+      true,
+      true
+     ],
+     [
+      "section",
+      "context:none",
+      "No context",
+      5,
+      true,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      "context:none",
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      "context:none",
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      "context:none",
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      "context:none",
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      "context:none",
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "Context",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: Context",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {
+     "mindwtr:view:group-collapse:inbox:v1": "{\"context\":[\"context:@phone\"]}"
+    }
+   },
+   {
+    "items": [
+     [
+      "section",
+      "a-work",
+      "Work",
+      1,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      "a-work",
+      false
+     ],
+     [
+      "section",
+      "a-home",
+      "Home",
+      2,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      "a-home",
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      "a-home",
+      false
+     ],
+     [
+      "section",
+      "general",
+      "General",
+      5,
+      true,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-milk",
+      "general",
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      "general",
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      "general",
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      "general",
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      "general",
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "Area",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: Area",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {
+     "mindwtr:view:group-collapse:inbox:v1": "{\"context\":[\"context:@phone\"]}"
+    }
+   },
+   {
+    "items": [
+     [
+      "section",
+      "a-work",
+      "Work",
+      1,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      "a-work",
+      false
+     ],
+     [
+      "section",
+      "a-home",
+      "Home",
+      2,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      "a-home",
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      "a-home",
+      false
+     ],
+     [
+      "section",
+      "general",
+      "General",
+      5,
+      true,
+      true,
+      true
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "Area",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: Area",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {
+     "mindwtr:view:group-collapse:inbox:v1": "{\"context\":[\"context:@phone\"],\"area\":[\"general\"]}"
+    }
+   },
+   {
+    "items": [
+     [
+      "section",
+      "context:@errands",
+      "@errands",
+      1,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-milk",
+      "context:@errands",
+      false
+     ],
+     [
+      "section",
+      "context:@home",
+      "@home",
+      1,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      "context:@home",
+      false
+     ],
+     [
+      "section",
+      "context:@phone",
+      "@phone",
+      2,
+      false,
+      true,
+      true
+     ],
+     [
+      "section",
+      "context:none",
+      "No context",
+      5,
+      true,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      "context:none",
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      "context:none",
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      "context:none",
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      "context:none",
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      "context:none",
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "Context",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: Context",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {
+     "mindwtr:view:group-collapse:inbox:v1": "{\"context\":[\"context:@phone\"],\"area\":[\"general\"]}"
+    }
+   },
+   {
+    "items": [
+     [
+      "section",
+      "context:@errands",
+      "@errands",
+      1,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-milk",
+      "context:@errands",
+      false
+     ],
+     [
+      "section",
+      "context:@home",
+      "@home",
+      1,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      "context:@home",
+      false
+     ],
+     [
+      "section",
+      "context:@phone",
+      "@phone",
+      2,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      "context:@phone",
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      "context:@phone",
+      false
+     ],
+     [
+      "section",
+      "context:none",
+      "No context",
+      5,
+      true,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      "context:none",
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      "context:none",
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      "context:none",
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      "context:none",
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      "context:none",
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "Context",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: Context",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {
+     "mindwtr:view:group-collapse:inbox:v1": "{\"context\":[],\"area\":[\"general\"]}"
+    }
+   },
+   {
+    "items": [
+     [
+      "section",
+      "project:p-launch",
+      "Launch",
+      1,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      "project:p-launch",
+      false
+     ],
+     [
+      "section",
+      "project:p-home",
+      "Home Repairs",
+      1,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      "project:p-home",
+      false
+     ],
+     [
+      "section",
+      "project:p-garden",
+      "Garden",
+      1,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      "project:p-garden",
+      false
+     ],
+     [
+      "section",
+      "project:none",
+      "No Project",
+      5,
+      true,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-milk",
+      "project:none",
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      "project:none",
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      "project:none",
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      "project:none",
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      "project:none",
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "Project",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: Project",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {
+     "mindwtr:view:group-collapse:inbox:v1": "{\"context\":[],\"area\":[\"general\"]}"
+    }
+   },
+   {
+    "items": [
+     [
+      "section",
+      "tag:#health",
+      "#health",
+      1,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      "tag:#health",
+      false
+     ],
+     [
+      "section",
+      "tag:#reading",
+      "#reading",
+      1,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      "tag:#reading",
+      false
+     ],
+     [
+      "section",
+      "tag:#work",
+      "#work",
+      1,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      "tag:#work",
+      false
+     ],
+     [
+      "section",
+      "tag:none",
+      "No tags",
+      5,
+      true,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-milk",
+      "tag:none",
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      "tag:none",
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      "tag:none",
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      "tag:none",
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      "tag:none",
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "Tags",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: Tags",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {
+     "mindwtr:view:group-collapse:inbox:v1": "{\"context\":[],\"area\":[\"general\"]}"
+    }
+   },
+   {
+    "items": [
+     [
+      "task",
+      "i-milk",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {
+     "mindwtr:view:group-collapse:inbox:v1": "{\"context\":[],\"area\":[\"general\"]}"
+    }
+   },
+   {
+    "items": [
+     [
+      "task",
+      "i-milk",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Title",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Title",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [
+     [
+      "updateSettings",
+      {
+       "taskSortBy": "title"
+      }
+     ]
+    ],
+    "stored": {
+     "mindwtr:view:group-collapse:inbox:v1": "{\"context\":[],\"area\":[\"general\"]}"
+    }
+   },
+   {
+    "items": [
+     [
+      "task",
+      "i-milk",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Due date",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Due date",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [
+     [
+      "updateSettings",
+      {
+       "taskSortBy": "due"
+      }
+     ]
+    ],
+    "stored": {
+     "mindwtr:view:group-collapse:inbox:v1": "{\"context\":[],\"area\":[\"general\"]}"
+    }
+   },
+   {
+    "items": [
+     [
+      "task",
+      "i-milk",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [
+     [
+      "updateSettings",
+      {
+       "taskSortBy": "default"
+      }
+     ]
+    ],
+    "stored": {
+     "mindwtr:view:group-collapse:inbox:v1": "{\"context\":[],\"area\":[\"general\"]}"
+    }
+   }
+  ],
+  "inbox: filters, chips and the filtered empty state": [
+   {
+    "items": [
+     [
+      "task",
+      "i-milk",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {},
+    "sort": [
+     [
+      "default",
+      "Default",
+      true
+     ],
+     [
+      "due",
+      "Due date",
+      false
+     ],
+     [
+      "start",
+      "Start date",
+      false
+     ],
+     [
+      "review",
+      "Review date",
+      false
+     ],
+     [
+      "timeEstimate",
+      "Time estimate",
+      false
+     ],
+     [
+      "title",
+      "Title",
+      false
+     ],
+     [
+      "created",
+      "Oldest",
+      false
+     ],
+     [
+      "created-desc",
+      "Newest",
+      false
+     ]
+    ],
+    "group": [
+     [
+      "No grouping",
+      true
+     ],
+     [
+      "Context",
+      false
+     ],
+     [
+      "Area",
+      false
+     ],
+     [
+      "Project",
+      false
+     ],
+     [
+      "Tags",
+      false
+     ]
+    ]
+   },
+   {
+    "items": [
+     [
+      "task",
+      "i-gutter",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 2,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 1,
+     "hasActiveFilters": true,
+     "chips": [
+      [
+       "token:@phone",
+       "@phone",
+       false
+      ]
+     ],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: 1",
+       "1",
+       true
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ],
+      [
+       "Remove filter: @phone",
+       "@phone",
+       null
+      ],
+      [
+       "Clear",
+       "Clear",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks match these filters.",
+     "hint": "@phone",
+     "actionLabel": "Clear"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [
+      [
+       "token:@phone",
+       "@phone",
+       false
+      ]
+     ],
+     "activeCount": 1,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {}
+   },
+   {
+    "items": [
+     [
+      "task",
+      "i-gutter",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 1,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 2,
+     "hasActiveFilters": true,
+     "chips": [
+      [
+       "token:@phone",
+       "@phone",
+       false
+      ],
+      [
+       "token:@home",
+       "@home",
+       false
+      ]
+     ],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: 2",
+       "2",
+       true
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ],
+      [
+       "Remove filter: @phone",
+       "@phone",
+       null
+      ],
+      [
+       "Remove filter: @home",
+       "@home",
+       null
+      ],
+      [
+       "Clear",
+       "Clear",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks match these filters.",
+     "hint": "@phone, @home",
+     "actionLabel": "Clear"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [
+      [
+       "token:@phone",
+       "@phone",
+       false
+      ],
+      [
+       "token:@home",
+       "@home",
+       false
+      ]
+     ],
+     "activeCount": 2,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": true,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {}
+   },
+   {
+    "items": [
+     [
+      "task",
+      "i-gutter",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 2,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 2,
+     "hasActiveFilters": true,
+     "chips": [
+      [
+       "token:@phone",
+       "@phone",
+       false
+      ],
+      [
+       "token:@home",
+       "@home",
+       false
+      ]
+     ],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: 2",
+       "2",
+       true
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ],
+      [
+       "Remove filter: @phone",
+       "@phone",
+       null
+      ],
+      [
+       "Remove filter: @home",
+       "@home",
+       null
+      ],
+      [
+       "Clear",
+       "Clear",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks match these filters.",
+     "hint": "@phone, @home",
+     "actionLabel": "Clear"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [
+      [
+       "token:@phone",
+       "@phone",
+       false
+      ],
+      [
+       "token:@home",
+       "@home",
+       false
+      ]
+     ],
+     "activeCount": 2,
+     "contextMatchMode": "any",
+     "tagMatchMode": "all",
+     "showContextMatchMode": true,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {}
+   },
+   {
+    "items": [],
+    "header": {
+     "count": 0,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 2,
+     "hasActiveFilters": true,
+     "chips": [
+      [
+       "token:@home",
+       "@home",
+       false
+      ],
+      [
+       "excluded-token:@phone",
+       "@phone",
+       true
+      ]
+     ],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: 2",
+       "2",
+       true
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ],
+      [
+       "Remove filter: @home",
+       "@home",
+       null
+      ],
+      [
+       "Remove filter: @phone (Excluded)",
+       "@phone",
+       null
+      ],
+      [
+       "Clear",
+       "Clear",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks match these filters.",
+     "hint": "@home, @phone",
+     "actionLabel": "Clear"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [
+      [
+       "token:@home",
+       "@home",
+       false
+      ],
+      [
+       "excluded-token:@phone",
+       "@phone",
+       true
+      ]
+     ],
+     "activeCount": 2,
+     "contextMatchMode": "any",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {}
+   },
+   {
+    "items": [],
+    "header": {
+     "count": 0,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 3,
+     "hasActiveFilters": true,
+     "chips": [
+      [
+       "token:@home",
+       "@home",
+       false
+      ],
+      [
+       "token:#work",
+       "#work",
+       false
+      ],
+      [
+       "excluded-token:@phone",
+       "@phone",
+       true
+      ]
+     ],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: 3",
+       "3",
+       true
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ],
+      [
+       "Remove filter: @home",
+       "@home",
+       null
+      ],
+      [
+       "Remove filter: #work",
+       "#work",
+       null
+      ],
+      [
+       "Remove filter: @phone (Excluded)",
+       "@phone",
+       null
+      ],
+      [
+       "Clear",
+       "Clear",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks match these filters.",
+     "hint": "@home, #work, @phone",
+     "actionLabel": "Clear"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [
+      [
+       "token:@home",
+       "@home",
+       false
+      ],
+      [
+       "token:#work",
+       "#work",
+       false
+      ],
+      [
+       "excluded-token:@phone",
+       "@phone",
+       true
+      ]
+     ],
+     "activeCount": 3,
+     "contextMatchMode": "any",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {}
+   },
+   {
+    "items": [],
+    "header": {
+     "count": 0,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 2,
+     "hasActiveFilters": true,
+     "chips": [
+      [
+       "token:@home",
+       "@home",
+       false
+      ],
+      [
+       "token:#work",
+       "#work",
+       false
+      ]
+     ],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: 2",
+       "2",
+       true
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ],
+      [
+       "Remove filter: @home",
+       "@home",
+       null
+      ],
+      [
+       "Remove filter: #work",
+       "#work",
+       null
+      ],
+      [
+       "Clear",
+       "Clear",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks match these filters.",
+     "hint": "@home, #work",
+     "actionLabel": "Clear"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [
+      [
+       "token:@home",
+       "@home",
+       false
+      ],
+      [
+       "token:#work",
+       "#work",
+       false
+      ]
+     ],
+     "activeCount": 2,
+     "contextMatchMode": "any",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {}
+   },
+   {
+    "items": [],
+    "header": {
+     "count": 0,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 3,
+     "hasActiveFilters": true,
+     "chips": [
+      [
+       "token:@home",
+       "@home",
+       false
+      ],
+      [
+       "token:#work",
+       "#work",
+       false
+      ],
+      [
+       "priority:high",
+       "High",
+       false
+      ]
+     ],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: 3",
+       "3",
+       true
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ],
+      [
+       "Remove filter: @home",
+       "@home",
+       null
+      ],
+      [
+       "Remove filter: #work",
+       "#work",
+       null
+      ],
+      [
+       "Remove filter: High",
+       "High",
+       null
+      ],
+      [
+       "Clear",
+       "Clear",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks match these filters.",
+     "hint": "@home, #work, High",
+     "actionLabel": "Clear"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [
+      [
+       "token:@home",
+       "@home",
+       false
+      ],
+      [
+       "token:#work",
+       "#work",
+       false
+      ],
+      [
+       "priority:high",
+       "High",
+       false
+      ]
+     ],
+     "activeCount": 3,
+     "contextMatchMode": "any",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {}
+   },
+   {
+    "items": [],
+    "header": {
+     "count": 0,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 4,
+     "hasActiveFilters": true,
+     "chips": [
+      [
+       "token:@home",
+       "@home",
+       false
+      ],
+      [
+       "token:#work",
+       "#work",
+       false
+      ],
+      [
+       "priority:high",
+       "High",
+       false
+      ],
+      [
+       "energy:low",
+       "Low energy",
+       false
+      ]
+     ],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: 4",
+       "4",
+       true
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ],
+      [
+       "Remove filter: @home",
+       "@home",
+       null
+      ],
+      [
+       "Remove filter: #work",
+       "#work",
+       null
+      ],
+      [
+       "Remove filter: High",
+       "High",
+       null
+      ],
+      [
+       "Remove filter: Low energy",
+       "Low energy",
+       null
+      ],
+      [
+       "Clear",
+       "Clear",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks match these filters.",
+     "hint": "@home, #work, High",
+     "actionLabel": "Clear"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [
+      [
+       "token:@home",
+       "@home",
+       false
+      ],
+      [
+       "token:#work",
+       "#work",
+       false
+      ],
+      [
+       "priority:high",
+       "High",
+       false
+      ],
+      [
+       "energy:low",
+       "Low energy",
+       false
+      ]
+     ],
+     "activeCount": 4,
+     "contextMatchMode": "any",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {}
+   },
+   {
+    "items": [
+     [
+      "task",
+      "i-milk",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {}
+   },
+   {
+    "items": [
+     [
+      "task",
+      "i-article",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 1,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 1,
+     "hasActiveFilters": true,
+     "chips": [
+      [
+       "location",
+       "Location: Library",
+       false
+      ]
+     ],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: 1",
+       "1",
+       true
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ],
+      [
+       "Remove filter: Location: Library",
+       "Location: Library",
+       null
+      ],
+      [
+       "Clear",
+       "Clear",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks match these filters.",
+     "hint": "Location: Library",
+     "actionLabel": "Clear"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [
+      [
+       "location",
+       "Location: Library",
+       false
+      ]
+     ],
+     "activeCount": 1,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {}
+   },
+   {
+    "items": [],
+    "header": {
+     "count": 0,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 2,
+     "hasActiveFilters": true,
+     "chips": [
+      [
+       "search",
+       "Search: launch",
+       false
+      ],
+      [
+       "location",
+       "Location: Library",
+       false
+      ]
+     ],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: 2",
+       "2",
+       true
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ],
+      [
+       "Remove filter: Search: launch",
+       "Search: launch",
+       null
+      ],
+      [
+       "Remove filter: Location: Library",
+       "Location: Library",
+       null
+      ],
+      [
+       "Clear",
+       "Clear",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks match these filters.",
+     "hint": "Search: launch, Location: Library",
+     "actionLabel": "Clear"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [
+      [
+       "search",
+       "Search: launch",
+       false
+      ],
+      [
+       "location",
+       "Location: Library",
+       false
+      ]
+     ],
+     "activeCount": 2,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {}
+   },
+   {
+    "items": [
+     [
+      "task",
+      "i-article",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 1,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 1,
+     "hasActiveFilters": true,
+     "chips": [
+      [
+       "location",
+       "Location: Library",
+       false
+      ]
+     ],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: 1",
+       "1",
+       true
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ],
+      [
+       "Remove filter: Location: Library",
+       "Location: Library",
+       null
+      ],
+      [
+       "Clear",
+       "Clear",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks match these filters.",
+     "hint": "Location: Library",
+     "actionLabel": "Clear"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [
+      [
+       "location",
+       "Location: Library",
+       false
+      ]
+     ],
+     "activeCount": 1,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {}
+   },
+   {
+    "items": [],
+    "header": {
+     "count": 0,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 2,
+     "hasActiveFilters": true,
+     "chips": [
+      [
+       "search",
+       "Search: nomatch",
+       false
+      ],
+      [
+       "location",
+       "Location: Library",
+       false
+      ]
+     ],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: 2",
+       "2",
+       true
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ],
+      [
+       "Remove filter: Search: nomatch",
+       "Search: nomatch",
+       null
+      ],
+      [
+       "Remove filter: Location: Library",
+       "Location: Library",
+       null
+      ],
+      [
+       "Clear",
+       "Clear",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks match these filters.",
+     "hint": "Search: nomatch, Location: Library",
+     "actionLabel": "Clear"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [
+      [
+       "search",
+       "Search: nomatch",
+       false
+      ],
+      [
+       "location",
+       "Location: Library",
+       false
+      ]
+     ],
+     "activeCount": 2,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {}
+   },
+   {
+    "items": [
+     [
+      "task",
+      "i-milk",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {}
+   },
+   {
+    "items": [
+     [
+      "task",
+      "i-gutter",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-milk",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Time estimate",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Time estimate",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [
+     [
+      "updateSettings",
+      {
+       "taskSortBy": "timeEstimate"
+      }
+     ]
+    ],
+    "stored": {}
+   }
+  ],
+  "inbox: a stored time-estimate sort (the feature is on by default)": [
+   {
+    "items": [
+     [
+      "task",
+      "i-gutter",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-milk",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Time estimate",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Time estimate",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {},
+    "sort": [
+     [
+      "default",
+      "Default",
+      false
+     ],
+     [
+      "due",
+      "Due date",
+      false
+     ],
+     [
+      "start",
+      "Start date",
+      false
+     ],
+     [
+      "review",
+      "Review date",
+      false
+     ],
+     [
+      "timeEstimate",
+      "Time estimate",
+      true
+     ],
+     [
+      "title",
+      "Title",
+      false
+     ],
+     [
+      "created",
+      "Oldest",
+      false
+     ],
+     [
+      "created-desc",
+      "Newest",
+      false
+     ]
+    ],
+    "group": [
+     [
+      "No grouping",
+      true
+     ],
+     [
+      "Context",
+      false
+     ],
+     [
+      "Area",
+      false
+     ],
+     [
+      "Project",
+      false
+     ],
+     [
+      "Tags",
+      false
+     ]
+    ]
+   },
+   {
+    "items": [
+     [
+      "task",
+      "i-milk",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Title",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Title",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [
+     [
+      "updateSettings",
+      {
+       "taskSortBy": "title"
+      }
+     ]
+    ],
+    "stored": {}
+   }
+  ],
+  "inbox: the Work area still lists every inbox task": [
+   {
+    "items": [
+     [
+      "task",
+      "i-milk",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      null,
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {},
+    "sort": [
+     [
+      "default",
+      "Default",
+      true
+     ],
+     [
+      "due",
+      "Due date",
+      false
+     ],
+     [
+      "start",
+      "Start date",
+      false
+     ],
+     [
+      "review",
+      "Review date",
+      false
+     ],
+     [
+      "timeEstimate",
+      "Time estimate",
+      false
+     ],
+     [
+      "title",
+      "Title",
+      false
+     ],
+     [
+      "created",
+      "Oldest",
+      false
+     ],
+     [
+      "created-desc",
+      "Newest",
+      false
+     ]
+    ],
+    "group": [
+     [
+      "No grouping",
+      true
+     ],
+     [
+      "Context",
+      false
+     ],
+     [
+      "Area",
+      false
+     ],
+     [
+      "Project",
+      false
+     ],
+     [
+      "Tags",
+      false
+     ]
+    ]
+   },
+   {
+    "items": [
+     [
+      "section",
+      "a-work",
+      "Work",
+      1,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-party",
+      "a-work",
+      false
+     ],
+     [
+      "section",
+      "a-home",
+      "Home",
+      2,
+      false,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-gutter",
+      "a-home",
+      false
+     ],
+     [
+      "task",
+      "i-article",
+      "a-home",
+      false
+     ],
+     [
+      "section",
+      "general",
+      "General",
+      5,
+      true,
+      true,
+      false
+     ],
+     [
+      "task",
+      "i-milk",
+      "general",
+      false
+     ],
+     [
+      "task",
+      "i-seeds",
+      "general",
+      false
+     ],
+     [
+      "task",
+      "i-removed",
+      "general",
+      false
+     ],
+     [
+      "task",
+      "i-orphan",
+      "general",
+      false
+     ],
+     [
+      "task",
+      "i-dentist",
+      "general",
+      false
+     ]
+    ],
+    "header": {
+     "count": 8,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "Area",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: Area",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (8)",
+      "Process Inbox (8)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@errands",
+      "@home",
+      "@phone",
+      "#health",
+      "#reading",
+      "#work"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": true,
+      "location": true,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {}
+   }
+  ],
+  "inbox: empty with text capture": [
+   {
+    "items": [],
+    "header": {
+     "count": 0,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Mind Sweep",
+      "Mind Sweep",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": false,
+      "location": false,
+      "priority": false,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {},
+    "sort": [
+     [
+      "default",
+      "Default",
+      true
+     ],
+     [
+      "due",
+      "Due date",
+      false
+     ],
+     [
+      "start",
+      "Start date",
+      false
+     ],
+     [
+      "review",
+      "Review date",
+      false
+     ],
+     [
+      "timeEstimate",
+      "Time estimate",
+      false
+     ],
+     [
+      "title",
+      "Title",
+      false
+     ],
+     [
+      "created",
+      "Oldest",
+      false
+     ],
+     [
+      "created-desc",
+      "Newest",
+      false
+     ]
+    ],
+    "group": [
+     [
+      "No grouping",
+      true
+     ],
+     [
+      "Context",
+      false
+     ],
+     [
+      "Area",
+      false
+     ],
+     [
+      "Project",
+      false
+     ],
+     [
+      "Tags",
+      false
+     ]
+    ]
+   },
+   {
+    "items": [],
+    "header": {
+     "count": 0,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Mind Sweep",
+      "Mind Sweep",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": false,
+      "location": false,
+      "priority": false,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [
+     {
+      "autoRecord": false
+     }
+    ],
+    "writes": [],
+    "stored": {}
+   }
+  ],
+  "inbox: empty with voice capture": [
+   {
+    "items": [],
+    "header": {
+     "count": 0,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Mind Sweep",
+      "Mind Sweep",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Inbox is clear. Tap the mic to capture.",
+     "actionLabel": "Quick voice capture"
+    },
+    "filterSheet": {
+     "tokens": [],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": false,
+      "location": false,
+      "priority": false,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {},
+    "sort": [
+     [
+      "default",
+      "Default",
+      true
+     ],
+     [
+      "due",
+      "Due date",
+      false
+     ],
+     [
+      "start",
+      "Start date",
+      false
+     ],
+     [
+      "review",
+      "Review date",
+      false
+     ],
+     [
+      "timeEstimate",
+      "Time estimate",
+      false
+     ],
+     [
+      "title",
+      "Title",
+      false
+     ],
+     [
+      "created",
+      "Oldest",
+      false
+     ],
+     [
+      "created-desc",
+      "Newest",
+      false
+     ]
+    ],
+    "group": [
+     [
+      "No grouping",
+      true
+     ],
+     [
+      "Context",
+      false
+     ],
+     [
+      "Area",
+      false
+     ],
+     [
+      "Project",
+      false
+     ],
+     [
+      "Tags",
+      false
+     ]
+    ]
+   },
+   {
+    "items": [],
+    "header": {
+     "count": 0,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Mind Sweep",
+      "Mind Sweep",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Inbox is clear. Tap the mic to capture.",
+     "actionLabel": "Quick voice capture"
+    },
+    "filterSheet": {
+     "tokens": [],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": false,
+      "location": false,
+      "priority": false,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [
+     {
+      "autoRecord": true
+     }
+    ],
+    "writes": [],
+    "stored": {}
+   }
+  ],
+  "inbox: one task": [
+   {
+    "items": [
+     [
+      "task",
+      "i-dentist",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 1,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (1)",
+      "Process Inbox (1)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [
+      "@phone",
+      "#health"
+     ],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": false,
+      "location": false,
+      "priority": true,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {},
+    "sort": [
+     [
+      "default",
+      "Default",
+      true
+     ],
+     [
+      "due",
+      "Due date",
+      false
+     ],
+     [
+      "start",
+      "Start date",
+      false
+     ],
+     [
+      "review",
+      "Review date",
+      false
+     ],
+     [
+      "timeEstimate",
+      "Time estimate",
+      false
+     ],
+     [
+      "title",
+      "Title",
+      false
+     ],
+     [
+      "created",
+      "Oldest",
+      false
+     ],
+     [
+      "created-desc",
+      "Newest",
+      false
+     ]
+    ],
+    "group": [
+     [
+      "No grouping",
+      true
+     ],
+     [
+      "Context",
+      false
+     ],
+     [
+      "Area",
+      false
+     ],
+     [
+      "Project",
+      false
+     ],
+     [
+      "Tags",
+      false
+     ]
+    ]
+   }
+  ],
+  "inbox: 99 tasks": [
+   {
+    "items": [
+     [
+      "task",
+      "x-001",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-029",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-057",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-085",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-002",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-030",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-058",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-086",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-003",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-031",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-059",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-087",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-004",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-032",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-060",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-088",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-005",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-033",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-061",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-089",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-006",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-034",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-062",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-090",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-007",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-035",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-063",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-091",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-008",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-036",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-064",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-092",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-009",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-037",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-065",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-093",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-010",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-038",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-066",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-094",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-011",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-039",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-067",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-095",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-012",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-040",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-068",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-096",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-013",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-041",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-069",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-097",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-014",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-042",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-070",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-098",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-015",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-043",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-071",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-099",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-016",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-044",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-072",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-017",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-045",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-073",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-018",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-046",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-074",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-019",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-047",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-075",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-020",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-048",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-076",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-021",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-049",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-077",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-022",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-050",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-078",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-023",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-051",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-079",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-024",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-052",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-080",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-025",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-053",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-081",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-026",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-054",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-082",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-027",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-055",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-083",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-028",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-056",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-084",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 99,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (99)",
+      "Process Inbox (99)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": false,
+      "location": false,
+      "priority": false,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {},
+    "sort": [
+     [
+      "default",
+      "Default",
+      true
+     ],
+     [
+      "due",
+      "Due date",
+      false
+     ],
+     [
+      "start",
+      "Start date",
+      false
+     ],
+     [
+      "review",
+      "Review date",
+      false
+     ],
+     [
+      "timeEstimate",
+      "Time estimate",
+      false
+     ],
+     [
+      "title",
+      "Title",
+      false
+     ],
+     [
+      "created",
+      "Oldest",
+      false
+     ],
+     [
+      "created-desc",
+      "Newest",
+      false
+     ]
+    ],
+    "group": [
+     [
+      "No grouping",
+      true
+     ],
+     [
+      "Context",
+      false
+     ],
+     [
+      "Area",
+      false
+     ],
+     [
+      "Project",
+      false
+     ],
+     [
+      "Tags",
+      false
+     ]
+    ]
+   }
+  ],
+  "inbox: 100 tasks": [
+   {
+    "items": [
+     [
+      "task",
+      "x-001",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-029",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-057",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-085",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-002",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-030",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-058",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-086",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-003",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-031",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-059",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-087",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-004",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-032",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-060",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-088",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-005",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-033",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-061",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-089",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-006",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-034",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-062",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-090",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-007",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-035",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-063",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-091",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-008",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-036",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-064",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-092",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-009",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-037",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-065",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-093",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-010",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-038",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-066",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-094",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-011",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-039",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-067",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-095",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-012",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-040",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-068",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-096",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-013",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-041",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-069",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-097",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-014",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-042",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-070",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-098",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-015",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-043",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-071",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-099",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-016",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-044",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-072",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-100",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-017",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-045",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-073",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-018",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-046",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-074",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-019",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-047",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-075",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-020",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-048",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-076",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-021",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-049",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-077",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-022",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-050",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-078",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-023",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-051",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-079",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-024",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-052",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-080",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-025",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-053",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-081",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-026",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-054",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-082",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-027",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-055",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-083",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-028",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-056",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-084",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 100,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 0,
+     "hasActiveFilters": false,
+     "chips": [],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: All",
+       "",
+       false
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (100)",
+      "Process Inbox (99+)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks in inbox",
+     "hint": "Capture anything on your mind here — organize later.",
+     "actionLabel": "Add Task"
+    },
+    "filterSheet": {
+     "tokens": [],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": false,
+      "location": false,
+      "priority": false,
+      "timeEstimate": false
+     },
+     "chips": [],
+     "activeCount": 0,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {},
+    "sort": [
+     [
+      "default",
+      "Default",
+      true
+     ],
+     [
+      "due",
+      "Due date",
+      false
+     ],
+     [
+      "start",
+      "Start date",
+      false
+     ],
+     [
+      "review",
+      "Review date",
+      false
+     ],
+     [
+      "timeEstimate",
+      "Time estimate",
+      false
+     ],
+     [
+      "title",
+      "Title",
+      false
+     ],
+     [
+      "created",
+      "Oldest",
+      false
+     ],
+     [
+      "created-desc",
+      "Newest",
+      false
+     ]
+    ],
+    "group": [
+     [
+      "No grouping",
+      true
+     ],
+     [
+      "Context",
+      false
+     ],
+     [
+      "Area",
+      false
+     ],
+     [
+      "Project",
+      false
+     ],
+     [
+      "Tags",
+      false
+     ]
+    ]
+   },
+   {
+    "items": [
+     [
+      "task",
+      "x-001",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-002",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-003",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-004",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-005",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-006",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-007",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-008",
+      null,
+      false
+     ],
+     [
+      "task",
+      "x-009",
+      null,
+      false
+     ]
+    ],
+    "header": {
+     "count": 9,
+     "title": "Inbox",
+     "showHeader": false,
+     "directControls": true,
+     "sortByLabel": "Default",
+     "groupByLabel": "No grouping",
+     "filterActiveCount": 1,
+     "hasActiveFilters": true,
+     "chips": [
+      [
+       "search",
+       "Search: Capture 00",
+       false
+      ]
+     ],
+     "buttons": [
+      [
+       "Sort: Default",
+       "",
+       null
+      ],
+      [
+       "Group: No grouping",
+       "",
+       null
+      ],
+      [
+       "Filters: 1",
+       "1",
+       true
+      ],
+      [
+       "Mind Sweep",
+       "Mind Sweep",
+       null
+      ],
+      [
+       "Remove filter: Search: Capture 00",
+       "Search: Capture 00",
+       null
+      ],
+      [
+       "Clear",
+       "Clear",
+       null
+      ]
+     ]
+    },
+    "primary": [
+     [
+      "Process Inbox (100)",
+      "Process Inbox (99+)",
+      null
+     ]
+    ],
+    "scope": [
+     "All areas"
+    ],
+    "empty": {
+     "message": "No tasks match these filters.",
+     "hint": "Search: Capture 00",
+     "actionLabel": "Clear"
+    },
+    "filterSheet": {
+     "tokens": [],
+     "projects": null,
+     "timeEstimates": [
+      "5min",
+      "10min",
+      "15min",
+      "30min",
+      "1hr",
+      "2hr",
+      "3hr",
+      "4hr",
+      "4hr+"
+     ],
+     "visibility": {
+      "energyLevel": false,
+      "location": false,
+      "priority": false,
+      "timeEstimate": false
+     },
+     "chips": [
+      [
+       "search",
+       "Search: Capture 00",
+       false
+      ]
+     ],
+     "activeCount": 1,
+     "contextMatchMode": "all",
+     "tagMatchMode": "all",
+     "showContextMatchMode": false,
+     "showTagMatchMode": false
+    },
+    "capture": [],
+    "writes": [],
+    "stored": {}
+   }
+  ]
+ }
+}

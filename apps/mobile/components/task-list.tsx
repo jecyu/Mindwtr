@@ -540,8 +540,8 @@ function TaskListComponent({
   }, [exitSelectionMode, projectReadOnly, projectReorderMode, selectionMode, setProjectReorderMode]);
 
   const taskListDeriveStartedAt = Date.now();
-  // Reference and Done are core's status-list model, shared with the native host.
-  const statusListKind: StatusListKind | null = !projectId && (statusFilter === 'reference' || statusFilter === 'done')
+  // Inbox, Reference and Done are core's status-list model, shared with the native host.
+  const statusListKind: StatusListKind | null = !projectId && (statusFilter === 'inbox' || statusFilter === 'reference' || statusFilter === 'done')
     ? statusFilter
     : null;
   const filterableTasks = useMemo(() => {
@@ -612,7 +612,7 @@ function TaskListComponent({
       ?? getUsedTaskTokens(filterableTasks, (task) => [...(task.contexts ?? []), ...(task.tags ?? [])]);
   }, [filterableTasks, filtersVisible, selections.tokens, selections.excludedTokens, statusListFilterOptions]);
   const archivedReferenceFilterActive = statusFilter === 'reference' && includeArchivedReferenceProjects;
-  // Reference and Done: the header's chips and counts and the empty state, as core summarizes them.
+  // Inbox, Reference and Done: the header's chips and counts and the empty state, as core summarizes them.
   const filterSummary = useMemo(() => (statusListKind
     ? buildStatusListFilterSummary({
       kind: statusListKind,
@@ -620,9 +620,10 @@ function TaskListComponent({
       activeCount: selections.activeCount,
       hasActive: selections.hasActive,
       includeArchivedProjects: archivedReferenceFilterActive,
+      settings,
       t,
     })
-    : null), [archivedReferenceFilterActive, selections.activeCount, selections.chips, selections.hasActive, statusListKind, t]);
+    : null), [archivedReferenceFilterActive, selections.activeCount, selections.chips, selections.hasActive, settings, statusListKind, t]);
   const hasActiveTaskFilters = selections.hasActive;
   const totalFilterActiveCount = filterSummary?.activeCount ?? selections.activeCount;
   const hasAnyActiveFilters = filterSummary?.hasActive ?? hasActiveTaskFilters;

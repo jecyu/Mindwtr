@@ -94,6 +94,7 @@ export function AgendaHeader({
                     groupBy={nextGroupBy}
                     defaultGroupBy="none"
                     groupByOptions={FOCUS_AXES}
+                    groupLabel={resolveText('focus.groupBy', 'Group next actions by')}
                     onChangeGroupBy={onChangeGroupBy}
                     t={t}
                 />

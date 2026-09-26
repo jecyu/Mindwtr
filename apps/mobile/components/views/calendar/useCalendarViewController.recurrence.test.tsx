@@ -33,9 +33,10 @@ vi.mock('@mindwtr/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@mindwtr/core')>();
   return {
     ...actual,
-    expandCalendarRecurringTaskSetInRange: (...args: Parameters<typeof actual.expandCalendarRecurringTaskSetInRange>) => {
+    // The screen expands recurring tasks through core's calendar view model.
+    getCalendarRangeTasks: (...args: Parameters<typeof actual.getCalendarRangeTasks>) => {
       mocks.expandTaskSet(...args);
-      return actual.expandCalendarRecurringTaskSetInRange(...args);
+      return actual.getCalendarRangeTasks(...args);
     },
     shallow: (a: unknown, b: unknown) => a === b,
     useTaskStore: (selector: (state: typeof mocks.storeState) => unknown) => selector(mocks.storeState),

@@ -108,6 +108,30 @@ describe('native host contract: Review, Weekly Review and Daily Review', () => {
         expect(daily.items.map((item) => [item.row.id, item.showFocusToggle])).toEqual(dailyBuckets.focusCandidates.map((task) => [task.id, true]));
     });
 
+    it('offers an opt-in due scope and saves mark-reviewed once across retry', async () => {
+        freezeClock();
+        const data = { ...part, tasks: part.tasks.map((task) => ({
+            ...task, reviewAt: task.id === 'n-launch' ? '2026-09-23' : '2099-01-01',
+        })) };
+        const saveData = vi.fn().mockResolvedValue(undefined);
+        const { host, recorder } = await openHost(scenario(), saveData, data);
+        const due = value(host.getReviewOverview({ scope: 'due', selectedIds: ['n-demo'], ...page }));
+        expect(due.scope).toMatchObject({ selected: 'due', options: [{ id: 'due' }, { id: 'all' }] });
+        expect(due.bulk).toBeNull();
+        expect(due.empty).toBeNull();
+
+        const input = { requestId: generateUUID(), action: { type: 'markReviewedTasks' as const, taskIds: ['n-launch'] } };
+        saveData.mockRejectedValue(new Error('disk unavailable'));
+        expect(await host.runReviewAction(input)).toMatchObject({ ok: false, error: { code: 'SAVE_FAILED' } });
+        expect(recorder.log).toEqual([['batchUpdateTasks', [{ id: 'n-launch', updates: { reviewAt: '<undefined>' } }]]]);
+        saveData.mockResolvedValue(undefined);
+        expect(value(await host.runReviewAction(input))).toMatchObject({ changed: true });
+        expect(recorder.log).toHaveLength(1);
+        expect(value(host.getReviewOverview({ scope: 'due', ...page })).empty).toBe(t('review.dueEmpty'));
+        expect(value(host.getReviewOverview({ scope: 'all', ...page })).empty).toBeNull();
+        expect(value(await host.runReviewAction({ ...input, requestId: generateUUID() }))).toMatchObject({ changed: false });
+    });
+
     it('uses the singular task unit for a Daily Review count of one', async () => {
         freezeClock();
         const { host } = await openHost(scenario(), undefined, { ...part,

@@ -1159,6 +1159,19 @@ export function sortTasksByBoardOrder<T extends Pick<Task, 'boardOrder'>>(tasks:
     });
 }
 
+/** A duplicate takes a free integer slot without changing existing cards. */
+export function boardOrderForDuplicate(sourceOrder: number | undefined, column: readonly Pick<Task, 'boardOrder'>[]): number | undefined {
+    if (!Number.isSafeInteger(sourceOrder)) return undefined;
+    const current = sourceOrder as number;
+    let next = Number.POSITIVE_INFINITY;
+    for (const task of column) {
+        const order = task.boardOrder;
+        if (Number.isFinite(order) && (order as number) > current && (order as number) < next) next = order as number;
+    }
+    const candidate = next === Number.POSITIVE_INFINITY ? current + 1024 : Math.floor((current + next) / 2);
+    return Number.isSafeInteger(candidate) && candidate > current && candidate < next ? candidate : undefined;
+}
+
 /**
  * Stable sort for Today's Focus: tasks with a manual focusOrder come first
  * in ascending order; tasks without one keep their incoming relative order.

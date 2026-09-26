@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { workspaceSessionStorage as AsyncStorage } from '@/lib/workspace-session-storage';
 import { useColorScheme as useSystemColorScheme } from 'react-native';
 import type { AppTheme } from '@mindwtr/core';
-import { resolveThemeColorScheme, themeDescriptor, useTaskStore } from '@mindwtr/core';
+import { resolveThemeColorScheme, resolveThemeStatusPreset, useTaskStore } from '@mindwtr/core';
 import type { ThemePresetName } from '../constants/theme-presets';
 import { logError } from '../lib/app-log';
 import { markStartupPhase, measureStartupPhase } from '../lib/startup-profiler';
@@ -43,9 +43,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
     const [syncedTheme, setSyncedTheme] = useState<ThemeMode | undefined>(() => readSyncedTheme());
 
-    // Every mode that has a THEME_PRESETS entry is its own preset; the rest
-    // ('system', 'light', 'dark', both material3 modes) fall back to 'default'.
-    const themePreset: ThemePreset = themeDescriptor(themeMode)?.statusPreset ?? 'default';
+    // System OLED takes its preset from the current appearance; fixed themes
+    // keep their own preset, and ordinary light/dark use the default palette.
+    const themePreset: ThemePreset = resolveThemeStatusPreset(themeMode, systemColorScheme) ?? 'default';
 
     // Determine actual color scheme based on mode and system
     const colorScheme: ColorScheme = resolveThemeColorScheme(themeMode, systemColorScheme);

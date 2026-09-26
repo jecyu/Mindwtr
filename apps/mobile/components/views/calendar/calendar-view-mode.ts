@@ -1,16 +1,20 @@
-import {
-  addCalendarMonths,
-  startOfCalendarMonth,
-  type CalendarSystemSetting,
+import { coerceCalendarWeekVisibleDays, isSameCalendarDate, type CalendarViewMode } from '@mindwtr/core';
+
+// The mode and density rules live in core (calendar-view-model.ts); this file
+// keeps the screen's layout, scrolling and swipe arithmetic.
+export {
+  CALENDAR_WEEK_VISIBLE_DAYS_DEFAULT,
+  CALENDAR_WEEK_VISIBLE_DAYS_MAX,
+  CALENDAR_WEEK_VISIBLE_DAYS_MIN,
+  coerceCalendarViewMode,
+  coerceCalendarWeekVisibleDays,
+  getCalendarWeekVisibleDaysUpdate,
+  getInitialCalendarSelectedDate,
+  needsCalendarSelectedDate,
+  shiftCalendarVisibleMonth,
+  type CalendarViewMode,
 } from '@mindwtr/core';
 
-export type CalendarViewMode = 'month' | 'day' | 'week' | 'schedule';
-
-export const CALENDAR_WEEK_VISIBLE_DAYS_MIN = 2;
-export const CALENDAR_WEEK_VISIBLE_DAYS_MAX = 7;
-// Five days = a school or work week on one phone screen; a 390px phone gives
-// each column ~67px, which the compact column styles are sized for.
-export const CALENDAR_WEEK_VISIBLE_DAYS_DEFAULT = 5;
 export const CALENDAR_WEEK_COLUMN_WIDTH_DEFAULT = 150;
 export const CALENDAR_WEEK_COLUMN_WIDTH_MIN = 40;
 export const CALENDAR_NAVIGATION_SWIPE_DISTANCE = 28;
@@ -27,30 +31,6 @@ type CalendarNavigationSwipeInput = {
   translationY: number;
   velocityX?: number;
 };
-
-export const coerceCalendarViewMode = (value?: string | null): CalendarViewMode => (
-  value === 'day' || value === 'week' || value === 'schedule' ? value : 'month'
-);
-
-export const needsCalendarSelectedDate = (viewMode: CalendarViewMode): boolean => (
-  viewMode === 'day' || viewMode === 'week' || viewMode === 'schedule'
-);
-
-export const getInitialCalendarSelectedDate = (
-  viewMode: CalendarViewMode,
-  today: Date = new Date(),
-): Date | null => (
-  needsCalendarSelectedDate(viewMode) ? new Date(today) : null
-);
-
-export const shiftCalendarVisibleMonth = (
-  visibleMonth: Date,
-  months: number,
-  calendarSystem: CalendarSystemSetting,
-): Date => startOfCalendarMonth(
-  addCalendarMonths(visibleMonth, months, calendarSystem),
-  calendarSystem,
-);
 
 export const getCalendarTimelineDefaultScrollKey = ({
   selectedDate,
@@ -98,48 +78,17 @@ export const getCalendarTimelineAnchorMinutes = ({
   return Math.max(0, Math.min(dayMinutes, rawMinutes));
 };
 
-const isSameCalendarDay = (date: Date, otherDate: Date): boolean => (
-  date.getFullYear() === otherDate.getFullYear() &&
-  date.getMonth() === otherDate.getMonth() &&
-  date.getDate() === otherDate.getDate()
-);
-
 export const getCalendarWeekInitialVisibleDayIndex = (
   weekDays: Date[],
   selectedDate: Date | null,
   today: Date = new Date(),
 ): number => {
   const targetDate = selectedDate ?? today;
-  const targetIndex = weekDays.findIndex((day) => isSameCalendarDay(day, targetDate));
+  const targetIndex = weekDays.findIndex((day) => isSameCalendarDate(day, targetDate));
   if (targetIndex >= 0) return targetIndex;
 
-  const todayIndex = weekDays.findIndex((day) => isSameCalendarDay(day, today));
+  const todayIndex = weekDays.findIndex((day) => isSameCalendarDate(day, today));
   return Math.max(0, todayIndex);
-};
-
-export const coerceCalendarWeekVisibleDays = (value?: number | null): number => {
-  if (!Number.isFinite(value)) return CALENDAR_WEEK_VISIBLE_DAYS_DEFAULT;
-  return Math.max(
-    CALENDAR_WEEK_VISIBLE_DAYS_MIN,
-    Math.min(CALENDAR_WEEK_VISIBLE_DAYS_MAX, Math.round(value as number))
-  );
-};
-
-/**
- * Resolves one requested density change while filtering duplicate samples from
- * a continuous slider gesture. The caller stores the returned value before
- * starting persistence so later gesture frames cannot enqueue the same write.
- */
-export const getCalendarWeekVisibleDaysUpdate = ({
-  currentVisibleDays,
-  requestedVisibleDays,
-}: {
-  currentVisibleDays: number;
-  requestedVisibleDays: number;
-}): number | null => {
-  const current = coerceCalendarWeekVisibleDays(currentVisibleDays);
-  const requested = coerceCalendarWeekVisibleDays(requestedVisibleDays);
-  return current === requested ? null : requested;
 };
 
 export const getCalendarWeekColumnWidth = (

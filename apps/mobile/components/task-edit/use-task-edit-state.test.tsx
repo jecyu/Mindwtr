@@ -467,12 +467,14 @@ describe('useTaskEditState', () => {
         expect(settleAttachmentDraft).not.toHaveBeenCalled();
         expect(onClose).not.toHaveBeenCalled();
         expect(logInfoMock).not.toHaveBeenCalled();
+        expect(state.cancelRetryPending).toBe(true);
 
         await renderer.act(async () => {
             expect(await state.draftLifecycle.cancel()).toBe(true);
         });
-        expect(onSave).toHaveBeenCalledTimes(2);
+        expect(onSave).toHaveBeenCalledOnce();
         expect(flushPendingSaveMock).toHaveBeenCalledTimes(2);
+        expect(state.cancelRetryPending).toBe(false);
         expect(settleAttachmentDraft).toHaveBeenCalledWith({
             baselineAttachments: undefined,
             draftAttachments: [added],
@@ -480,6 +482,41 @@ describe('useTaskEditState', () => {
         });
         expect(logInfoMock).toHaveBeenCalledOnce();
         expect(onClose).toHaveBeenCalledOnce();
+    });
+
+    it('saves edits made after a failed cancellation barrier with the original cancellation time', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-09-09T15:00:00.000Z'));
+        flushPendingSaveMock.mockRejectedValueOnce(new Error('sqlite unavailable')).mockResolvedValue(undefined);
+        let state!: ReturnType<typeof useTaskEditState>;
+        const onSave = vi.fn().mockResolvedValue({ success: true });
+
+        function Probe() {
+            state = useTaskEditState({
+                onClose: vi.fn(), onSave, onSaveError: vi.fn(),
+                resetCopilotStateRef: { current: vi.fn() },
+                sections: [], task, tasks: [task], visible: true,
+            });
+            return null;
+        }
+
+        try {
+            renderer.act(() => { renderer.create(React.createElement(Probe)); });
+            await renderer.act(async () => { expect(await state.draftLifecycle.cancel()).toBe(false); });
+            vi.setSystemTime(new Date('2026-09-09T16:00:00.000Z'));
+            renderer.act(() => {
+                state.titleDraftRef.current = 'Edited after failure';
+                state.setDraftField('title', 'Edited after failure');
+            });
+            await renderer.act(async () => { expect(await state.draftLifecycle.cancel()).toBe(true); });
+            expect(onSave).toHaveBeenCalledTimes(2);
+            expect(onSave.mock.calls[1]?.[1]).toMatchObject({
+                title: 'Edited after failure', cancelledAt: '2026-09-09T15:00:00.000Z',
+            });
+            expect(flushPendingSaveMock).toHaveBeenCalledTimes(3);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it('settles copied attachment drafts against the baseline on discard', () => {

@@ -71,7 +71,6 @@ export type CalendarDayItemsInput = {
  * rule, so it can only ever appear here as its completion.
  */
 export function buildCalendarDayItems({ completed = [], deadlines, events, scheduled }: CalendarDayItemsInput): CalendarDayItem[] {
-    const scheduledIds = new Set(scheduled.map((task) => task.id));
     return [
         ...completed.filter(isCompletedCalendarTask).map((task): CalendarDayItem => ({
             id: `completed-${task.id}`,
@@ -87,8 +86,7 @@ export function buildCalendarDayItems({ completed = [], deadlines, events, sched
             task,
             title: task.title,
         })),
-        ...deadlines
-            .filter((task) => !scheduledIds.has(task.id))
+        ...getCalendarDistinctDeadlines(deadlines, scheduled)
             .map((task): CalendarDayItem => ({
                 id: `deadline-${task.id}`,
                 kind: 'deadline',
@@ -110,6 +108,11 @@ export function buildCalendarDayItems({ completed = [], deadlines, events, sched
         return a.title.localeCompare(b.title);
     });
 }
+
+export const getCalendarDistinctDeadlines = (deadlines: readonly Task[], scheduled: readonly Task[]): Task[] => {
+    const scheduledIds = new Set(scheduled.map((task) => task.id));
+    return deadlines.filter((task) => !scheduledIds.has(task.id));
+};
 
 type LimitedSlotCalendarItem = {
     kind: 'scheduled' | 'deadline' | 'completed' | 'event';
