@@ -81,7 +81,7 @@ export const SETTINGS_SEARCH_PAGE_KEYS: Record<SettingsSearchPageId, readonly Se
         // field, not settings people search for by name.
         { key: 'taskEditorPresentation', section: 'taskEditorLayout' },
     ],
-    manage: ['manage', 'manageAreas', 'managePeople', 'manageSomedaySections', 'manageContexts', 'manageTags'],
+    manage: ['manage', 'manageAreas', 'managePeople', 'manageSomedaySections', 'manageContexts', 'manageTags', 'manageCommitmentBenchmarks'],
     notifications: [
         'notifications',
         'notificationsEnable',
@@ -238,6 +238,7 @@ const SEARCH_KEY_I18N_OVERRIDES: Record<string, string> = {
     manageSomedaySections: 'viewSections.somedaySections',
     manageContexts: 'contexts.title',
     manageTags: 'tags.title',
+    manageCommitmentBenchmarks: 'pledge.benchmark.library',
 };
 
 export function resolveSettingsSearchI18nKey(key: string): string {

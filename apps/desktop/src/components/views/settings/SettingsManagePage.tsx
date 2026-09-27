@@ -3,10 +3,11 @@ import { DndContext, type DragEndEvent, closestCenter, useSensor, useSensors, Po
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Trash2, ChevronDown, ChevronRight, Pencil, Check, X, ExternalLink } from 'lucide-react';
-import { buildPersonSearchQuery, DEFAULT_AREA_COLOR, formatI18nTemplate, getPersonNameKey, getPersonTaskCounts, sortViewSectionDefinitions, translateWithFallback, useTaskStore, type Area, type Person, type ViewSectionDefinition,
+import { buildPersonSearchQuery, DEFAULT_AREA_COLOR, formatI18nTemplate, getPersonNameKey, getPersonTaskCounts, readCommitmentBenchmarks, sortViewSectionDefinitions, translateWithFallback, useTaskStore, type Area, type Person, type ViewSectionDefinition,
     baseTextCollator,
 } from '@mindwtr/core';
 import { AreaColorPicker } from '../projects/AreaColorPicker';
+import { SettingsCommitmentBenchmarksSection } from './SettingsCommitmentBenchmarksSection';
 import { reportError } from '../../../lib/report-error';
 import { isTauriRuntime } from '../../../lib/runtime';
 import type { ConfirmationRequestOptions } from '../../../hooks/useConfirmDialog';
@@ -770,6 +771,15 @@ export function SettingsManagePage({ t: _t, translate, requestConfirmation }: Se
                         translate={translate}
                     />
                 ))}
+            </ManageSection>
+
+            {/* Commitment benchmarks — the anchor library the P-value divides by */}
+            <ManageSection
+                settingsKey="manageCommitmentBenchmarks"
+                title={resolveText('pledge.benchmark.library', 'Commitment benchmarks')}
+                count={readCommitmentBenchmarks(settings).length}
+            >
+                <SettingsCommitmentBenchmarksSection />
             </ManageSection>
         </div>
     );

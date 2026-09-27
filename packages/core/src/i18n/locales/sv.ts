@@ -1703,6 +1703,11 @@ export const svOverrides: Record<string, string> = {
         'pledge.constraint.compliance': 'Efterlevnad',
         'pledge.constraint.external-deadline': 'Extern deadline',
         'pledge.constraint.critical-path': 'Kritisk linje',
+        'pledge.benchmark.name': 'Namn',
+        'pledge.benchmark.points': 'Poäng',
+        'pledge.benchmark.dod': 'Så ser klart ut',
+        'pledge.benchmark.add': '+ Nytt riktmärke',
+        'pledge.benchmark.library': 'Åtaganderiktmärken',
 
         'agenda.title': 'Fokus',
         'agenda.active': 'aktiva poster',

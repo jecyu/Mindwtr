@@ -1737,6 +1737,11 @@ export const jaOverrides: Record<string, string> = {
         'pledge.constraint.compliance': 'コンプライアンス',
         'pledge.constraint.external-deadline': '外部の締め切り',
         'pledge.constraint.critical-path': 'クリティカルパス',
+        'pledge.benchmark.name': '名前',
+        'pledge.benchmark.points': '複雑さ',
+        'pledge.benchmark.dod': '完了の定義',
+        'pledge.benchmark.add': '+ 基準を追加',
+        'pledge.benchmark.library': 'コミットメント基準',
 
         // Agenda
         'agenda.title': 'フォーカス',

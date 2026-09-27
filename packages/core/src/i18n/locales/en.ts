@@ -1731,6 +1731,11 @@ export const en: Record<string, string> = {
         'pledge.constraint.compliance': 'Compliance',
         'pledge.constraint.external-deadline': 'External deadline',
         'pledge.constraint.critical-path': 'Critical path',
+        'pledge.benchmark.name': 'Name',
+        'pledge.benchmark.points': 'Points',
+        'pledge.benchmark.dod': 'Done looks like',
+        'pledge.benchmark.add': '+ New benchmark',
+        'pledge.benchmark.library': 'Commitment benchmarks',
 
         // Agenda
         'agenda.title': 'Focus',

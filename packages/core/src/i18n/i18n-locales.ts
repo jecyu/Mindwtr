@@ -287,7 +287,10 @@ export const LOCALES = {
         // Re-pinned 2418 -> 2445 with the commitment panel's own strings translated rather than
         // left to fall back: pinning alone no longer cleared the ceiling, because the English
         // dictionary had grown past what the old count could cover at 90%.
-        translatedKeyFloor: 2445,
+        // Re-pinned 2445 -> 2468 for the benchmark-library strings. This ratio is now close enough
+        // to the ceiling that every batch of new English keys needs the same treatment; translating
+        // them is the only fix that does not eventually stop working.
+        translatedKeyFloor: 2468,
     },
     it: {
         loadSync: () => require('./locales/it') as typeof import('./locales/it'),

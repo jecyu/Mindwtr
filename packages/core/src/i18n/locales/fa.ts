@@ -1703,6 +1703,11 @@ export const faOverrides: Record<string, string> = {
         'pledge.constraint.compliance': 'انطباق',
         'pledge.constraint.external-deadline': 'مهلت بیرونی',
         'pledge.constraint.critical-path': 'مسیر بحرانی',
+        'pledge.benchmark.name': 'نام',
+        'pledge.benchmark.points': 'امتیاز',
+        'pledge.benchmark.dod': 'تعریف انجامشده',
+        'pledge.benchmark.add': '+ معیار جدید',
+        'pledge.benchmark.library': 'معیارهای تعهد',
 
         'agenda.title': 'تمرکز',
         'agenda.active': 'مورد فعال',
