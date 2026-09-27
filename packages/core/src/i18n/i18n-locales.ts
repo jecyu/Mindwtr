@@ -279,7 +279,12 @@ export const LOCALES = {
         // Include the newly translated sandbox and Reference strings; keep the native translation above
         // the mixed-English brand-name check threshold as the English dictionary grows.
         // Includes subsequent shipped translations and the UI simplification labels.
-        translatedKeyFloor: 2402,
+        // Re-pinned 2402 -> 2418, the count ko actually translates. Seven new English keys
+        // (sort.commitment and the six pledge.band* labels) moved the ratio from 90.17% to
+        // 89.93%, dropping ko back under MIXED_ENGLISH_COVERAGE_CEILING and firing the
+        // mixed-English check on the deliberate English it keeps (E-Ink, Material 3, Base URL,
+        // quick-add token syntax). Same cause and same remedy as the 2240 -> 2297 pin above.
+        translatedKeyFloor: 2418,
     },
     it: {
         loadSync: () => require('./locales/it') as typeof import('./locales/it'),

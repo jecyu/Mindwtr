@@ -30,6 +30,21 @@ export const FOCUS_SORT_OPTIONS: readonly SortField[] = [
     'created-desc',
 ];
 
+/**
+ * The Focus roster plus 'commitment', for the desktop Agenda only.
+ *
+ * Deliberately a separate list rather than an edit to FOCUS_SORT_OPTIONS. That
+ * roster is what the mobile Focus screen renders and what the native-host
+ * contract validates against, and both are pinned by frozen replay tests.
+ * Commitment cards live in device-local settings that mobile does not read, so
+ * adding there would put an entry in the mobile menu that silently does
+ * nothing. When mobile grows a commitment store, merge the two lists.
+ */
+export const FOCUS_SORT_OPTIONS_WITH_COMMITMENT: readonly SortField[] = [
+    ...FOCUS_SORT_OPTIONS,
+    'commitment',
+];
+
 export const DONE_TASK_LIST_SORT_OPTIONS: readonly TaskSortBy[] = [
     ...TASK_LIST_SORT_OPTIONS,
     'completed',

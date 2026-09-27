@@ -15,7 +15,7 @@ import {
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { shallow, useTaskStore, TaskPriority, TimeEstimate, TIME_ESTIMATE_OPTIONS, buildFocusPools, compareProjectsByOrder, removeAdvancedFilterCriteriaChip, formatFocusTaskLimitText,
-    getFocusStarBlockedText, formatTimeEstimateLabel, generateUUID, getUsedTaskTokens, deriveFocusTaskLists, getProjectDeadlineBoostLabel, getTaskMetadataFilterVisibility, isTaskFutureFocusCandidate, markSavedFilterDeleted, normalizeFocusTaskLimit, resolveFeatureFlags, resolveTaskPerspectiveForFeatures, safeFormatDate, safeParseDate, isDueForReview, shouldShowTaskForStart, splitTodayTasksByStartTime, translateWithFallback, tFallback } from '@mindwtr/core';
+    getFocusStarBlockedText, formatTimeEstimateLabel, generateUUID, getUsedTaskTokens, deriveFocusTaskLists, getProjectDeadlineBoostLabel, getTaskMetadataFilterVisibility, isTaskFutureFocusCandidate, markSavedFilterDeleted, normalizeFocusTaskLimit, resolveFeatureFlags, resolveTaskPerspectiveForFeatures, safeFormatDate, safeParseDate, isDueForReview, shouldShowTaskForStart, splitTodayTasksByStartTime, translateWithFallback, tFallback, partitionByCommitment, readCommitmentCards, readCommitmentBenchmarks, sortTasks } from '@mindwtr/core';
 import { DEFAULT_FOCUS_SORT_BY } from '@mindwtr/core';
 import type { MultiValueFilterMatchMode, SavedFilter, SortField, Task, TaskEnergyLevel } from '@mindwtr/core';
 import { useTaskFilterSelections } from '@mindwtr/core/task-filter-selections';
@@ -23,7 +23,7 @@ import { buildAdvancedChips, buildSelectionChips, type ActiveFilterChipDeps } fr
 import { useLanguage } from '../../contexts/language-context';
 import { cn } from '../../lib/utils';
 import { useUiStore } from '../../store/ui-store';
-import { AlertCircle, CalendarDays, ChevronDown, ChevronRight, Clock, ArrowRight, Folder, CheckCircle2, MoreHorizontal, Trash2 } from 'lucide-react';
+import { AlertCircle, CalendarDays, ChevronDown, ChevronRight, Clock, ArrowRight, CircleDashed, Flag, Folder, CheckCircle2, MoreHorizontal, Trash2 } from 'lucide-react';
 import { useConfirmDialog } from '../../hooks/useConfirmDialog';
 import { usePerformanceMonitor } from '../../hooks/usePerformanceMonitor';
 import { checkBudget } from '../../config/performanceBudgets';
@@ -799,7 +799,7 @@ export function AgendaView() {
     // derivation the mobile screen and every widget payload also use.
     const sections = useMemo(() => {
         void localDayKey;
-        return deriveFocusTaskLists(focusPools, {
+        const derived = deriveFocusTaskLists(focusPools, {
             now: new Date(),
             projects,
             sections: projectSections,
@@ -807,6 +807,13 @@ export function AgendaView() {
             prioritiesEnabled,
             sortOrder: activeSavedFilter?.sortOrder,
         });
+        // The commitment sort replaces the date-based sections with three bands,
+        // rendered separately below. Emptying them here is what suppresses them —
+        // every section guards on its own length, so there is nothing else to
+        // switch off. The two orderings cannot coexist: the point of this sort is
+        // a single ranking, and a task sitting under "Today" is not being ranked.
+        if (effectiveFocusSortBy !== 'commitment') return derived;
+        return { ...derived, focusedTasks: [], schedule: [], reviewDue: [], nextActions: [], upcoming: [] };
     }, [
         activeSavedFilter?.sortOrder,
         effectiveFocusSortBy,
@@ -816,6 +823,19 @@ export function AgendaView() {
         projects,
         projectSections,
     ]);
+
+    // Hard-constraint tasks first (never scored), then the scored ones by P, then
+    // whatever nobody has assessed yet — that last band keeps its default order
+    // rather than being shuffled by a score it does not have.
+    const commitmentBands = useMemo(() => {
+        if (effectiveFocusSortBy !== 'commitment') return null;
+        return partitionByCommitment(
+            sortTasks(focusPools.base),
+            readCommitmentCards(settings),
+            readCommitmentBenchmarks(settings),
+            new Date(),
+        );
+    }, [effectiveFocusSortBy, focusPools.base, settings]);
     const focusedTasks = sections.focusedTasks;
     const nextActionGroups = useMemo(() => (
         groupTasks(effectiveNextGroupBy, { tasks: sections.nextActions, areas, projectMap, t, theme: settings?.theme })
@@ -953,11 +973,15 @@ export function AgendaView() {
         }));
     }, [collapseOtherSections, setPersistedViewState]);
     const nextActionsCount = sections.nextActions.length;
+    const commitmentBandCount = commitmentBands
+        ? commitmentBands.pinned.length + commitmentBands.rated.length + commitmentBands.unrated.length
+        : 0;
     const hasAgendaContent = focusedTasks.length > 0
         || sections.schedule.length > 0
         || sections.nextActions.length > 0
         || sections.upcoming.length > 0
         || sections.reviewDue.length > 0
+        || commitmentBandCount > 0
         || reviewDueProjects.length > 0;
     const pomodoroTasks = (() => {
         const ordered = [
@@ -1206,6 +1230,48 @@ export function AgendaView() {
 
             {/* Other Sections */}
             <div className="space-y-6">
+                {commitmentBands && ([
+                    {
+                        key: 'pinned',
+                        title: tFallback(t, 'pledge.bandPinned', 'Pinned'),
+                        hint: tFallback(t, 'pledge.bandPinnedHint', 'Hard constraints — never traded away'),
+                        icon: Flag,
+                        color: 'text-destructive',
+                        tasks: commitmentBands.pinned,
+                    },
+                    {
+                        key: 'rated',
+                        title: tFallback(t, 'pledge.bandRated', 'By commitment'),
+                        hint: tFallback(t, 'pledge.bandRatedHint', 'Highest P first'),
+                        icon: ArrowRight,
+                        color: 'text-muted-foreground',
+                        tasks: commitmentBands.rated,
+                    },
+                    {
+                        key: 'unrated',
+                        title: tFallback(t, 'pledge.bandUnrated', 'Not assessed'),
+                        hint: tFallback(t, 'pledge.bandUnratedHint', 'Left in place until you score them'),
+                        icon: CircleDashed,
+                        color: 'text-muted-foreground',
+                        tasks: commitmentBands.unrated,
+                    },
+                ].map((band) => band.tasks.length > 0 && (
+                    <div key={band.key} className="space-y-3" data-testid={`agenda-commitment-${band.key}`}>
+                        <h3 className={cn('flex flex-wrap items-baseline gap-2 font-semibold', band.color)}>
+                            <band.icon className="h-5 w-5 shrink-0 self-center" />
+                            <span>{band.title}</span>
+                            <span className="font-normal text-muted-foreground">({band.tasks.length})</span>
+                            <span className="text-xs font-normal text-muted-foreground">{band.hint}</span>
+                        </h3>
+                        <AgendaTaskList
+                            tasks={[...band.tasks]}
+                            buildFocusToggle={buildFocusToggle}
+                            showListDetails={showListDetails}
+                            highlightTaskId={highlightTaskId}
+                        />
+                    </div>
+                )))}
+
                 {sections.schedule.length > 0 && (
                     <AgendaCollapsibleSection
                         title={tFallback(t, 'focus.schedule', t('agenda.dueToday'))}

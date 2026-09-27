@@ -1686,6 +1686,13 @@ export const jaOverrides: Record<string, string> = {
         'sort.created': '古い順',
         'sort.created-desc': '新しい順',
         'sort.completed': '完了日',
+        'sort.commitment': 'コミットメント優先度',
+        'pledge.bandPinned': '固定',
+        'pledge.bandPinnedHint': 'ハード制約 — 譲れない項目',
+        'pledge.bandRated': 'コミットメント順',
+        'pledge.bandRatedHint': 'P 値の高い順',
+        'pledge.bandUnrated': '未評価',
+        'pledge.bandUnratedHint': '評価するまで元の位置に残ります',
 
         // Agenda
         'agenda.title': 'フォーカス',

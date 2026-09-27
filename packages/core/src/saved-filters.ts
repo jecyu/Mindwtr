@@ -61,6 +61,7 @@ const SORT_FIELD_VALUES = new Set<SortField>([
     'timeEstimate',
     'project',
     'updated',
+    'commitment',
 ]);
 const DATE_PRESET_VALUES = new Set(['today', 'this_week', 'this_month', 'overdue', 'no_date']);
 

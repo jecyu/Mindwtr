@@ -1,5 +1,5 @@
 import { ChevronsDown, ChevronsUp, Filter, List } from 'lucide-react';
-import { DEFAULT_FOCUS_SORT_BY, FOCUS_SORT_OPTIONS, tFallback, type SortField } from '@mindwtr/core';
+import { DEFAULT_FOCUS_SORT_BY, FOCUS_SORT_OPTIONS_WITH_COMMITMENT, tFallback, type SortField } from '@mindwtr/core';
 
 import { ToolbarButton } from '../list/list-toolbar';
 import { ViewControls } from '../list/ViewControls';
@@ -89,7 +89,7 @@ export function AgendaHeader({
                 <ViewControls
                     sortBy={focusSortBy}
                     defaultSortBy={DEFAULT_FOCUS_SORT_BY}
-                    sortByOptions={FOCUS_SORT_OPTIONS}
+                    sortByOptions={FOCUS_SORT_OPTIONS_WITH_COMMITMENT}
                     onChangeSortBy={onChangeSortBy}
                     groupBy={nextGroupBy}
                     defaultGroupBy="none"

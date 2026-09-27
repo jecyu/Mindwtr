@@ -3,6 +3,8 @@
  */
 
 import { Task, TaskStatus, TaskSortBy, TaskPriority, Project, Section, AppData, AppSettings, SortField, Area } from './types';
+import type { CommitmentBenchmark, CommitmentCard } from './commitment-types';
+import { partitionByCommitment } from './commitment-partition';
 import { resolveFeatureFlags } from './resolve-feature-flags';
 import { differenceInCalendarDays, startOfDay } from 'date-fns';
 import { hasTimeComponent, isDueForReview, safeParseDate, safeParseDueDate } from './date';
@@ -1086,7 +1088,23 @@ export function resolveTaskPerspectiveForFeatures<Sort extends SortField, Group 
     };
 }
 
-export function sortTasksBy(tasks: Task[], sortBy: TaskSortBy = 'default'): Task[] {
+/**
+ * Extra inputs the 'commitment' sort needs. Optional everywhere else, so the
+ * existing call sites keep compiling unchanged.
+ */
+export type SortTasksByOptions = {
+    /** Commitment cards by task id. Without them every task reads as unrated. */
+    commitmentCards?: Record<string, CommitmentCard>;
+    commitmentBenchmarks?: readonly CommitmentBenchmark[];
+    /** Urgency is measured against this; defaults to now. */
+    now?: Date;
+};
+
+export function sortTasksBy(
+    tasks: Task[],
+    sortBy: TaskSortBy = 'default',
+    options: SortTasksByOptions = {},
+): Task[] {
     if (!sortBy || sortBy === 'default') {
         return sortTasks(tasks);
     }
@@ -1141,6 +1159,23 @@ export function sortTasksBy(tasks: Task[], sortBy: TaskSortBy = 'default'): Task
                     return textCollator.compare(a.title, b.title);
                 }
             );
+        case 'commitment': {
+            // Three physical bands, not comparator weights: a hard-constraint
+            // task is cut out before anything is scored, so it appears once and
+            // never competes. `sortTasks` supplies the order both the pinned and
+            // the unrated band inherit — an unassessed task keeps its place
+            // instead of being reordered by a score it does not have.
+            //
+            // With no cards this degrades to the default order rather than an
+            // empty list, so a list that has not adopted the feature still works.
+            const { pinned, rated, unrated } = partitionByCommitment(
+                sortTasks(tasks),
+                options.commitmentCards ?? {},
+                options.commitmentBenchmarks ?? [],
+                options.now ?? new Date(),
+            );
+            return [...pinned, ...rated, ...unrated];
+        }
         default:
             return sortTasks(tasks);
     }

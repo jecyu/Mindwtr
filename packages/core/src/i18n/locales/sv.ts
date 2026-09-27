@@ -1652,6 +1652,13 @@ export const svOverrides: Record<string, string> = {
         'sort.created': 'Äldst',
         'sort.created-desc': 'Nyast',
         'sort.completed': 'Slutfört datum',
+        'sort.commitment': 'Åtagandeprioritet',
+        'pledge.bandPinned': 'Fästa',
+        'pledge.bandPinnedHint': 'Hårda villkor — förhandlas aldrig bort',
+        'pledge.bandRated': 'Efter åtagande',
+        'pledge.bandRatedHint': 'Högsta P först',
+        'pledge.bandUnrated': 'Inte bedömda',
+        'pledge.bandUnratedHint': 'Ligger kvar tills du bedömer dem',
 
         'agenda.title': 'Fokus',
         'agenda.active': 'aktiva poster',

@@ -1652,6 +1652,13 @@ export const faOverrides: Record<string, string> = {
         'sort.created': 'قدیمی‌ترین',
         'sort.created-desc': 'جدیدترین',
         'sort.completed': 'تاریخ تکمیل',
+        'sort.commitment': 'اولویت تعهد',
+        'pledge.bandPinned': 'سنجاقشده',
+        'pledge.bandPinnedHint': 'محدودیتهای سخت — هرگز معاوضه نمیشوند',
+        'pledge.bandRated': 'بر اساس تعهد',
+        'pledge.bandRatedHint': 'بالاترین P ابتدا',
+        'pledge.bandUnrated': 'ارزیابینشده',
+        'pledge.bandUnratedHint': 'تا زمانی که امتیاز ندهید در جای خود میمانند',
 
         'agenda.title': 'تمرکز',
         'agenda.active': 'مورد فعال',

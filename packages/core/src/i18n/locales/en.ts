@@ -1680,6 +1680,13 @@ export const en: Record<string, string> = {
         'sort.created': 'Oldest',
         'sort.created-desc': 'Newest',
         'sort.completed': 'Completion date',
+        'sort.commitment': 'Commitment priority',
+        'pledge.bandPinned': 'Pinned',
+        'pledge.bandPinnedHint': 'Hard constraints — never traded away',
+        'pledge.bandRated': 'By commitment',
+        'pledge.bandRatedHint': 'Highest P first',
+        'pledge.bandUnrated': 'Not assessed',
+        'pledge.bandUnratedHint': 'Left in place until you score them',
 
         // Agenda
         'agenda.title': 'Focus',
