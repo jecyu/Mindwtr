@@ -227,5 +227,8 @@ export * from './shared-api-write-limits';
 export * from './task-query';
 export * from './onboarding-guidance';
 export * from './docs-guidance';
+export * from './commitment-types';
+export * from './commitment-score';
+export * from './commitment-partition';
 export { afterPaint } from './after-paint';
 export { isGettingStartedProject } from './getting-started-seed';
