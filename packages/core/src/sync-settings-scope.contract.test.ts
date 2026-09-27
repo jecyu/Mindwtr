@@ -69,6 +69,8 @@ const DEVICE_LOCAL_TOP_LEVEL_KEYS = [
     'weeklyReviewEnabled',            // per-device reminder switch
     'weeklyReviewDay',                // per-device reminder day
     'weeklyReviewTime',               // per-device reminder time
+    'commitmentCards',                // per-device: commitment assessments are personal and stay on the device
+    'commitmentBenchmarks',           // per-device: the anchor library is personal baseline data
 ];
 
 const readInterfaceProperties = (source: string, header: string): string[] => {

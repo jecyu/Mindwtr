@@ -106,3 +106,92 @@ export const DEFAULT_BENCHMARKS: readonly CommitmentBenchmark[] = [
     { id: 'q3-review', name: 'Quarterly review', points: 5, p50: '6h', p80: '10h', dod: 'Approved first pass', orderNum: 5 },
     { id: 'small-migration', name: 'Small data migration', points: 8, p50: '2d', p80: '4d', dod: 'Data consistent, reversible', orderNum: 6 },
 ];
+
+const GOAL_LEVELS: readonly GoalLevel[] = [3, 2, 1];
+const MULTIPLIERS: readonly ComplexityMultiplier[] = [0.5, 1, 2];
+const TIERS: readonly TargetTier[] = ['pass', 'good', 'excellent'];
+const HARD_CONSTRAINTS: readonly HardConstraint[] = [
+    'health',
+    'family',
+    'compliance',
+    'external-deadline',
+    'critical-path',
+];
+const MILESTONE_STATUSES: readonly MilestoneStatus[] = ['todo', 'doing', 'done', 'delayed', 'blocked'];
+
+const oneOf = <T>(allowed: readonly T[], value: unknown, fallback: T): T =>
+    allowed.includes(value as T) ? (value as T) : fallback;
+
+const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+
+const asString = (value: unknown): string | undefined =>
+    typeof value === 'string' && value.length > 0 ? value : undefined;
+
+const asNumber = (value: unknown): number | undefined =>
+    typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
+/**
+ * Coerces a card read back from disk into a usable one.
+ *
+ * The card is stored as JSON, so a hand-edited or half-written row can carry
+ * anything. A missing `impact` would otherwise reach the score as `undefined`
+ * and turn the whole P-value into NaN, which sorts unpredictably — a wrong
+ * number is worse here than a missing field.
+ */
+export function normalizeCommitmentCard(value: unknown): CommitmentCard | null {
+    if (!value || typeof value !== 'object') return null;
+    const raw = value as Record<string, unknown>;
+
+    const milestones = asArray(raw.milestones).flatMap((entry) => {
+        if (!entry || typeof entry !== 'object') return [];
+        const item = entry as Record<string, unknown>;
+        const id = asString(item.id);
+        const title = asString(item.title);
+        if (!id || !title) return [];
+        return [{
+            id,
+            title,
+            targetDate: asString(item.targetDate),
+            status: oneOf(MILESTONE_STATUSES, item.status, 'todo'),
+            progress: Math.min(100, Math.max(0, asNumber(item.progress) ?? 0)),
+            actualHours: asNumber(item.actualHours),
+        }];
+    });
+
+    return {
+        goalPerf: oneOf(GOAL_LEVELS, raw.goalPerf, 1),
+        goalCap: oneOf(GOAL_LEVELS, raw.goalCap, 1),
+        impact: oneOf(GOAL_LEVELS, raw.impact, 1),
+        delegable: oneOf(GOAL_LEVELS, raw.delegable, 1),
+        hardConstraints: asArray(raw.hardConstraints)
+            .filter((entry): entry is HardConstraint => HARD_CONSTRAINTS.includes(entry as HardConstraint)),
+        isHardDeadline: raw.isHardDeadline === true,
+        benchmarkId: asString(raw.benchmarkId) ?? '',
+        multiplier: oneOf(MULTIPLIERS, raw.multiplier, 1),
+        targetTier: oneOf(TIERS, raw.targetTier, 'pass'),
+        milestones,
+        reasonSnapshot: asString(raw.reasonSnapshot),
+    };
+}
+
+/** Same coercion for a benchmark row. `points` must stay positive to be usable. */
+export function normalizeCommitmentBenchmark(value: unknown): CommitmentBenchmark | null {
+    if (!value || typeof value !== 'object') return null;
+    const raw = value as Record<string, unknown>;
+
+    const id = asString(raw.id);
+    const name = asString(raw.name);
+    const points = asNumber(raw.points);
+    if (!id || !name || points === undefined || points <= 0) return null;
+
+    return {
+        id,
+        name,
+        points,
+        p50: asString(raw.p50),
+        p80: asString(raw.p80),
+        dod: asString(raw.dod),
+        orderNum: asNumber(raw.orderNum),
+    };
+}
+

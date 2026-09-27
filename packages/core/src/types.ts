@@ -1,4 +1,5 @@
 import type { ExternalCalendarSubscription } from './ics';
+import type { CommitmentBenchmark, CommitmentCard } from './commitment-types';
 
 export type TaskStatus = 'inbox' | 'next' | 'waiting' | 'someday' | 'reference' | 'done' | 'archived';
 
@@ -597,6 +598,20 @@ export interface AppSettings extends NotificationSettings {
     /** Support-prompt cooldown shared by every install on the same dataset (#1237). */
     supportPrompt?: SupportPromptSettings;
     migrations?: MigrationSettings;
+    /**
+     * Commitment cards, keyed by task id. An optional assessment layered on a
+     * task, not a field of it — see commitment-types.ts for why.
+     *
+     * These ride in settings rather than a table of their own because that is
+     * the only part of AppData that survives normalizeAppData's field-by-field
+     * rebuild and still round-trips through every backend unchanged. Desktop
+     * persists via Rust (storage.rs), so a new table would mean a second
+     * implementation there plus Tauri commands; settings already flow whole.
+     * Like every other settings key these are device-local and never synced.
+     */
+    commitmentCards?: Record<string, CommitmentCard>;
+    /** The anchor library behind the complexity divisor. Seeded on first read. */
+    commitmentBenchmarks?: CommitmentBenchmark[];
 }
 
 export interface AppData {
