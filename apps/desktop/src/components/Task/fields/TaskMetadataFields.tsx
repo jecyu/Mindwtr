@@ -280,7 +280,7 @@ export function PillOptionField<TValue extends string>({
                                 option.iconOnly && 'px-2',
                                 isActive
                                     ? option.activeClassName ?? activeClassName ?? selectedPillClassName
-                                    : 'border-border bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground'
+                                    : 'border-border bg-muted text-foreground/75 hover:bg-muted/70 hover:text-foreground'
                             )}
                         >
                             {option.iconOnly ?? (

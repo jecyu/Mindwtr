@@ -64,7 +64,9 @@ export const DEFAULT_TASK_EDITOR_SECTION_BY_FIELD: Record<TaskEditorFieldId, Tas
     textDirection: 'details',
     attachments: 'details',
     checklist: 'details',
-    commitment: 'details',
+    // Basic rather than details: the panel is the only way to reach this
+    // feature, and buried behind a collapsed section it may as well not exist.
+    commitment: 'basic',
 };
 
 export const TASK_EDITOR_SECTIONABLE_FIELDS: TaskEditorFieldId[] = DEFAULT_TASK_EDITOR_ORDER.filter(
