@@ -284,7 +284,10 @@ export const LOCALES = {
         // 89.93%, dropping ko back under MIXED_ENGLISH_COVERAGE_CEILING and firing the
         // mixed-English check on the deliberate English it keeps (E-Ink, Material 3, Base URL,
         // quick-add token syntax). Same cause and same remedy as the 2240 -> 2297 pin above.
-        translatedKeyFloor: 2418,
+        // Re-pinned 2418 -> 2445 with the commitment panel's own strings translated rather than
+        // left to fall back: pinning alone no longer cleared the ceiling, because the English
+        // dictionary had grown past what the old count could cover at 90%.
+        translatedKeyFloor: 2445,
     },
     it: {
         loadSync: () => require('./locales/it') as typeof import('./locales/it'),

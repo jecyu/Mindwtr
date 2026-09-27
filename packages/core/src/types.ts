@@ -70,7 +70,8 @@ export type TaskEditorFieldId =
     | 'description'
     | 'textDirection'
     | 'attachments'
-    | 'checklist';
+    | 'checklist'
+    | 'commitment';
 
 export type TaskEditorSectionId = 'basic' | 'scheduling' | 'organization' | 'details';
 export type TaskEditorPresentation = 'inline' | 'modal';

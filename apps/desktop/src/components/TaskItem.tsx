@@ -36,6 +36,7 @@ import { TaskItemEditor } from './Task/TaskItemEditor';
 import { TaskItemDisplay } from './Task/TaskItemDisplay';
 import { TaskItemEditorSurface } from './Task/TaskItemEditorSurface';
 import { TaskItemFieldRenderer } from './Task/TaskItemFieldRenderer';
+import { CommitmentPanel } from './Task/CommitmentPanel';
 import { registerTaskEditExitRequest, releaseTaskEditSession, runAfterTaskEditExit, tryClaimTaskEditSession } from './Task/task-edit-session';
 import { TaskAttachmentOverlays } from './Task/TaskAttachmentOverlays';
 import { TaskRecurrenceOverlay } from './Task/TaskRecurrenceOverlay';
@@ -702,20 +703,28 @@ export const TaskItem = memo(function TaskItem({
         resetTaskChecklist,
     ]);
 
-    const renderField = (fieldId: TaskEditorFieldId) => (
-        <TaskItemFieldRenderer
-            fieldId={fieldId}
-            task={task}
-            draft={draft}
-            setField={setField}
-            monthlyRecurrence={monthlyRecurrence}
-            descriptionPreview={editorDescriptionPreview}
-            env={editorEnv}
-            options={editorOptions}
-            attachments={editorAttachments}
-            actions={editorActions}
-        />
-    );
+    const renderField = (fieldId: TaskEditorFieldId) => {
+        // Intercepted here rather than taught to TaskItemFieldRenderer: that
+        // file's switch is one of the most-edited in the repo, and this panel
+        // shares none of its shape — it writes settings, not the task draft.
+        if (fieldId === 'commitment') {
+            return <CommitmentPanel taskId={task.id} dueDate={draft.dueDate} />;
+        }
+        return (
+            <TaskItemFieldRenderer
+                fieldId={fieldId}
+                task={task}
+                draft={draft}
+                setField={setField}
+                monthlyRecurrence={monthlyRecurrence}
+                descriptionPreview={editorDescriptionPreview}
+                env={editorEnv}
+                options={editorOptions}
+                attachments={editorAttachments}
+                actions={editorActions}
+            />
+        );
+    };
 
     useEffect(() => {
         if (effectiveReadOnly && isEditing) {

@@ -231,5 +231,6 @@ export * from './commitment-types';
 export * from './commitment-score';
 export * from './commitment-partition';
 export * from './commitment-store';
+export * from './commitment-reason';
 export { afterPaint } from './after-paint';
 export { isGettingStartedProject } from './getting-started-seed';

@@ -45,8 +45,7 @@ export const TASK_EDITOR_FIXED_FIELDS: TaskEditorFieldId[] = ['status', 'project
 
 export const TASK_EDITOR_SECTION_ORDER: TaskEditorSectionId[] = ['basic', 'scheduling', 'organization', 'details'];
 
-export const DEFAULT_TASK_EDITOR_SECTION_BY_FIELD: Record<TaskEditorFieldId, TaskEditorSectionId> = {
-    status: 'basic',
+export const DEFAULT_TASK_EDITOR_SECTION_BY_FIELD: Record<TaskEditorFieldId, TaskEditorSectionId> = {    status: 'basic',
     project: 'basic',
     section: 'basic',
     area: 'basic',
@@ -65,6 +64,7 @@ export const DEFAULT_TASK_EDITOR_SECTION_BY_FIELD: Record<TaskEditorFieldId, Tas
     textDirection: 'details',
     attachments: 'details',
     checklist: 'details',
+    commitment: 'details',
 };
 
 export const TASK_EDITOR_SECTIONABLE_FIELDS: TaskEditorFieldId[] = DEFAULT_TASK_EDITOR_ORDER.filter(

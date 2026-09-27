@@ -70,7 +70,14 @@ export function useTaskItemFieldLayout({
     }, [prioritiesEnabled, timeEstimatesEnabled]);
 
     const taskEditorOrder = useMemo(
-        () => normalizeTaskEditorOrder(savedOrder, disabledFields),
+        () => [
+            ...normalizeTaskEditorOrder(savedOrder, disabledFields),
+            // Desktop-only. The shared order is what the mobile editor model
+            // reports and the native-host contract pins, and mobile has no
+            // commitment store to render a panel from — so the field id and its
+            // section live in core, and only this app appends it to the order.
+            'commitment' as TaskEditorFieldId,
+        ],
         [savedOrder, disabledFields]
     );
     const hiddenSet = useMemo(() => {

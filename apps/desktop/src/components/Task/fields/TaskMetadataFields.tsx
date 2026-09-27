@@ -38,7 +38,7 @@ import {
     TaskEditorFieldLabel,
 } from '../task-editor-label';
 
-type PillOption<TValue extends string> = {
+export type PillOption<TValue extends string> = {
     value: TValue;
     label: string;
     onContextMenu?: () => void;
@@ -201,7 +201,7 @@ function SuggestionList({
     );
 }
 
-function PillOptionField<TValue extends string>({
+export function PillOptionField<TValue extends string>({
     t,
     ariaLabel,
     label,
