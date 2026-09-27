@@ -28,6 +28,9 @@ import {
     areDraftAttachmentsDirty,
     isTaskDraftDirty,
     type TaskDraftSetter,
+    readCommitmentCard,
+    readCommitmentBenchmarks,
+    computeCommitmentScore,
 } from '@mindwtr/core';
 import { cn } from '../lib/utils';
 import { useObsidianStore } from '../store/obsidian-store';
@@ -703,8 +706,18 @@ export const TaskItem = memo(function TaskItem({
         resetTaskChecklist,
     ]);
 
-    const renderField = (fieldId: TaskEditorFieldId) => {
-        // Intercepted here rather than taught to TaskItemFieldRenderer: that
+    // Computed here rather than inside TaskItemDisplay: the cards live in
+    // settings, and having every row subscribe to settings would re-render the
+    // whole list on any settings write.
+    const commitmentScore = useMemo(() => {
+        const card = readCommitmentCard(settings, task.id);
+        if (!card) return null;
+        const benchmark = readCommitmentBenchmarks(settings)
+            .find((entry) => entry.id === card.benchmarkId);
+        return computeCommitmentScore({ dueDate: task.dueDate }, card, benchmark, new Date())?.p ?? null;
+    }, [settings, task.id, task.dueDate]);
+
+    const renderField = (fieldId: TaskEditorFieldId) => {        // Intercepted here rather than taught to TaskItemFieldRenderer: that
         // file's switch is one of the most-edited in the repo, and this panel
         // shares none of its shape — it writes settings, not the task draft.
         if (fieldId === 'commitment') {
@@ -1744,6 +1757,7 @@ export const TaskItem = memo(function TaskItem({
                                 readOnly={effectiveReadOnly}
                                 interactionDisabled={interactionDisabled}
                                 compactMetaEnabled={compactMetaEnabled}
+                                commitmentScore={commitmentScore}
                                 dense={isDense}
                                 actionsOverlay={actionsOverlay}
                                 dragHandle={dragHandle}

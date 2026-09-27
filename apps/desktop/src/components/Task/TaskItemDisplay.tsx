@@ -79,6 +79,12 @@ interface TaskItemDisplayProps {
     /** Focus "Upcoming": the date the deferred task surfaces on. */
     appearsAtLabel?: string;
     projectDeadlineLabel?: string;
+    /**
+     * The commitment P-value, or null when the task is unassessed. Computed by
+     * the caller because the cards live in settings, and subscribing every row
+     * to settings would re-render the whole list on any settings write.
+     */
+    commitmentScore?: number | null;
     renameRequestToken?: number;
     /** Active theme, for the context swatch palette only (#974). */
     theme?: string;
@@ -132,6 +138,7 @@ export const TaskItemDisplay = memo(function TaskItemDisplay({
     showHoverHint = true,
     appearsAtLabel,
     projectDeadlineLabel,
+    commitmentScore,
     renameRequestToken = 0,
     theme,
     t,
@@ -527,6 +534,16 @@ export const TaskItemDisplay = memo(function TaskItemDisplay({
     );
     const renderMetadataRow = (className?: string, expanded = false) => (
         <div className={cn("flex flex-wrap items-center text-xs", className)}>
+            {/* First, not last: the P-value is what the commitment ordering sorts
+                on, so it is the one badge a reader scans for. */}
+            {!isReference && (
+                <MetadataBadge
+                    variant="score"
+                    label={commitmentScore === null || commitmentScore === undefined
+                        ? tFallback(t, 'pledge.notAssessed', 'Not assessed')
+                        : `P ${commitmentScore.toFixed(2)}`}
+                />
+            )}
             {showProjectBadgeInMetadata && renderProjectBadge()}
             {!isReference && !appearsAtDuplicatesStart && renderAppearsAtMetadataBadge()}
             {!isReference && renderProjectDeadlineMetadataBadge()}

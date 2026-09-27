@@ -82,6 +82,10 @@
     --badge-age-fg: 24 45% 35%;
     --badge-info-bg: 210 40% 96%;
     --badge-info-fg: 220 10% 30%;
+    /* The commitment P-value. Reads as a number to compare, so it is the one
+       badge allowed to carry the primary hue. */
+    --badge-score-bg: 217 100% 95%;
+    --badge-score-fg: 217 60% 32%;
 
     --radius: 0.5rem;
     --mindwtr-text-scale: 1;
@@ -148,6 +152,8 @@
     --badge-age-fg: 35 70% 80%;
     --badge-info-bg: 220 13% 24%;
     --badge-info-fg: 220 13% 88%;
+    --badge-score-bg: 217 50% 26%;
+    --badge-score-fg: 217 85% 78%;
   }
 
   :root.theme-eink {
@@ -758,6 +764,13 @@
   .metadata-badge--info {
     background-color: hsl(var(--badge-info-bg));
     color: hsl(var(--badge-info-fg));
+  }
+
+  .metadata-badge--score {
+    background-color: hsl(var(--badge-score-bg));
+    color: hsl(var(--badge-score-fg));
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
   }
 
   .metadata-badge--age-fresh {
