@@ -61,7 +61,7 @@ describe('CommitmentPanel', () => {
     it('warns when an external deadline has no due date to agree with', () => {
         renderPanel('t1', undefined);
 
-        fireEvent.click(screen.getByText('external-deadline'));
+        fireEvent.click(screen.getByText('External deadline'));
 
         expect(screen.getByText('An external deadline needs a due date on the task.')).toBeInTheDocument();
     });

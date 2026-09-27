@@ -55,14 +55,28 @@ const HARD_CONSTRAINTS: CommitmentCard['hardConstraints'] = [
     'critical-path',
 ];
 
+/**
+ * The three-tier control every scored field uses. Labels come in as explicit
+ * keys rather than a shared suffix, because the three tiers mean different
+ * things per field — direct/support/none for a goal, major/normal/minor for
+ * impact — and they must be the same keys the reason sentence reads.
+ */
 const levelOptions = (
     t: (key: string) => string,
-    prefix: string,
+    keys: readonly [string, string, string],
+    fallbacks: readonly [string, string, string],
 ): Array<PillOption<LevelValue>> => [
-    { value: '3', label: tFallback(t, `${prefix}.high`, 'High') },
-    { value: '2', label: tFallback(t, `${prefix}.medium`, 'Medium') },
-    { value: '1', label: tFallback(t, `${prefix}.low`, 'Low') },
+    { value: '3', label: tFallback(t, keys[0], fallbacks[0]) },
+    { value: '2', label: tFallback(t, keys[1], fallbacks[1]) },
+    { value: '1', label: tFallback(t, keys[2], fallbacks[2]) },
 ];
+
+const GOAL_LEVEL_KEYS = ['pledge.level.direct', 'pledge.level.support', 'pledge.level.none'] as const;
+const GOAL_LEVEL_FALLBACKS = ['Direct', 'Supporting', 'None'] as const;
+const IMPACT_KEYS = ['pledge.impact.major', 'pledge.impact.normal', 'pledge.impact.minor'] as const;
+const IMPACT_FALLBACKS = ['Major', 'Normal', 'Minor'] as const;
+const DELEGABLE_KEYS = ['pledge.delegable.must', 'pledge.delegable.partial', 'pledge.delegable.any'] as const;
+const DELEGABLE_FALLBACKS = ['Must be me', 'Partly delegable', 'Fully delegable'] as const;
 
 export function CommitmentPanel({
     taskId,
@@ -131,7 +145,7 @@ export function CommitmentPanel({
                 t={t}
                 ariaLabel={tFallback(t, 'pledge.goalPerf', 'Long-term goal: performance')}
                 label={tFallback(t, 'pledge.goalPerf', 'Long-term goal: performance')}
-                options={levelOptions(t, 'pledge.level')}
+                options={levelOptions(t, GOAL_LEVEL_KEYS, GOAL_LEVEL_FALLBACKS)}
                 value={String(card.goalPerf) as LevelValue}
                 onChange={(value) => patch({ goalPerf: Number(value) as CommitmentCard['goalPerf'] })}
             />
@@ -140,7 +154,7 @@ export function CommitmentPanel({
                 t={t}
                 ariaLabel={tFallback(t, 'pledge.goalCap', 'Long-term goal: skills')}
                 label={tFallback(t, 'pledge.goalCap', 'Long-term goal: skills')}
-                options={levelOptions(t, 'pledge.level')}
+                options={levelOptions(t, GOAL_LEVEL_KEYS, GOAL_LEVEL_FALLBACKS)}
                 value={String(card.goalCap) as LevelValue}
                 onChange={(value) => patch({ goalCap: Number(value) as CommitmentCard['goalCap'] })}
             />
@@ -149,7 +163,7 @@ export function CommitmentPanel({
                 t={t}
                 ariaLabel={tFallback(t, 'pledge.impact', 'Impact')}
                 label={tFallback(t, 'pledge.impact', 'Impact')}
-                options={levelOptions(t, 'pledge.impactLevel')}
+                options={levelOptions(t, IMPACT_KEYS, IMPACT_FALLBACKS)}
                 value={String(card.impact) as LevelValue}
                 onChange={(value) => patch({ impact: Number(value) as CommitmentCard['impact'] })}
             />
@@ -158,7 +172,7 @@ export function CommitmentPanel({
                 t={t}
                 ariaLabel={tFallback(t, 'pledge.delegable', 'Could someone else do this')}
                 label={tFallback(t, 'pledge.delegable', 'Could someone else do this')}
-                options={levelOptions(t, 'pledge.delegableLevel')}
+                options={levelOptions(t, DELEGABLE_KEYS, DELEGABLE_FALLBACKS)}
                 value={String(card.delegable) as LevelValue}
                 onChange={(value) => patch({ delegable: Number(value) as CommitmentCard['delegable'] })}
             />
