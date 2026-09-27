@@ -1,6 +1,6 @@
 import { AlertTriangle, Calendar as CalendarIcon, Tag, Trash2, ArrowRight, Repeat, Check, Clock, Timer, Link2, ListChecks, Paperclip, RotateCcw, Copy, MapPin, History, Hourglass, Play, Zap, MoreHorizontal, XCircle } from 'lucide-react';
 import type { Area, Attachment, Project, RangeSelectionOptions, Section, Task, TaskStatus, RecurrenceRule, RecurrenceStrategy, Language } from '@mindwtr/core';
-import { DEFAULT_AREA_COLOR, TASK_PRIORITY_COLORS, formatRecurrenceLabel, formatTimeEstimateLabel, formatTimeSpentLabel, getChecklistProgress, getContextColor, getInlineMarkdownPreview, getRecurringTaskPreviewDate, getTaskAgeLabel, getTaskDateCoherenceIssues, getTaskStaleness, getTaskUrgency, hasTimeComponent, isTaskActionable, isTaskCancelled, isTaskCompleted, isTaskFinished, safeFormatDate, resolveTaskTextDirection, tFallback } from '@mindwtr/core';
+import { DEFAULT_AREA_COLOR, TASK_PRIORITY_COLORS, formatRecurrenceLabel, formatTimeEstimateLabel, formatTimeSpentLabel, getChecklistProgress, getContextColor, getInlineMarkdownPreview, getRecurringTaskPreviewDate, getTaskAgeLabel, getTaskDateCoherenceIssues, getTaskStaleness, getTaskUrgency, hasTimeComponent, isTaskActionable, isTaskCancelled, isTaskCompleted, isTaskFinished, isTodayScheduleCandidate, safeFormatDate, safeParseDueDate, resolveTaskTextDirection, tFallback } from '@mindwtr/core';
 import { cn } from '../../lib/utils';
 import { STATUS_PILL_CLASSES } from '../../lib/status-colors';
 import { useBareFileReferenceCheck } from '../../lib/attachment-reference';
@@ -172,6 +172,17 @@ export const TaskItemDisplay = memo(function TaskItemDisplay({
         ? `${recurrenceLabel} · ${tFallback(t, 'recurrence.nextCalendarPreview', 'Next calendar preview')}: ${projectedRecurrenceDateLabel}`
         : recurrenceLabel;
     const ageLabel = getTaskAgeLabel(task.createdAt, language);
+    // "Today" is a calendar-day question, not the rolling 24h window
+    // getTaskUrgency reads: something due tomorrow 08:00 counts as `urgent`
+    // there but is not today. The predicate is focus-sections'
+    // isTodayScheduleCandidate — its own comment calls it the ONE answer to what
+    // belongs in Today. Overdue is deliberately NOT relabelled: getUrgencyColor
+    // already paints it as passed, and the date is what says how far past it is.
+    const now = new Date();
+    const startOfTodayMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const dueMs = task.dueDate ? safeParseDueDate(task.dueDate)?.getTime() : undefined;
+    const dueIsOverdue = dueMs !== undefined && dueMs < startOfTodayMs;
+    const dueIsToday = !dueIsOverdue && isTodayScheduleCandidate(task, now);
     const isBareFileReference = useBareFileReferenceCheck();
     const showCompactMeta = compactMetaEnabled && !isViewOpen;
     const collapsedPriorityAccessibilityLabel = !isReference
@@ -539,7 +550,9 @@ export const TaskItemDisplay = memo(function TaskItemDisplay({
                     <MetadataBadge
                         variant="info"
                         icon={CalendarIcon}
-                        label={safeFormatDate(task.dueDate, hasTimeComponent(task.dueDate) ? 'Pp' : 'P')}
+                        label={dueIsToday
+                            ? tFallback(t, 'focus.schedule', 'Today')
+                            : safeFormatDate(task.dueDate, hasTimeComponent(task.dueDate) ? 'Pp' : 'P')}
                         className={cn(getUrgencyColor(task), isStagnant && "text-muted-foreground/70")}
                     />
                     {isStagnant && (

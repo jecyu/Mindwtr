@@ -1632,7 +1632,7 @@ describe('TaskItemDisplay', () => {
 
     it('paints a due date red only once it has passed (#640)', () => {
         const dueColorFor = (dueDate: string) => {
-            const { getByText, unmount } = render(
+            const { queryByText, unmount } = render(
                 <LanguageProvider>
                     <TaskItemDisplay
                         task={{ ...baseTask, status: 'next', dueDate }}
@@ -1659,9 +1659,17 @@ describe('TaskItemDisplay', () => {
                     />
                 </LanguageProvider>
             );
-            const label = safeFormatDate(dueDate, hasTimeComponent(dueDate) ? 'Pp' : 'P');
+            // The due badge reads "Today" instead of the date when the due date
+            // falls on the current calendar day. t() here echoes the key, and
+            // tFallback treats an echoed key as untranslated, so it comes
+            // through as the English fallback. This test is about the colour,
+            // so accept either label.
+            const label = [
+                safeFormatDate(dueDate, hasTimeComponent(dueDate) ? 'Pp' : 'P'),
+                'Today',
+            ].find((candidate) => queryByText(candidate));
             // The urgency class lands on the badge wrapper, not the label span.
-            const className = getByText(label).closest('.metadata-badge')?.className ?? '';
+            const className = (label && queryByText(label)!.closest('.metadata-badge')?.className) ?? '';
             unmount();
             return className;
         };
