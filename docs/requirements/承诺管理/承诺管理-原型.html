@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>承诺管理 · 交互原型 v2 · Mindwtr</title>
+<style>
+/* ─────────────────────────────────────────────────────────────
+   设计 token 提取自 apps/desktop/src/index.css（Mindwtr 真实主题）
+   ───────────────────────────────────────────────────────────── */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --primary: 217 91% 50%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 240 5% 40%;
+  --accent: 210 40% 96.1%;
+  --destructive: 0 72% 45%;
+  --success: 142 58% 32%;
+  --warning: 38 92% 32%;
+  --info: 217 91% 45%;
+  --border: 240 5.9% 85%;
+  --status-inbox: 217 91% 45%;
+  --status-next: 142 58% 32%;
+  --status-waiting: 38 92% 32%;
+  --status-someday: 270 70% 55%;
+  --badge-project-bg: 214 100% 96%;  --badge-project-fg: 214 30% 30%;
+  --badge-context-bg: 270 100% 96%;  --badge-context-fg: 270 35% 35%;
+  --badge-tag-bg: 0 0% 94%;          --badge-tag-fg: 220 10% 30%;
+  --badge-estimate-bg: 142 70% 92%;  --badge-estimate-fg: 142 40% 30%;
+  --badge-age-bg: 45 100% 94%;       --badge-age-fg: 24 45% 35%;
+  --badge-info-bg: 210 40% 96%;      --badge-info-fg: 220 10% 30%;
+  --score-bg: 217 100% 95%;          --score-fg: 217 60% 32%;
+  --veto-bg: 0 100% 96%;             --veto-fg: 0 60% 36%;
+  --badge-today-bg: 217 100% 94%;    --badge-today-fg: 217 75% 32%;
+  --radius: 0.5rem;
+}
+html.dark {
+  --background: 220 13% 13%;
+  --foreground: 220 13% 91%;
+  --card: 220 13% 16%;
+  --primary: 217 91% 65%;
+  --primary-foreground: 220 13% 13%;
+  --secondary: 220 13% 20%;
+  --muted: 220 13% 20%;
+  --muted-foreground: 220 9% 60%;
+  --accent: 220 13% 22%;
+  --destructive: 0 62% 55%;
+  --success: 142 55% 45%;
+  --warning: 38 85% 55%;
+  --info: 217 91% 65%;
+  --border: 220 13% 26%;
+  --badge-project-bg: 214 50% 22%;   --badge-project-fg: 214 70% 78%;
+  --badge-context-bg: 270 40% 24%;   --badge-context-fg: 270 60% 80%;
+  --badge-tag-bg: 220 13% 24%;       --badge-tag-fg: 220 10% 72%;
+  --badge-estimate-bg: 142 35% 20%;  --badge-estimate-fg: 142 50% 72%;
+  --badge-age-bg: 45 45% 22%;        --badge-age-fg: 45 70% 72%;
+  --badge-info-bg: 220 13% 24%;      --badge-info-fg: 220 10% 72%;
+  --score-bg: 217 50% 24%;           --score-fg: 217 85% 78%;
+  --veto-bg: 0 40% 22%;              --veto-fg: 0 70% 76%;
+  --badge-today-bg: 217 55% 26%;     --badge-today-fg: 217 90% 78%;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: hsl(var(--background)); color: hsl(var(--foreground));
+  font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+}
+
+.app { display: flex; height: 100vh; overflow: hidden; }
+.sidebar {
+  width: 216px; flex-shrink: 0; background: hsl(var(--card));
+  border-right: 1px solid hsl(var(--border)); padding: 12px 8px; overflow-y: auto;
+}
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  height: 52px; flex-shrink: 0; border-bottom: 1px solid hsl(var(--border));
+  display: flex; align-items: center; gap: 12px; padding: 0 20px; background: hsl(var(--card));
+}
+.content { flex: 1; overflow-y: auto; padding: 20px 24px 64px; }
+
+/* ── 侧栏（结构照搬 Layout.tsx:340-390，移除承诺管理） ── */
+.brand { display:flex; align-items:center; gap:8px; padding: 6px 8px 14px; font-weight: 600; font-size: 14px; }
+.brand-dot { width: 18px; height: 18px; border-radius: 5px; background: hsl(var(--primary)); }
+.nav-section { margin-bottom: 14px; }
+.nav-label {
+  font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: hsl(var(--muted-foreground)); padding: 0 8px 5px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 9px; padding: 6px 8px;
+  border-radius: calc(var(--radius) - 2px); font-size: 13px; cursor: default; opacity: .82;
+}
+.nav-item:hover { background: hsl(var(--accent)); opacity: 1; }
+.nav-item.active { background: hsl(var(--accent)); opacity: 1; font-weight: 500; }
+.nav-item .count { margin-left: auto; font-size: 11px; color: hsl(var(--muted-foreground)); font-variant-numeric: tabular-nums; }
+.nav-ico { width: 14px; height: 14px; flex-shrink: 0; opacity: .65; }
+.nav-item.active .nav-ico { opacity: 1; }
+
+/* ── 通用 ── */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  border-radius: calc(var(--radius) - 2px); padding: 2px 8px;
+  font-size: 11px; font-weight: 500; letter-spacing: .02em; white-space: nowrap;
+}
+.badge-info    { background: hsl(var(--badge-info-bg));    color: hsl(var(--badge-info-fg)); }
+.badge-project { background: hsl(var(--badge-project-bg)); color: hsl(var(--badge-project-fg)); }
+.badge-context { background: hsl(var(--badge-context-bg)); color: hsl(var(--badge-context-fg)); }
+.badge-tag     { background: hsl(var(--badge-tag-bg));     color: hsl(var(--badge-tag-fg)); }
+.badge-estimate{ background: hsl(var(--badge-estimate-bg));color: hsl(var(--badge-estimate-fg)); }
+.badge-age     { background: hsl(var(--badge-age-bg));     color: hsl(var(--badge-age-fg)); }
+.badge-score   { background: hsl(var(--score-bg)); color: hsl(var(--score-fg)); font-variant-numeric: tabular-nums; font-weight: 600; }
+.badge-veto    { background: hsl(var(--veto-bg));  color: hsl(var(--veto-fg)); font-weight: 600; }
+.badge-today   { background: hsl(var(--badge-today-bg)); color: hsl(var(--badge-today-fg)); font-weight: 600; }
+.badge-status  { background: hsl(var(--status-next) / .14); color: hsl(var(--status-next)); }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
+  border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border));
+  background: hsl(var(--card)); color: hsl(var(--foreground));
+  font-size: 13px; font-family: inherit; cursor: pointer; transition: background .12s;
+}
+.btn:hover { background: hsl(var(--accent)); }
+.btn-primary { background: hsl(var(--primary)); border-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); font-weight: 500; }
+.btn-primary:hover { opacity: .9; background: hsl(var(--primary)); }
+.btn-sm { padding: 4px 9px; font-size: 12px; }
+
+/* ── 视图切换 ── */
+.tabs { display: flex; gap: 4px; background: hsl(var(--muted)); padding: 3px; border-radius: var(--radius); }
+.tab {
+  padding: 5px 13px; border-radius: calc(var(--radius) - 3px); font-size: 12.5px;
+  cursor: pointer; color: hsl(var(--muted-foreground)); border: none; background: none;
+  font-family: inherit; transition: all .12s;
+}
+.tab.active { background: hsl(var(--card)); color: hsl(var(--foreground)); font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.view { display: none; }
+.view.active { display: block; }
+
+/* ── 列表头 ── */
+.list-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.list-header h2 { font-size: 15px; font-weight: 600; }
+.spacer { flex: 1; }
+.sort-wrap { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: hsl(var(--muted-foreground)); }
+select {
+  font-family: inherit; font-size: 12.5px; padding: 5px 9px;
+  border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border));
+  background: hsl(var(--card)); color: hsl(var(--foreground));
+}
+select.hl { border-color: hsl(var(--primary)); color: hsl(var(--primary)); font-weight: 500; }
+
+.hint {
+  display: flex; align-items: center; gap: 8px; padding: 9px 13px;
+  border-radius: var(--radius); background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground)); font-size: 12.5px; margin-bottom: 16px;
+}
+.hint b { color: hsl(var(--foreground)); font-weight: 600; }
+
+/* ── 分区 ── */
+.sec-label {
+  font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: hsl(var(--muted-foreground)); margin: 18px 0 7px;
+  display: flex; align-items: center; gap: 7px;
+}
+.sec-label:first-of-type { margin-top: 4px; }
+.sec-label.veto { color: hsl(var(--veto-fg)); }
+.sec-label .note { font-weight: 400; letter-spacing: 0; text-transform: none; opacity: .8; }
+
+.task {
+  display: flex; align-items: flex-start; gap: 11px; padding: 11px 13px;
+  border-radius: var(--radius); border: 1px solid transparent;
+  cursor: pointer; transition: background .12s, border-color .12s;
+}
+.task:hover { background: hsl(var(--accent)); }
+.task.expanded { background: hsl(var(--accent)); border-color: hsl(var(--border)); }
+.task.pinned { border-left: 3px solid hsl(var(--destructive)); }
+.task.unrated { opacity: .62; }
+
+.checkbox {
+  width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px;
+  border: 1.5px solid hsl(var(--border)); border-radius: 4px; cursor: pointer;
+}
+.checkbox:hover { border-color: hsl(var(--primary)); }
+
+.task-body { flex: 1; min-width: 0; }
+.task-title { font-size: 13.5px; margin-bottom: 5px; }
+.meta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.task-score { display: flex; align-items: center; gap: 7px; flex-shrink: 0; padding-top: 1px; }
+
+/* ── 拆解 ── */
+.breakdown {
+  margin-top: 13px; padding: 13px 15px; background: hsl(var(--card));
+  border: 1px solid hsl(var(--border)); border-radius: var(--radius); font-size: 12.5px;
+}
+.bd-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid hsl(var(--border));
+}
+.bd-formula { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: hsl(var(--muted-foreground)); }
+.bd-final { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bd-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+.bd-name { width: 66px; color: hsl(var(--muted-foreground)); flex-shrink: 0; }
+.bd-bar { flex: 1; height: 5px; background: hsl(var(--muted)); border-radius: 3px; overflow: hidden; max-width: 130px; }
+.bd-fill { height: 100%; background: hsl(var(--primary)); border-radius: 3px; transition: width .25s; }
+.bd-num { font-variant-numeric: tabular-nums; font-weight: 600; width: 16px; text-align: right; }
+.bd-note { color: hsl(var(--muted-foreground)); font-size: 11.5px; }
+.bd-sum { display: flex; justify-content: space-between; padding-top: 8px; border-top: 1px dashed hsl(var(--border)); margin-top: 8px; font-weight: 600; }
+.reason {
+  margin-top: 12px; padding: 11px 13px; border-radius: var(--radius);
+  background: hsl(var(--muted)); font-size: 12.5px; line-height: 1.65;
+  border-left: 3px solid hsl(var(--primary));
+}
+.reason-label { font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: hsl(var(--muted-foreground)); margin-bottom: 5px; }
+
+/* ── 任务详情（编辑器） ── */
+.detail { max-width: 760px; }
+.detail-title { font-size: 19px; font-weight: 600; margin-bottom: 10px; }
+.detail-fields {
+  display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 16px;
+  border-bottom: 1px solid hsl(var(--border)); margin-bottom: 4px;
+}
+.df {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px;
+  padding: 5px 11px; border-radius: calc(var(--radius) - 2px);
+  background: hsl(var(--muted)); color: hsl(var(--muted-foreground));
+}
+.df b { color: hsl(var(--foreground)); font-weight: 500; }
+
+/* 承诺卡面板 —— 视觉上明显是一个「插入的面板」 */
+.panel {
+  margin: 18px 0; border: 1px dashed hsl(var(--primary) / .45);
+  border-radius: var(--radius); background: hsl(var(--primary) / .04);
+}
+.panel-head {
+  display: flex; align-items: center; gap: 9px; padding: 11px 15px;
+  border-bottom: 1px dashed hsl(var(--primary) / .35);
+  font-size: 12.5px; font-weight: 600; color: hsl(var(--primary));
+}
+.panel-tag {
+  margin-left: auto; font-size: 10px; font-weight: 500; letter-spacing: .04em;
+  text-transform: uppercase; padding: 2px 7px; border-radius: 4px;
+  background: hsl(var(--primary) / .14); color: hsl(var(--primary));
+}
+.panel-body { padding: 15px; }
+.field { margin-bottom: 17px; }
+.field-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.field-name { font-size: 13px; font-weight: 500; }
+.field-why { font-size: 11.5px; color: hsl(var(--muted-foreground)); }
+.seg { display: inline-flex; background: hsl(var(--muted)); padding: 3px; border-radius: var(--radius); gap: 3px; }
+.seg button {
+  padding: 5px 13px; border: none; background: none; font-family: inherit;
+  font-size: 12.5px; border-radius: calc(var(--radius) - 3px); cursor: pointer;
+  color: hsl(var(--muted-foreground)); transition: all .12s; display: flex; align-items: center; gap: 6px;
+}
+.seg button:hover { color: hsl(var(--foreground)); }
+.seg button.on { background: hsl(var(--card)); color: hsl(var(--foreground)); font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,.07); }
+.seg button .pt { font-size: 10.5px; opacity: .55; font-variant-numeric: tabular-nums; }
+.seg.veto button.on { background: hsl(var(--veto-bg)); color: hsl(var(--veto-fg)); }
+.warn { font-size: 11.5px; color: hsl(var(--destructive)); margin-top: 5px; display: none; }
+.warn.show { display: block; }
+.derived {
+  font-size: 12.5px; color: hsl(var(--muted-foreground)); padding: 7px 11px;
+  background: hsl(var(--muted)); border-radius: calc(var(--radius) - 2px);
+  display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap;
+}
+.derived b { color: hsl(var(--foreground)); }
+.sub { font-size: 11.5px; color: hsl(var(--muted-foreground)); margin-top: 6px; }
+.sub b { color: hsl(var(--foreground)); }
+
+/* ── 基准库 ── */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; font-size: 10.5px; font-weight: 600; letter-spacing: .05em;
+  text-transform: uppercase; color: hsl(var(--muted-foreground));
+  padding: 0 12px 9px; border-bottom: 1px solid hsl(var(--border));
+}
+td { padding: 10px 12px; border-bottom: 1px solid hsl(var(--border)); }
+tr:hover td { background: hsl(var(--accent)); }
+td.num { font-variant-numeric: tabular-nums; }
+.pts { font-weight: 600; }
+
+/* ── 说明卡 ── */
+.note {
+  margin-top: 22px; padding: 13px 15px; border-radius: var(--radius);
+  border: 1px solid hsl(var(--border)); background: hsl(var(--card));
+  font-size: 12.5px; line-height: 1.7;
+}
+.note h4 { font-size: 12px; margin-bottom: 6px; color: hsl(var(--warning)); }
+.note.ok h4 { color: hsl(var(--success)); }
+.note code { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; background: hsl(var(--muted)); padding: 1px 5px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ═══ 侧栏：与 upstream 完全一致，无新增项 ═══ -->
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-dot"></div>Mindwtr</div>
+
+    <div class="nav-section">
+      <div class="nav-label">Focus</div>
+      <div class="nav-item active"><span class="nav-ico">◎</span>日程</div>
+      <div class="nav-item"><span class="nav-ico">▣</span>Inbox<span class="count">7</span></div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Lists</div>
+      <div class="nav-item"><span class="nav-ico">▤</span>Projects</div>
+      <div class="nav-item"><span class="nav-ico">◷</span>Someday</div>
+      <div class="nav-item"><span class="nav-ico">⧗</span>等待中<span class="count">2</span></div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Organize</div>
+      <div class="nav-item"><span class="nav-ico">▦</span>Calendar</div>
+      <div class="nav-item"><span class="nav-ico">✓</span>Review</div>
+      <div class="nav-item"><span class="nav-ico">#</span>Contexts</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">More</div>
+      <div class="nav-item"><span class="nav-ico">▥</span>Board</div>
+      <div class="nav-item"><span class="nav-ico">◔</span>History</div>
+      <div class="nav-item"><span class="nav-ico">🗑</span>Trash</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="tabs">
+        <button class="tab active" data-view="agenda">日程</button>
+        <button class="tab" data-view="detail">任务详情</button>
+        <button class="tab" data-view="bench">基准库</button>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-sm" id="theme">◐ 主题</button>
+    </div>
+
+    <div class="content">
+
+      <!-- ─────────── 日程（跨切面视图，含 P 值排序） ─────────── -->
+      <section class="view active" id="view-agenda">
+        <div class="list-header">
+          <h2>日程</h2>
+          <div class="spacer"></div>
+          <div class="sort-wrap">
+            排序
+            <select id="sort-select">
+              <option value="default">默认</option>
+              <option value="due">截止日期</option>
+              <option value="start">开始时间</option>
+              <option value="review">复查时间</option>
+              <option value="title">标题</option>
+              <option value="created">创建时间</option>
+              <option value="commitment" selected>按 P 值排序</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="hint" id="sort-hint">
+          <b>按 P 值排序</b> —— 承诺卡是一个排序维度，不是新的任务列表。任务评了承诺卡仍留在原位置。
+        </div>
+
+        <div id="agenda-body"></div>
+
+        <div class="note ok">
+          <h4>✓ 承诺管理不占侧栏位置</h4>
+          它由两个正交部分组成：<b>承诺卡</b>（任务编辑器里的面板）+ <b>按 P 值排序</b>（排序下拉框的一项）。
+          侧栏与 upstream 完全一致 —— <b>零新增导航项</b>。
+          <br><br>
+          <b>为什么选 P 排序时要折叠分区：</b>Agenda 既有分区是
+          <code>focus / schedule / reviewDue / next / upcoming</code>（<code>focus-sections.ts:268</code>）。
+          若保留分区、只在段内按 P 排，<b>跨分区就不可比</b> ——
+          P 值高的可能排在 P 值低的下面，痛点「不知道保哪个」就没解决。
+          <br><br>
+          <b>折叠后时间信息不丢：</b>降级为行内徽章 ——
+          <span class="badge badge-today" style="font-size:10.5px">📅 今天</span>
+          <span class="badge badge-veto" style="font-size:10.5px">📅 逾期</span>
+          <span class="badge badge-info" style="font-size:10.5px">⏱ 未来 10-05</span>。
+          判断复用 <code>isTodayScheduleCandidate()</code>（<code>focus-sections.ts:53</code>，
+          其注释自称是"今天"的<b>唯一答案</b>；注意 <code>due &lt;= endOfToday</code>，逾期也滚动进今天）。
+          「今天」徽章<b>总是显示</b>，与承诺管理解耦 —— 可独立验证、独立回滚。
+          <br><br>
+          <b>落点：</b><code>focus-sections.ts</code>（<b>churn=7</b>，315 行）。改动是守卫式新增 ——
+          <code>if (sortBy === 'commitment')</code> 才进新分支。移动端 / widget / native host
+          不选这个排序时<b>代码路径根本不进入，行为零变化</b>。
+          相比改 <code>AgendaView.tsx</code>（churn=175），合并冲突风险低 25 倍。
+        </div>
+      </section>
+
+      <!-- ─────────── 任务详情（承诺卡内嵌为面板） ─────────── -->
+      <section class="view" id="view-detail">
+        <div class="detail">
+          <div class="detail-title" id="d-title">Q3 复盘汇报</div>
+
+          <!-- 既有字段：这些是 Mindwtr 本来就有的 -->
+          <div class="detail-fields">
+            <span class="df">状态 <b>next</b></span>
+            <span class="df">项目 <b>工作</b></span>
+            <span class="df">截止 <b id="d-due">09-29 12:00</b></span>
+            <span class="df">计划投入 <b>6h</b></span>
+            <span class="df">检查点 <b>09-28 17:00</b></span>
+          </div>
+
+          <!-- ★ 承诺卡：插入的面板 -->
+          <div class="panel">
+            <div class="panel-head">
+              承诺卡
+              <span class="panel-tag">fork 面板</span>
+            </div>
+            <div class="panel-body">
+
+              <div class="field">
+                <div class="field-head">
+                  <span class="field-name">大目标 · 绩效</span>
+                  <span class="field-why">对 OKR / KPI / 晋升的贡献</span>
+                </div>
+                <div class="seg" data-field="goalPerf"></div>
+              </div>
+
+              <div class="field">
+                <div class="field-head">
+                  <span class="field-name">大目标 · 能力</span>
+                  <span class="field-why">能否沉淀为可复用资产</span>
+                </div>
+                <div class="seg" data-field="goalCap"></div>
+                <div class="sub">大目标分 = max(绩效, 能力) = <b id="goal-max">3</b></div>
+              </div>
+
+              <div class="field">
+                <div class="field-head">
+                  <span class="field-name">影响分</span>
+                  <span class="field-why">做砸了 / 做好了，对外部的后果多大</span>
+                </div>
+                <div class="seg" data-field="impact"></div>
+              </div>
+
+              <div class="field">
+                <div class="field-head">
+                  <span class="field-name">可委托分</span>
+                  <span class="field-why">是不是非得我做 —— 唯一能腾出时间的维度</span>
+                </div>
+                <div class="seg" data-field="delegable"></div>
+              </div>
+
+              <div class="field">
+                <div class="field-head">
+                  <span class="field-name">硬约束</span>
+                  <span class="field-why">勾了直接锁定优先，不参与 P 值排序</span>
+                </div>
+                <div class="seg veto" data-field="veto"></div>
+                <div class="warn" id="veto-warn">⚠ 勾选「外部硬截止」必须填写硬截止日期</div>
+              </div>
+
+              <div class="field">
+                <div class="field-head">
+                  <span class="field-name">硬截止</span>
+                  <span class="field-why">承诺卡内的布尔标记，不动 Task.dueDate</span>
+                </div>
+                <div class="seg" data-field="isHardDeadline"></div>
+                <div class="sub">现有 <code>dueDate</code> 有 <code>pushCount</code> 推移计数，本质是软语义 —— 所以硬/软区分放在承诺卡里</div>
+              </div>
+
+              <div class="field">
+                <div class="field-head">
+                  <span class="field-name">紧急分</span>
+                  <span class="field-why">从硬截止自动派生，不需要手填</span>
+                </div>
+                <div class="derived">
+                  截止 <b id="d-due2">09-29 12:00</b> → 紧急分 <b id="urgency-val">2</b>
+                  <span id="urgency-note">（本周内）</span>
+                </div>
+              </div>
+
+              <div class="field">
+                <div class="field-head">
+                  <span class="field-name">基准任务</span>
+                  <span class="field-why">相当于几个「登录功能」—— 估时的锚点</span>
+                </div>
+                <select id="bench-select" style="min-width:240px"></select>
+                <div class="sub">P50 <b id="bench-p50">6h</b> · P80 <b id="bench-p80">10h</b> · 复杂度点 <b id="bench-pts">5</b></div>
+              </div>
+
+              <div class="field">
+                <div class="field-head">
+                  <span class="field-name">复杂度倍数</span>
+                  <span class="field-why">本次比基准简单还是复杂</span>
+                </div>
+                <div class="seg" data-field="mult"></div>
+                <div class="sub">复杂度点 = <span id="cx-formula">5 × 1</span> = <b id="cx-val">5</b></div>
+              </div>
+
+              <div class="field">
+                <div class="field-head">
+                  <span class="field-name">目标档位</span>
+                  <span class="field-why">决定投入多少，防止所有任务都按「卓越」做</span>
+                </div>
+                <div class="seg" data-field="tier"></div>
+              </div>
+
+              <div class="field" style="margin-bottom:0">
+                <div class="field-head">
+                  <span class="field-name">一句话理由</span>
+                  <span class="field-why">由以上字段自动生成，只读</span>
+                </div>
+                <div class="reason">
+                  <div class="reason-label">长版</div>
+                  <div id="reason-long"></div>
+                </div>
+                <div class="reason" style="margin-top:8px">
+                  <div class="reason-label">短版（列表用）</div>
+                  <div id="reason-short"></div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- 既有字段：描述 -->
+          <div class="sec-label">描述</div>
+          <div style="font-size:13px;color:hsl(var(--muted-foreground));line-height:1.7">
+            四档标准：<br>
+            · 不合格：数据有错、超时<br>
+            · 合格：10 页、数据无错、按时交<br>
+            · 优秀：结论先行、一次通过、领导不用改<br>
+            · 卓越：模板被团队复用
+          </div>
+
+          <div class="note">
+            <h4>P 值实时计算</h4>
+            <div class="bd-formula" style="margin-bottom:8px">
+              P = 价值分 ÷ 复杂度点 = <span id="live-value">11</span> ÷ <span id="live-cx">5</span> =
+              <b style="font-size:15px" id="live-p">2.20</b>
+            </div>
+            <div class="bd-note" style="color:hsl(var(--muted-foreground));font-size:11.5px">
+              改动上方任何字段，此处即时更新。切到「日程」可见排序变化。
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────── 基准库 ─────────── -->
+      <section class="view" id="view-bench">
+        <div class="list-header">
+          <h2>基准库</h2>
+          <div class="spacer"></div>
+          <button class="btn btn-sm btn-primary">+ 新建基准</button>
+        </div>
+        <div class="hint">基准越用越准 —— 每完成一个任务，复盘时更新实际耗时与质量</div>
+        <table>
+          <thead>
+            <tr><th>基准任务</th><th>复杂度点</th><th>P50</th><th>P80</th><th>合格线</th><th></th></tr>
+          </thead>
+          <tbody id="bench-body"></tbody>
+        </table>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════ 数据 ═══════════════ */
+
+const SEG = {
+  goalPerf:  { opts: [['直接',3],['支持',2],['无关',1]] },
+  goalCap:   { opts: [['直接',3],['支持',2],['无关',1]] },
+  impact:    { opts: [['重大',3],['一般',2],['轻微',1]] },
+  delegable: { opts: [['必须我',3],['可部分',2],['可完全委托',1]] },
+  mult:      { opts: [['简单',0.5],['差不多',1],['复杂',2]] },
+  tier:      { opts: [['合格','合格'],['优秀','优秀'],['卓越','卓越']] },
+  isHardDeadline: { opts: [['是',true],['否',false]] },
+};
+const VETO_OPTS = [['健康','健康'],['家庭底线','家庭底线'],['合规','合规'],['外部硬截止','外部硬截止'],['关键路径','关键路径']];
+
+const BENCH = [
+  { id:'b1', name:'写周报',        pts:1, p50:'0.5h', p80:'1h',  dod:'按时发、无错' },
+  { id:'b2', name:'10 页汇报 PPT', pts:2, p50:'3h',   p80:'5h',  dod:'数据无错、结论清晰' },
+  { id:'b3', name:'登录/注册功能', pts:3, p50:'1天',  p80:'2天', dod:'主流程通、无阻塞 bug' },
+  { id:'b4', name:'客户方案初稿',  pts:3, p50:'4h',   p80:'8h',  dod:'覆盖需求、可评审' },
+  { id:'b5', name:'Q3 复盘汇报',   pts:5, p50:'6h',   p80:'10h', dod:'一次通过、领导不改' },
+  { id:'b6', name:'小型数据迁移',  pts:8, p50:'2天',  p80:'4天', dod:'数据一致、可回滚' },
+];
+
+const TASKS = [
+  { id:'t1', title:'Q3 复盘汇报', project:'工作', status:'next', due:'2026-09-29T12:00', startTime:null,
+    c:{ goalPerf:3, goalCap:2, impact:3, delegable:3, hardConstraints:['外部硬截止'], isHardDeadline:true, benchmarkId:'b5', mult:1, tier:'优秀' } },
+  { id:'t2', title:'客户方案初稿', project:'客户 A', status:'next', due:'2026-10-02T18:00', startTime:null,
+    c:{ goalPerf:3, goalCap:1, impact:3, delegable:2, hardConstraints:[], isHardDeadline:false, benchmarkId:'b4', mult:1, tier:'优秀' } },
+  { id:'t3', title:'写周报', project:'工作', status:'next', due:'2026-09-27T18:00', startTime:null,
+    c:{ goalPerf:2, goalCap:1, impact:1, delegable:1, hardConstraints:[], isHardDeadline:false, benchmarkId:'b1', mult:1, tier:'合格' } },
+  { id:'t4', title:'沉淀复盘模板', project:'能力建设', status:'next', due:null, startTime:'2026-10-05T09:00',
+    c:{ goalPerf:1, goalCap:3, impact:1, delegable:3, hardConstraints:[], isHardDeadline:false, benchmarkId:'b2', mult:2, tier:'卓越' } },
+  { id:'t5', title:'帮小王看方案', project:'工作', status:'next', due:'2026-09-25T12:00', startTime:null, c:null },
+  { id:'t6', title:'整理季度文档', project:'工作', status:'next', due:null, startTime:null, c:null },
+];
+
+/* ═══════════════ 算法 ═══════════════ */
+
+const NOW = new Date('2026-09-27T10:00:00');
+
+/* 照搬 focus-sections.ts:37-42 getTodayBounds */
+const TODAY = (() => {
+  const d = new Date(NOW);
+  return {
+    s: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0).getTime(),
+    e: new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).getTime(),
+  };
+})();
+
+function mmdd(ms) {
+  const d = new Date(ms);
+  return `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function fmtDateTime(iso) {
+  if (!iso) return '未设置';
+  const d = new Date(iso);
+  return `${mmdd(+d)} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+/* 照搬 focus-sections.ts:53 isTodayScheduleCandidate —— "Due today or starting today"。
+   注意 due <= endOfToday：逾期也算「今天」（滚动进今天）。
+   这个徽章是「分区折叠」后承载时间语义的方式。 */
+function timeBadge(t) {
+  const due   = t.due ? +new Date(t.due) : undefined;
+  const start = t.startTime ? +new Date(t.startTime) : undefined;
+  const startsToday = start !== undefined && start >= TODAY.s && start <= TODAY.e;
+  const belongsToToday = (due !== undefined && due <= TODAY.e) || startsToday;
+
+  if (due !== undefined && due < TODAY.s)     return { cls:'badge-veto',  ico:'📅', text:'逾期' };
+  if (belongsToToday)                         return { cls:'badge-today', ico:'📅', text:'今天' };
+  if (start !== undefined && start > TODAY.e) return { cls:'badge-info',  ico:'⏱', text:`未来 ${mmdd(start)}` };
+  if (due !== undefined)                      return { cls:'badge-info',  ico:'📅', text:mmdd(due) };
+  return null;
+}
+
+function urgency(due) {
+  if (!due) return { v:1, note:'无硬截止' };
+  const h = (new Date(due) - NOW) / 36e5;
+  if (h <= 48)  return { v:3, note:'48h 内' };
+  if (h <= 168) return { v:2, note:'本周内' };
+  return { v:1, note:'超过一周' };
+}
+
+function computeP(t) {
+  const c = t.c;
+  if (!c) return null;
+  const goal  = Math.max(c.goalPerf, c.goalCap);
+  const u     = urgency(t.due);
+  const value = goal + u.v + c.impact + c.delegable;
+  const bench = BENCH.find(b => b.id === c.benchmarkId) || BENCH[0];
+  const cx    = bench.pts * c.mult;
+  return {
+    goal, urg:u.v, value, bench, cx, p: value / cx,
+    parts: [
+      { name:'大目标', v:goal,        note:`max(绩效 ${c.goalPerf}, 能力 ${c.goalCap})` },
+      { name:'紧急',   v:u.v,         note:u.note + '（派生）' },
+      { name:'影响',   v:c.impact,    note:['','轻微','一般','重大'][c.impact] },
+      { name:'可委托', v:c.delegable, note:['','可完全委托','可部分','必须我'][c.delegable] },
+    ],
+  };
+}
+
+function reason(t, r, mode) {
+  if (!r) return '';
+  const c = t.c, b = r.bench;
+  const goalTxt = c.goalPerf >= c.goalCap ? '绩效' : '能力';
+  const goalLv  = ['','无关','支持','直接'][Math.max(c.goalPerf, c.goalCap)];
+  const impTxt  = ['','轻微','一般','重大'][c.impact];
+  const delTxt  = ['','可完全委托','可部分委托','必须我'][c.delegable];
+
+  if (mode === 'short') {
+    return `我按「硬约束 + 高价值 + 低复杂度」优先，把<b>${t.title}</b>排在前面，承诺「${b.dod}」，用 P80 ${b.p80} 留缓冲。`;
+  }
+  return `因为大目标对<b>${goalTxt}</b>是<b>${goalLv}</b>贡献、影响<b>${impTxt}</b>、且<b>${delTxt}</b>，` +
+         `所以价值分 ${r.value}；它相当于「${b.name}」× ${c.mult}，复杂度 ${r.cx} 点；` +
+         `P = ${r.value} ÷ ${r.cx} = <b>${r.p.toFixed(2)}</b>，目标档位<b>${c.tier}</b>。`;
+}
+
+/* ═══════════════ 排序（对应 task-utils.ts:1089 的 switch） ═══════════════ */
+
+let sortBy = 'commitment';
+
+function sortDefault(list) {
+  return [...list].sort((a, b) => {
+    const sa = a.status === 'inbox' ? 0 : 1, sb = b.status === 'inbox' ? 0 : 1;
+    if (sa !== sb) return sa - sb;
+    const da = a.due ? +new Date(a.due) : Infinity, db = b.due ? +new Date(b.due) : Infinity;
+    if (da !== db) return da - db;
+    return 0;   // 稳定排序，保持传入顺序
+  });
+}
+
+/* 承诺管理排序 = 物理分区（不靠比较器）
+   对应设计：case 'commitment': return partitionByCommitment(...) */
+function partitionByCommitment(list) {
+  const pinned  = list.filter(t => t.c && t.c.hardConstraints.length > 0);
+  const rated   = list.filter(t => t.c && t.c.hardConstraints.length === 0)
+                      .sort((a, b) => computeP(b).p - computeP(a).p);
+  const unrated = list.filter(t => !t.c);      // 保持传入顺序，不重排
+  return { pinned: sortDefault(pinned), rated, unrated };
+}
+
+/* ═══════════════ 渲染：日程 ═══════════════ */
+
+let expanded = null;
+
+function taskRow(t, opts = {}) {
+  const r = computeP(t);
+  const isOpen = expanded === t.id;
+  const meta = [];
+  const tb = timeBadge(t);
+  if (tb) meta.push(`<span class="badge ${tb.cls}">${tb.ico} ${tb.text}</span>`);
+  if (t.project)  meta.push(`<span class="badge badge-project">${t.project}</span>`);
+  if (r) meta.push(`<span class="badge badge-estimate">${r.bench.name}</span>`);
+  if (t.c) t.c.hardConstraints.forEach(v => meta.push(`<span class="badge badge-veto">⚑ ${v}</span>`));
+
+  let bd = '';
+  if (isOpen && r) {
+    bd = `
+    <div class="breakdown">
+      <div class="bd-head">
+        <span class="bd-formula">P = 价值分 ÷ 复杂度点 = ${r.value} ÷ ${r.cx}</span>
+        <span class="bd-final">${r.p.toFixed(2)}</span>
+      </div>
+      ${r.parts.map(p => `
+        <div class="bd-row">
+          <span class="bd-name">${p.name}</span>
+          <span class="bd-bar"><span class="bd-fill" style="width:${p.v/3*100}%"></span></span>
+          <span class="bd-num">${p.v}</span>
+          <span class="bd-note">${p.note}</span>
+        </div>`).join('')}
+      <div class="bd-sum"><span>价值分</span><span>${r.value}</span></div>
+      <div class="bd-row" style="margin-top:6px">
+        <span class="bd-name">复杂度</span>
+        <span class="bd-note">「${r.bench.name}」${r.bench.pts} × ${t.c.mult} = ${r.cx}</span>
+      </div>
+      <div class="reason">
+        <div class="reason-label">一句话理由</div>
+        ${reason(t, r, 'long')}
+      </div>
+      <div style="margin-top:11px">
+        <button class="btn btn-sm btn-primary" onclick="openDetail('${t.id}');event.stopPropagation()">打开承诺卡</button>
+      </div>
+    </div>`;
+  } else if (isOpen && !r) {
+    bd = `<div class="breakdown"><div class="bd-note" style="color:hsl(var(--muted-foreground))">
+      这个任务还没评承诺卡 —— 它不参与 P 值排序，保持在默认顺序的原位置。
+      <br><br><button class="btn btn-sm btn-primary" onclick="openDetail('${t.id}');event.stopPropagation()">去评承诺卡</button>
+    </div></div>`;
+  }
+
+  return `
+  <div class="task ${t.c && t.c.hardConstraints.length ? 'pinned':''} ${!r?'unrated':''} ${isOpen?'expanded':''}"
+       onclick="toggle('${t.id}')">
+    <div class="checkbox"></div>
+    <div class="task-body">
+      <div class="task-title">${t.title}</div>
+      <div class="meta-row">${meta.join('')}</div>
+      ${bd}
+    </div>
+    <div class="task-score">
+      ${r ? `<span class="badge badge-score">P ${r.p.toFixed(2)}</span>` : `<span class="badge badge-tag">未评</span>`}
+    </div>
+  </div>`;
+}
+
+function renderAgenda() {
+  const body = document.getElementById('agenda-body');
+  const sel = document.getElementById('sort-select');
+  sel.classList.toggle('hl', sortBy === 'commitment');
+
+  const hint = document.getElementById('sort-hint');
+  if (sortBy !== 'commitment') {
+    hint.innerHTML = `<b>${sel.options[sel.selectedIndex].text}</b> —— 这是 Mindwtr 原有排序。选「按 P 值排序」看承诺管理生效。`;
+    body.innerHTML = sortDefault(TASKS).map(t => taskRow(t)).join('');
+    return;
+  }
+
+  hint.innerHTML = `<b>按 P 值排序</b> —— 选此项时<b>折叠 Agenda 既有分区</b>（Today's Focus / Next / …），改为「硬约束 / 已评按 P / 未评」三段，让 P 值全局可比。`;
+
+  const { pinned, rated, unrated } = partitionByCommitment(TASKS);
+  let html = '';
+
+  if (pinned.length) {
+    html += `<div class="sec-label veto">⚑ 硬约束 · 一票优先 <span class="note">不参与 P 值比较</span></div>`;
+    html += pinned.map(t => taskRow(t)).join('');
+  }
+  html += `<div class="sec-label">按 P 值排序 <span class="note">已评任务 · 折叠既有分区，全局可比</span></div>`;
+  html += rated.map(t => taskRow(t)).join('');
+
+  if (unrated.length) {
+    html += `<div class="sec-label">未评承诺卡 <span class="note">不参与排序，保持默认顺序</span></div>`;
+    html += unrated.map(t => taskRow(t)).join('');
+  }
+
+  body.innerHTML = html;
+}
+
+function toggle(id) { expanded = expanded === id ? null : id; renderAgenda(); }
+function openDetail(id) { current = id; switchView('detail'); renderDetail(); expanded = null; }
+
+/* ═══════════════ 渲染：任务详情 ═══════════════ */
+
+let current = 't1';
+let draft = null;
+
+function renderSegs() {
+  document.querySelectorAll('.seg[data-field]').forEach(seg => {
+    const f = seg.dataset.field;
+    if (f === 'veto') return;
+    seg.innerHTML = SEG[f].opts.map(([label, val]) =>
+      `<button data-val="${val}" class="${String(draft[f]) === String(val) ? 'on':''}">
+        ${label}<span class="pt">${typeof val === 'number' ? val : ''}</span>
+      </button>`).join('');
+  });
+  document.querySelector('.seg[data-field="veto"]').innerHTML = VETO_OPTS.map(([label]) =>
+    `<button data-veto="${label}" class="${draft.hardConstraints.includes(label) ? 'on':''}">${label}</button>`).join('');
+}
+
+function renderDetail() {
+  const t = TASKS.find(x => x.id === current);
+  draft = t.c ? t.c : { goalPerf:2, goalCap:2, impact:2, delegable:3, hardConstraints:[], isHardDeadline:false, benchmarkId:'b2', mult:1, tier:'合格' };
+
+  document.getElementById('d-title').textContent = t.title;
+  document.getElementById('d-due').textContent = fmtDateTime(t.due);
+  document.getElementById('d-due2').textContent = fmtDateTime(t.due);
+  document.getElementById('bench-select').innerHTML = BENCH.map(b =>
+    `<option value="${b.id}" ${b.id===draft.benchmarkId?'selected':''}>${b.name}（${b.pts} 点）</option>`).join('');
+
+  renderSegs();
+  refreshDetail();
+}
+
+function refreshDetail() {
+  const t = TASKS.find(x => x.id === current);
+  const c = draft;
+  const r = computeP({ c, due: t.due });
+  const u = urgency(t.due);
+
+  document.getElementById('goal-max').textContent = r.goal;
+  document.getElementById('urgency-val').textContent = u.v;
+  document.getElementById('urgency-note').textContent = `（${u.note}）`;
+  document.getElementById('bench-pts').textContent = r.bench.pts;
+  document.getElementById('bench-p50').textContent = r.bench.p50;
+  document.getElementById('bench-p80').textContent = r.bench.p80;
+  document.getElementById('cx-formula').textContent = `${r.bench.pts} × ${c.mult}`;
+  document.getElementById('cx-val').textContent = r.cx;
+  document.getElementById('reason-long').innerHTML = reason(t, r, 'long');
+  document.getElementById('reason-short').innerHTML = reason(t, r, 'short');
+  document.getElementById('live-value').textContent = r.value;
+  document.getElementById('live-cx').textContent = r.cx;
+  document.getElementById('live-p').textContent = r.p.toFixed(2);
+
+  document.getElementById('veto-warn').classList.toggle('show',
+    c.hardConstraints.includes('外部硬截止') && !t.due);
+}
+
+/* ═══════════════ 渲染：基准库 ═══════════════ */
+
+function renderBench() {
+  document.getElementById('bench-body').innerHTML = BENCH.map(b => `
+    <tr>
+      <td>${b.name}</td><td class="num pts">${b.pts}</td>
+      <td class="num">${b.p50}</td><td class="num">${b.p80}</td>
+      <td style="color:hsl(var(--muted-foreground))">${b.dod}</td>
+      <td style="text-align:right"><button class="btn btn-sm">编辑</button></td>
+    </tr>`).join('');
+}
+
+/* ═══════════════ 交互 ═══════════════ */
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.seg button');
+  if (!btn) return;
+  const f = btn.closest('.seg').dataset.field;
+  const t = TASKS.find(x => x.id === current);
+  if (!t.c) t.c = draft;   // 首次编辑才落库
+
+  if (f === 'veto') {
+    const v = btn.dataset.veto;
+    draft.hardConstraints = draft.hardConstraints.includes(v)
+      ? draft.hardConstraints.filter(x => x !== v) : [...draft.hardConstraints, v];
+  } else if (f === 'isHardDeadline') {
+    draft.isHardDeadline = btn.dataset.val === 'true';
+  } else {
+    const raw = btn.dataset.val;
+    draft[f] = f === 'mult' ? parseFloat(raw) : (isNaN(Number(raw)) ? raw : Number(raw));
+  }
+  renderSegs(); refreshDetail(); renderAgenda();
+});
+
+document.getElementById('bench-select').addEventListener('change', e => {
+  const t = TASKS.find(x => x.id === current);
+  if (!t.c) t.c = draft;
+  draft.benchmarkId = e.target.value;
+  refreshDetail(); renderAgenda();
+});
+
+document.getElementById('sort-select').addEventListener('change', e => {
+  sortBy = e.target.value; renderAgenda();
+});
+
+document.querySelectorAll('.tab').forEach(tab =>
+  tab.addEventListener('click', () => switchView(tab.dataset.view)));
+
+function switchView(v) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === v));
+  document.querySelectorAll('.view').forEach(s => s.classList.toggle('active', s.id === 'view-' + v));
+  if (v === 'agenda') renderAgenda();
+}
+
+document.getElementById('theme').addEventListener('click', () =>
+  document.documentElement.classList.toggle('dark'));
+
+/* 初始化 */
+renderAgenda(); renderDetail(); renderBench();
+</script>
+</body>
+</html>
