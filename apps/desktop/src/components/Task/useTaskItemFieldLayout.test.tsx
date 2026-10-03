@@ -119,7 +119,10 @@ describe('useTaskItemFieldLayout', () => {
         expect(result.current.showProjectField).toBe(false);
         expect(result.current.showAreaField).toBe(false);
         expect(result.current.showSectionField).toBe(false);
-        expect(result.current.basicFields).toEqual([]);
+        // 'commitment' is appended by the desktop layout hook rather than living in
+        // DEFAULT_TASK_EDITOR_ORDER, so hiding that whole order cannot hide it. The
+        // commitment panel is the only way into the feature, so it stays put.
+        expect(result.current.basicFields).toEqual(['commitment']);
         expect(result.current.schedulingFields).toEqual([]);
         expect(result.current.organizationFields).toEqual([]);
         expect(result.current.detailsFields).toEqual([]);
@@ -288,7 +291,8 @@ describe('useTaskItemFieldLayout', () => {
 
         expect(result.current.basicFieldsBeforeOrganizers).toEqual(['contexts', 'dueDate']);
         expect(result.current.organizerFields).toEqual(['area', 'project']);
-        expect(result.current.basicFieldsAfterOrganizers).toEqual(['status']);
+        // 'commitment' is appended last by the hook, so it lands after the row.
+        expect(result.current.basicFieldsAfterOrganizers).toEqual(['status', 'commitment']);
     });
 
     it('keeps status above the organizer row with the default order', () => {
