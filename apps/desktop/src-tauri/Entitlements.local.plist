@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Entitlements for LOCAL macOS builds only (see the `build:local` script).
+
+  Entitlements.mac.plist — the file CI uses — declares restricted capabilities:
+  a team identifier, iCloud/CloudKit containers, aps-environment, and an
+  application group. Those are only valid when the app is signed with a real
+  Developer ID and a matching provisioning profile. Signed ad-hoc instead, the
+  kernel refuses to authorize them and kills the process at launch
+  (SIGKILL, exit 137, no crash report — `spctl -a -t exec` reports "rejected").
+
+  An empty entitlement set is correct here: this build is not sandboxed, so the
+  App Sandbox entitlements in the CI file are inert anyway, and the features
+  they gate (microphone, calendars) are governed at runtime by TCC plus the
+  usage-description strings in Info.plist.
+-->
+<plist version="1.0">
+<dict/>
+</plist>

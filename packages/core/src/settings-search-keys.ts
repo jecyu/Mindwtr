@@ -158,6 +158,8 @@ export const SETTINGS_SEARCH_PAGE_KEYS: Record<SettingsSearchPageId, readonly Se
         { key: 'emailCaptureUsername', section: 'emailCapture' },
         { key: 'emailCapturePassword', section: 'emailCapture' },
         { key: 'emailCaptureFolder', section: 'emailCapture' },
+        'dingtalkSync',
+        { key: 'dingtalkMcpUrl', section: 'dingtalkSync' },
     ],
     ai: [
         'ai',
@@ -314,6 +316,8 @@ export const SETTINGS_SEARCH_MOBILE_EXCLUSIONS: Record<string, string> = {
     obsidianNewTaskFormat: 'Part of the desktop-only Obsidian integration above.',
     calendarChooseLocalFile: 'No local .ics file picker on mobile (same Integrations page as obsidianVault above).',
     emailCapture: 'No IMAP email capture on mobile (desktop-only background poller).',
+    dingtalkSync: 'No DingTalk todo sync on mobile (desktop-only, needs the native keyring and HTTP proxy).',
+    dingtalkMcpUrl: 'Part of the desktop-only DingTalk todo sync above.',
     emailCaptureHost: 'Part of the desktop-only email capture above.',
     emailCapturePort: 'Part of the desktop-only email capture above.',
     emailCaptureUsername: 'Part of the desktop-only email capture above.',

@@ -177,7 +177,9 @@ const downloadTextFile = async (
     return true;
 };
 
-const desktopBoundaries: DataTransferBoundaries = {
+// Exported so other desktop write paths (e.g. the DingTalk sync) reuse this one boundary set
+// instead of forking a second copy of the storage/refresh/snapshot plumbing.
+export const desktopBoundaries: DataTransferBoundaries = {
     flushPendingSave,
     getCurrentChangeAt: getLocalChangeAt,
     readCurrentData: () => getStorage().getData(),

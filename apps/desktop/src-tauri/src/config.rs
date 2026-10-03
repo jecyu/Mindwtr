@@ -947,6 +947,7 @@ const SECRET_FIELDS: &[&str] = &[
     "ai_key_gemini",
     "email_capture_password",
     "local_api_token",
+    "dingtalk_mcp_url",
 ];
 
 fn split_config_for_secrets(config: &AppConfigToml) -> (AppConfigToml, AppConfigToml) {
@@ -2163,6 +2164,54 @@ pub(crate) fn set_ai_key(
     }
 }
 
+// The DingTalk MCP gateway URL is the credential itself (the key is a query parameter), so it
+// is stored and returned whole — splitting it into "url + token" would mean guessing where the
+// gateway puts the secret. Mirrors get_ai_key: keyring first, plaintext secrets.toml only when
+// the keyring is unavailable.
+#[tauri::command(async)]
+pub(crate) fn get_dingtalk_mcp_url(app: tauri::AppHandle) -> Option<String> {
+    let _config_guard = lock_config_read_modify_write().ok()?;
+    if let Ok(Some(value)) = get_keyring_secret(&app, KEYRING_DINGTALK_MCP_URL) {
+        return Some(value);
+    }
+    // The keyring-unavailable fallback written by set_dingtalk_mcp_url below.
+    read_config(&app).dingtalk_mcp_url
+}
+
+// Held across the whole read+mutate+write, like set_ai_key.
+#[tauri::command(async)]
+pub(crate) fn set_dingtalk_mcp_url(
+    app: tauri::AppHandle,
+    value: Option<String>,
+) -> Result<(), String> {
+    let _config_guard = lock_config_read_modify_write()?;
+    let next_value = value.and_then(|v| {
+        let trimmed = v.trim().to_string();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed)
+        }
+    });
+    match set_keyring_secret(&app, KEYRING_DINGTALK_MCP_URL, next_value.clone()) {
+        Ok(_) => {
+            let mut config = read_config(&app);
+            // Clear any plaintext copy now that the keyring holds it.
+            config.dingtalk_mcp_url = None;
+            write_config_files(&get_config_path(&app), &get_secrets_path(&app), &config)
+        }
+        Err(_) => {
+            let mut config = read_config(&app);
+            let should_emit_warning = next_value.is_some();
+            config.dingtalk_mcp_url = next_value;
+            if should_emit_warning {
+                emit_keyring_fallback_warning(&app, "DingTalk MCP address");
+            }
+            write_config_files(&get_config_path(&app), &get_secrets_path(&app), &config)
+        }
+    }
+}
+
 fn normalize_backend(value: &str) -> Option<&str> {
     match value {
         "off" | "file" | "webdav" | "cloud" | "cloudkit" => Some(value),
@@ -3238,6 +3287,7 @@ mod tests {
             autostart_startup_flag_migrated: Some("true".to_string()),
             dropbox_promotion_journal: Some("dropbox-journal-secret".to_string()),
             sync_cloud_provider: Some("dropbox".to_string()),
+            dingtalk_mcp_url: Some("https://mcp-gw.dingtalk.com/server/abc?key=dingtalk-secret".to_string()),
         }
     }
 

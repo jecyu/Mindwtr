@@ -2,6 +2,7 @@ import type { ExternalCalendarSubscription } from '@mindwtr/core';
 import type { SystemCalendarPermissionStatus, SystemCalendarPushTarget } from '../../../lib/system-calendar';
 
 import { SettingsCalendarPage } from './SettingsCalendarPage';
+import { SettingsDingTalkSection } from './SettingsDingTalkSection';
 import { SettingsEmailCaptureSection } from './SettingsEmailCaptureSection';
 import { SettingsObsidianSection } from './SettingsObsidianSection';
 
@@ -86,6 +87,21 @@ type Labels = {
     emailCaptureNeverChecked: string;
     emailCaptureImportedCount: string;
     emailCaptureSaveFailed: string;
+    dingtalkSync: string;
+    dingtalkSyncDesc: string;
+    dingtalkMcpUrl: string;
+    dingtalkMcpUrlHint: string;
+    dingtalkMcpUrlStored: string;
+    dingtalkSave: string;
+    dingtalkSyncNow: string;
+    dingtalkSyncing: string;
+    dingtalkLastSynced: string;
+    dingtalkNeverSynced: string;
+    dingtalkImportedCount: string;
+    dingtalkCompletedCount: string;
+    dingtalkAuthFailed: string;
+    dingtalkSaveFailed: string;
+    dingtalkSyncFailed: string;
 };
 
 type SettingsIntegrationsPageProps = {
@@ -256,6 +272,12 @@ export function SettingsIntegrationsPage({
             />
 
             <SettingsEmailCaptureSection
+                t={t}
+                isTauri={isTauri}
+                showSaved={showSaved}
+            />
+
+            <SettingsDingTalkSection
                 t={t}
                 isTauri={isTauri}
                 showSaved={showSaved}
